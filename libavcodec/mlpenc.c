@@ -25,7 +25,7 @@
 #include "libavutil/avstring.h"
 #include "libavutil/samplefmt.h"
 #include "mlp.h"
-#include "dsputil.h"
+#include "mlpdsp.h"
 #include "lpc.h"
 
 #define MAJOR_HEADER_INTERVAL 16
@@ -189,7 +189,7 @@ typedef struct {
 
     unsigned int    max_codebook_search;
 
-    DSPContext      dsp;
+    MLPDSPContext   dsp;
 } MLPEncodeContext;
 
 static ChannelParams   restart_channel_params[MAX_CHANNELS];
@@ -681,7 +681,7 @@ static av_cold int mlp_encode_init(AVCodecContext *avctx)
     clear_channel_params(ctx, restart_channel_params);
     clear_decoding_params(ctx, restart_decoding_params);
 
-    dsputil_init(&ctx->dsp, avctx);
+    ff_mlpdsp_init(&ctx->dsp);
 
     return 0;
 }
