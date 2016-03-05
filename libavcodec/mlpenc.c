@@ -23,6 +23,7 @@
 #include "put_bits.h"
 #include "libavutil/crc.h"
 #include "libavutil/avstring.h"
+#include "libavutil/samplefmt.h"
 #include "mlp.h"
 #include "dsputil.h"
 #include "lpc.h"
@@ -549,12 +550,12 @@ static av_cold int mlp_encode_init(AVCodecContext *avctx)
     }
 
     switch (avctx->sample_fmt) {
-    case SAMPLE_FMT_S16:
+    case AV_SAMPLE_FMT_S16:
         ctx->coded_sample_fmt[0] = BITS_16;
         ctx->wordlength = 16;
         break;
     /* TODO 20 bits: */
-    case SAMPLE_FMT_S32:
+    case AV_SAMPLE_FMT_S32:
         ctx->coded_sample_fmt[0] = BITS_24;
         ctx->wordlength = 24;
         break;
@@ -1325,7 +1326,7 @@ static void input_data_internal(MLPEncodeContext *ctx, const uint8_t *samples,
 /** Wrapper function for inputting data in two different bit-depths. */
 static void input_data(MLPEncodeContext *ctx, void *samples)
 {
-    if (ctx->avctx->sample_fmt == SAMPLE_FMT_S32)
+    if (ctx->avctx->sample_fmt == AV_SAMPLE_FMT_S32)
         input_data_internal(ctx, samples, 1);
     else
         input_data_internal(ctx, samples, 0);
@@ -1965,7 +1966,7 @@ static void rematrix_channels(MLPEncodeContext *ctx)
     maxchan = ctx->num_channels;
 
     for (mat = 0; mat < mp->count; mat++) {
-        unsigned int msb_mask_bits = (ctx->avctx->sample_fmt == SAMPLE_FMT_S16 ? 8 : 0) - mp->shift[mat];
+        unsigned int msb_mask_bits = (ctx->avctx->sample_fmt == AV_SAMPLE_FMT_S16 ? 8 : 0) - mp->shift[mat];
         int32_t mask = MSB_MASK(msb_mask_bits);
         unsigned int outch = mp->outch[mat];
 
@@ -2417,6 +2418,6 @@ AVCodec mlp_encoder = {
     mlp_encode_frame,
     mlp_encode_close,
     .capabilities = CODEC_CAP_SMALL_LAST_FRAME | CODEC_CAP_DELAY,
-    .sample_fmts = (enum SampleFormat[]){SAMPLE_FMT_S16,SAMPLE_FMT_S32,SAMPLE_FMT_NONE},
+    .sample_fmts = (enum AVSampleFormat[]){AV_SAMPLE_FMT_S16,AV_SAMPLE_FMT_S32,AV_SAMPLE_FMT_NONE},
     .long_name = NULL_IF_CONFIG_SMALL("MLP (Meridian Lossless Packing)"),
 };
