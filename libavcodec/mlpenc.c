@@ -564,8 +564,6 @@ static av_cold int mlp_encode_init(AVCodecContext *avctx)
     }
     ctx->coded_sample_fmt[1] = -1 & 0xf;
 
-    avctx->coded_frame = avcodec_alloc_frame();
-
     ctx->dts = -avctx->frame_size;
 
     ctx->num_channels = avctx->channels + 2; /* +2 noise channels */
@@ -2324,8 +2322,6 @@ static int mlp_encode_frame(AVCodecContext *avctx, uint8_t *buf, int buf_size,
     if (ctx->min_restart_interval == ctx->max_restart_interval)
         ctx->write_buffer = ctx->sample_buffer;
 
-    avctx->coded_frame->key_frame = restart_frame;
-
     bytes_written = write_access_unit(ctx, buf, buf_size, restart_frame);
 
     ctx->timestamp += ctx->frame_size[ctx->frame_index];
@@ -2411,7 +2407,6 @@ static av_cold int mlp_encode_close(AVCodecContext *avctx)
     av_freep(&ctx->lpc_sample_buffer);
     av_freep(&ctx->decoding_params);
     av_freep(&ctx->channel_params);
-    av_freep(&avctx->coded_frame);
     av_freep(&ctx->frame_size);
 
     return 0;
