@@ -221,8 +221,6 @@ static BestOffset      restart_best_offset[NUM_CODEBOOKS] = {{0}};
  */
 static int compare_filter_params(FilterParams *prev, FilterParams *fp)
 {
-    int i;
-
     if (prev->order != fp->order)
         return 1;
 
@@ -231,10 +229,6 @@ static int compare_filter_params(FilterParams *prev, FilterParams *fp)
 
     if (prev->shift != fp->shift)
         return 1;
-
-    for (i = 0; i < fp->order; i++)
-        if (prev->coeff[i] != fp->coeff[i])
-            return 1;
 
     return 0;
 }
@@ -333,15 +327,10 @@ static void copy_filter_params(FilterParams *dst, FilterParams *src)
     dst->order = src->order;
 
     if (dst->order) {
-        unsigned int order;
-
         dst->shift = src->shift;
 
         dst->coeff_shift = src->coeff_shift;
         dst->coeff_bits = src->coeff_bits;
-
-        for (order = 0; order < dst->order; order++)
-            dst->coeff[order] = src->coeff[order];
     }
 }
 
@@ -928,13 +917,14 @@ static void write_filter_params(MLPEncodeContext *ctx, PutBitContext *pb,
 
     if (fp->order > 0) {
         int i;
+        int32_t *fcoeff = ctx->cur_channel_params[channel].coeff[filter];
 
         put_bits(pb, 4, fp->shift      );
         put_bits(pb, 5, fp->coeff_bits );
         put_bits(pb, 3, fp->coeff_shift);
 
         for (i = 0; i < fp->order; i++) {
-            put_sbits(pb, fp->coeff_bits, fp->coeff[i] >> fp->coeff_shift);
+            put_sbits(pb, fp->coeff_bits, fcoeff[i] >> fp->coeff_shift);
         }
 
         /* TODO state data for IIR filter. */
@@ -1396,7 +1386,7 @@ static void determine_quant_step_size(MLPEncodeContext *ctx)
  *  coefficients, and if it's possible to right-shift their values without
  *  losing any precision.
  */
-static void code_filter_coeffs(MLPEncodeContext *ctx, FilterParams *fp)
+static void code_filter_coeffs(MLPEncodeContext *ctx, FilterParams *fp, int32_t *fcoeff)
 {
     int min = INT_MAX, max = INT_MIN;
     int bits, shift;
@@ -1404,7 +1394,7 @@ static void code_filter_coeffs(MLPEncodeContext *ctx, FilterParams *fp)
     int order;
 
     for (order = 0; order < fp->order; order++) {
-        int coeff = fp->coeff[order];
+        int coeff = fcoeff[order];
 
         if (coeff < min)
             min = coeff;
@@ -1446,6 +1436,7 @@ static void set_filter_params(MLPEncodeContext *ctx,
         int32_t *sample_buffer = ctx->sample_buffer + channel;
         int32_t coefs[MAX_LPC_ORDER][MAX_LPC_ORDER];
         int32_t *lpc_samples = ctx->lpc_sample_buffer;
+        int32_t *fcoeff = ctx->cur_channel_params[channel].coeff[filter];
         int shift[MLP_MAX_LPC_ORDER];
         unsigned int i;
         int order;
@@ -1464,9 +1455,9 @@ static void set_filter_params(MLPEncodeContext *ctx,
         fp->shift = shift[order-1];
 
         for (i = 0; i < order; i++)
-            fp->coeff[i] = coefs[order-1][i];
+            fcoeff[i] = coefs[order-1][i];
 
-        code_filter_coeffs(ctx, fp);
+        code_filter_coeffs(ctx, fp, fcoeff);
     }
 }
 
@@ -1892,10 +1883,12 @@ static int apply_filter(MLPEncodeContext *ctx, unsigned int channel)
         int64_t accum = 0;
         int32_t residual;
 
-        for (filter = 0; filter < NUM_FILTERS; filter++)
+        for (filter = 0; filter < NUM_FILTERS; filter++) {
+            int32_t *fcoeff = ctx->cur_channel_params[channel].coeff[filter];
             for (order = 0; order < fp[filter]->order; order++)
                 accum += (int64_t)filter_state_buffer[filter][i - 1 - order] *
-                         fp[filter]->coeff[order];
+                         fcoeff[order];
+        }
 
         accum  >>= filter_shift;
         residual = sample - (accum & mask);
