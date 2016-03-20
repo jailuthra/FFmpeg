@@ -25,7 +25,6 @@
 #include "libavutil/avstring.h"
 #include "libavutil/samplefmt.h"
 #include "mlp.h"
-#include "mlpdsp.h"
 #include "lpc.h"
 
 #define MAJOR_HEADER_INTERVAL 16
@@ -189,7 +188,7 @@ typedef struct {
 
     unsigned int    max_codebook_search;
 
-    MLPDSPContext   dsp;
+    LPCContext      lpc_ctx;
 } MLPEncodeContext;
 
 static ChannelParams   restart_channel_params[MAX_CHANNELS];
@@ -666,7 +665,12 @@ static av_cold int mlp_encode_init(AVCodecContext *avctx)
     clear_channel_params(ctx, restart_channel_params);
     clear_decoding_params(ctx, restart_decoding_params);
 
-    ff_mlpdsp_init(&ctx->dsp);
+    if (ff_lpc_init(&ctx->lpc_ctx, ctx->number_of_samples,
+                    MLP_MAX_LPC_ORDER, FF_LPC_TYPE_LEVINSON) < 0) {
+        av_log(avctx, AV_LOG_ERROR,
+               "Not enough memory for LPC context.\n");
+        return -1;
+    }
 
     return 0;
 }
@@ -1446,10 +1450,11 @@ static void set_filter_params(MLPEncodeContext *ctx,
             sample_buffer += ctx->num_channels;
         }
 
-        order = ff_lpc_calc_coefs(&ctx->dsp, ctx->lpc_sample_buffer, ctx->number_of_samples,
-                                  MLP_MIN_LPC_ORDER, max_order, 11,
-                                  coefs, shift, 1,
-                                  ORDER_METHOD_EST, MLP_MIN_LPC_SHIFT, MLP_MAX_LPC_SHIFT, MLP_MIN_LPC_SHIFT);
+        order = ff_lpc_calc_coefs(&ctx->lpc_ctx, ctx->lpc_sample_buffer,
+                                  ctx->number_of_samples, MLP_MIN_LPC_ORDER,
+                                  max_order, 11, coefs, shift, FF_LPC_TYPE_LEVINSON, 0,
+                                  ORDER_METHOD_EST, MLP_MIN_LPC_SHIFT,
+                                  MLP_MAX_LPC_SHIFT, MLP_MIN_LPC_SHIFT);
 
         fp->order = order;
         fp->shift = shift[order-1];
@@ -2393,6 +2398,8 @@ no_data_left:
 static av_cold int mlp_encode_close(AVCodecContext *avctx)
 {
     MLPEncodeContext *ctx = avctx->priv_data;
+
+    ff_lpc_end(&ctx->lpc_ctx);
 
     av_freep(&ctx->lossless_check_data);
     av_freep(&ctx->major_scratch_buffer);
