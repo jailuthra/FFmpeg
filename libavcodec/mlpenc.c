@@ -685,6 +685,8 @@ static av_cold int mlp_encode_init(AVCodecContext *avctx)
  ********************** Functions that do bitcounting ***********************
  ****************************************************************************/
 
+#if 0
+/* TODO: currently unused, figure out where to use these */
 static unsigned int bitcount_restart_header(MLPEncodeContext *ctx)
 {
     RestartHeader *rh = ctx->cur_restart_header;
@@ -796,6 +798,8 @@ static unsigned int bitcount_decoding_params(MLPEncodeContext *ctx,
 
     return bitcount;
 }
+
+#endif
 
 /****************************************************************************
  ****************** Functions that write to the bitstream *******************
