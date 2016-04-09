@@ -20,7 +20,9 @@
  */
 
 #include "avcodec.h"
+#include "internal.h"
 #include "put_bits.h"
+#include "audio_frame_queue.h"
 #include "libavutil/crc.h"
 #include "libavutil/avstring.h"
 #include "libavutil/samplefmt.h"
@@ -172,6 +174,8 @@ typedef struct {
     ChannelParams  *cur_channel_params;
     DecodingParams *cur_decoding_params;
     RestartHeader  *cur_restart_header;
+
+    AudioFrameQueue afq;
 
     /* Analysis stage. */
     unsigned int    starting_frame_index;
@@ -671,6 +675,8 @@ static av_cold int mlp_encode_init(AVCodecContext *avctx)
                "Not enough memory for LPC context.\n");
         return -1;
     }
+
+    ff_af_queue_init(avctx, &ctx->afq);
 
     return 0;
 }
@@ -1872,7 +1878,7 @@ static int apply_filter(MLPEncodeContext *ctx, unsigned int channel)
 
     for (i = 0; i < NUM_FILTERS; i++) {
         unsigned int size = ctx->number_of_samples;
-        filter_state_buffer[i] = av_malloc(size);
+        filter_state_buffer[i] = av_malloc(size*sizeof(int32_t));
     }
 
     for (i = 0; i < 8; i++) {
@@ -2267,12 +2273,27 @@ static void process_major_frame(MLPEncodeContext *ctx)
 
 /****************************************************************************/
 
-static int mlp_encode_frame(AVCodecContext *avctx, uint8_t *buf, int buf_size,
-                            void *data)
+static int mlp_encode_frame(AVCodecContext *avctx, AVPacket *avpkt,
+                            const AVFrame *frame, int *got_packet)
 {
     MLPEncodeContext *ctx = avctx->priv_data;
     unsigned int bytes_written = 0;
-    int restart_frame;
+    int restart_frame, ret;
+    uint8_t *data;
+
+    if ((ret = ff_alloc_packet2(avctx, avpkt, 87500 * avctx->channels, 0)) < 0)
+        return ret;
+
+    if (!frame)
+        return 1;
+
+    /* add current frame to queue */
+    if (frame) {
+        if ((ret = ff_af_queue_add(&ctx->afq, frame)) < 0)
+            return ret;
+    }
+
+    data = frame->data[0];
 
     ctx->frame_index = avctx->frame_number % ctx->max_restart_interval;
 
@@ -2320,7 +2341,7 @@ static int mlp_encode_frame(AVCodecContext *avctx, uint8_t *buf, int buf_size,
     if (ctx->min_restart_interval == ctx->max_restart_interval)
         ctx->write_buffer = ctx->sample_buffer;
 
-    bytes_written = write_access_unit(ctx, buf, buf_size, restart_frame);
+    bytes_written = write_access_unit(ctx, avpkt->data, avpkt->size, restart_frame);
 
     ctx->timestamp += ctx->frame_size[ctx->frame_index];
     ctx->dts       += ctx->frame_size[ctx->frame_index];
@@ -2392,7 +2413,11 @@ input_and_return:
 
 no_data_left:
 
-    return bytes_written;
+    ff_af_queue_remove(&ctx->afq, avctx->frame_size, &avpkt->pts,
+                       &avpkt->duration);
+    avpkt->size = bytes_written;
+    *got_packet = 1;
+    return 0;
 }
 
 static av_cold int mlp_encode_close(AVCodecContext *avctx)
@@ -2408,6 +2433,7 @@ static av_cold int mlp_encode_close(AVCodecContext *avctx)
     av_freep(&ctx->decoding_params);
     av_freep(&ctx->channel_params);
     av_freep(&ctx->frame_size);
+    ff_af_queue_close(&ctx->afq);
 
     return 0;
 }
