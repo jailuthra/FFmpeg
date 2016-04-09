@@ -1229,7 +1229,7 @@ static unsigned int write_access_unit(MLPEncodeContext *ctx, uint8_t *buf,
                                       int buf_size, int restart_frame)
 {
     uint16_t substream_data_len[MAX_SUBSTREAMS];
-    uint8_t *buf2, *buf1, *buf0 = buf;
+    uint8_t *buf1, *buf0 = buf;
     unsigned int substr;
     int total_length;
 
@@ -1255,8 +1255,6 @@ static unsigned int write_access_unit(MLPEncodeContext *ctx, uint8_t *buf,
         buf      += 2;
         buf_size -= 2;
     }
-
-    buf2 = buf;
 
     buf = write_substrs(ctx, buf, buf_size, restart_frame, substream_data_len);
 
