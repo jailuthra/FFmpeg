@@ -132,7 +132,7 @@ typedef struct {
  *  (Group 1)   Lf, Rf  Ls  Rs  /  (Group 2)   C
  *  (Group 1)   Lf, Rf, Ls, Rs  /  (Group 2)   C, LFE
  */
-extern ChannelInformation ff_mlp_ch_info[21];
+extern const ChannelInformation ff_mlp_ch_info[21];
 
 /** MLP uses checksums that seem to be based on the standard CRC algorithm, but
  *  are not (in implementation terms, the table lookup and XOR are reversed).

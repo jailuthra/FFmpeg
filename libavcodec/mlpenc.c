@@ -1612,7 +1612,7 @@ static void lossless_matrix_coeffs(MLPEncodeContext *ctx)
  *  codebook is outside the coded value, so it has one more bit of precision.
  *  It should actually be -7 -> 7, shifted down by 0.5.
  */
-static int codebook_extremes[3][2] = {
+static const int codebook_extremes[3][2] = {
     {-9, 8}, {-8, 7}, {-15, 14},
 };
 
@@ -2362,55 +2362,55 @@ input_and_return:
     restart_frame = (ctx->frame_index + 1) % ctx->min_restart_interval;
 
     if (!restart_frame) {
-    int seq_index;
+        int seq_index;
 
-    for (seq_index = 0;
-         seq_index < ctx->restart_intervals && (seq_index * ctx->min_restart_interval) <= ctx->avctx->frame_number;
-         seq_index++) {
-        unsigned int number_of_samples = 0;
-        unsigned int index;
+        for (seq_index = 0;
+             seq_index < ctx->restart_intervals && (seq_index * ctx->min_restart_interval) <= ctx->avctx->frame_number;
+             seq_index++) {
+            unsigned int number_of_samples = 0;
+            unsigned int index;
 
-        ctx->sample_buffer = ctx->major_scratch_buffer;
-        ctx->inout_buffer = ctx->major_inout_buffer;
-        ctx->seq_index = seq_index;
+            ctx->sample_buffer = ctx->major_scratch_buffer;
+            ctx->inout_buffer = ctx->major_inout_buffer;
+            ctx->seq_index = seq_index;
 
-        ctx->starting_frame_index = (ctx->avctx->frame_number - (ctx->avctx->frame_number % ctx->min_restart_interval)
-                                  - (seq_index * ctx->min_restart_interval)) % ctx->max_restart_interval;
-        ctx->number_of_frames = ctx->next_major_number_of_frames;
-        ctx->number_of_subblocks = ctx->next_major_number_of_frames + 1;
+            ctx->starting_frame_index = (ctx->avctx->frame_number - (ctx->avctx->frame_number % ctx->min_restart_interval)
+                                      - (seq_index * ctx->min_restart_interval)) % ctx->max_restart_interval;
+            ctx->number_of_frames = ctx->next_major_number_of_frames;
+            ctx->number_of_subblocks = ctx->next_major_number_of_frames + 1;
 
-        ctx->seq_channel_params = (ChannelParams *) ctx->channel_params +
-                                  (ctx->frame_index / ctx->min_restart_interval)*(ctx->sequence_size)*(ctx->avctx->channels) +
-                                  (ctx->seq_offset[seq_index])*(ctx->avctx->channels);
+            ctx->seq_channel_params = (ChannelParams *) ctx->channel_params +
+                                      (ctx->frame_index / ctx->min_restart_interval)*(ctx->sequence_size)*(ctx->avctx->channels) +
+                                      (ctx->seq_offset[seq_index])*(ctx->avctx->channels);
 
-        ctx->seq_decoding_params = (DecodingParams *) ctx->decoding_params +
-                                   (ctx->frame_index / ctx->min_restart_interval)*(ctx->sequence_size)*(ctx->num_substreams) +
-                                   (ctx->seq_offset[seq_index])*(ctx->num_substreams);
+            ctx->seq_decoding_params = (DecodingParams *) ctx->decoding_params +
+                                       (ctx->frame_index / ctx->min_restart_interval)*(ctx->sequence_size)*(ctx->num_substreams) +
+                                       (ctx->seq_offset[seq_index])*(ctx->num_substreams);
 
-        for (index = 0; index < ctx->number_of_frames; index++) {
-            number_of_samples += ctx->frame_size[(ctx->starting_frame_index + index) % ctx->max_restart_interval];
+            for (index = 0; index < ctx->number_of_frames; index++) {
+                number_of_samples += ctx->frame_size[(ctx->starting_frame_index + index) % ctx->max_restart_interval];
+            }
+            ctx->number_of_samples = number_of_samples;
+
+            for (index = 0; index < ctx->seq_size[seq_index]; index++) {
+                clear_channel_params(ctx, ctx->seq_channel_params + index*(ctx->avctx->channels));
+                default_decoding_params(ctx, ctx->seq_decoding_params + index*(ctx->num_substreams));
+            }
+
+            input_to_sample_buffer(ctx);
+
+            analyze_sample_buffer(ctx);
         }
-        ctx->number_of_samples = number_of_samples;
 
-        for (index = 0; index < ctx->seq_size[seq_index]; index++) {
-            clear_channel_params(ctx, ctx->seq_channel_params + index*(ctx->avctx->channels));
-            default_decoding_params(ctx, ctx->seq_decoding_params + index*(ctx->num_substreams));
+        if (ctx->frame_index == (ctx->max_restart_interval - 1)) {
+            ctx->major_frame_size = ctx->next_major_frame_size;
+            ctx->next_major_frame_size = 0;
+            ctx->major_number_of_frames = ctx->next_major_number_of_frames;
+            ctx->next_major_number_of_frames = 0;
+
+            if (!ctx->major_frame_size)
+                goto no_data_left;
         }
-
-        input_to_sample_buffer(ctx);
-
-        analyze_sample_buffer(ctx);
-    }
-
-    if (ctx->frame_index == (ctx->max_restart_interval - 1)) {
-        ctx->major_frame_size = ctx->next_major_frame_size;
-        ctx->next_major_frame_size = 0;
-        ctx->major_number_of_frames = ctx->next_major_number_of_frames;
-        ctx->next_major_number_of_frames = 0;
-
-        if (!ctx->major_frame_size)
-            goto no_data_left;
-    }
     }
 
 no_data_left:
