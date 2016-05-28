@@ -528,9 +528,9 @@ static av_cold int mlp_encode_init(AVCodecContext *avctx)
     ctx->coded_peak_bitrate = mlp_peak_bitrate(9600000, avctx->sample_rate);
 
     /* TODO support more channels. */
-    if (avctx->channels > 2) {
+    if (avctx->channels != 2) {
         av_log(avctx, AV_LOG_ERROR,
-               "Only mono and stereo are supported at the moment.\n");
+               "Only stereo is supported at the moment.\n");
         return -1;
     }
 
