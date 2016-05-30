@@ -222,8 +222,12 @@ static BestOffset      restart_best_offset[NUM_CODEBOOKS] = {{0}};
 /** Compares two FilterParams structures and returns 1 if anything has
  *  changed. Returns 0 if they are both equal.
  */
-static int compare_filter_params(FilterParams *prev, FilterParams *fp)
+static int compare_filter_params(ChannelParams *prev_cp, ChannelParams *cp, int filter)
 {
+    FilterParams *prev = &prev_cp->filter_params[filter];
+    FilterParams *fp = &cp->filter_params[filter];
+    int i;
+
     if (prev->order != fp->order)
         return 1;
 
@@ -232,6 +236,10 @@ static int compare_filter_params(FilterParams *prev, FilterParams *fp)
 
     if (prev->shift != fp->shift)
         return 1;
+
+    for (i = 0; i < fp->order; i++)
+        if (prev_cp->coeff[filter][i] != cp->coeff[filter][i])
+            return 1;
 
     return 0;
 }
@@ -305,13 +313,11 @@ static int compare_decoding_params(MLPEncodeContext *ctx)
         ChannelParams *cp = &ctx->cur_channel_params[ch];
 
         if (!(retval & PARAM_FIR) &&
-            compare_filter_params(&prev_cp->filter_params[FIR],
-                                  &     cp->filter_params[FIR]))
+            compare_filter_params(prev_cp, cp, FIR))
             retval |= PARAM_FIR;
 
         if (!(retval & PARAM_IIR) &&
-            compare_filter_params(&prev_cp->filter_params[IIR],
-                                  &     cp->filter_params[IIR]))
+            compare_filter_params(prev_cp, cp, IIR))
             retval |= PARAM_IIR;
 
         if (prev_cp->huff_offset != cp->huff_offset)
@@ -325,8 +331,12 @@ static int compare_decoding_params(MLPEncodeContext *ctx)
     return retval;
 }
 
-static void copy_filter_params(FilterParams *dst, FilterParams *src)
+static void copy_filter_params(ChannelParams *dst_cp, ChannelParams *src_cp, int filter)
 {
+    FilterParams *dst = &dst_cp->filter_params[filter];
+    FilterParams *src = &src_cp->filter_params[filter];
+    unsigned int order;
+
     dst->order = src->order;
 
     if (dst->order) {
@@ -335,6 +345,9 @@ static void copy_filter_params(FilterParams *dst, FilterParams *src)
         dst->coeff_shift = src->coeff_shift;
         dst->coeff_bits = src->coeff_bits;
     }
+
+    for (order = 0; order < dst->order; order++)
+        dst_cp->coeff[filter][order] = src_cp->coeff[filter][order];
 }
 
 static void copy_matrix_params(MatrixParams *dst, MatrixParams *src)
@@ -378,7 +391,7 @@ static void copy_restart_frame_params(MLPEncodeContext *ctx,
 
             if (index)
                 for (filter = 0; filter < NUM_FILTERS; filter++)
-                    copy_filter_params(&cp->filter_params[filter], &ctx->cur_channel_params[channel].filter_params[filter]);
+                    copy_filter_params(cp, &ctx->cur_channel_params[channel], filter);
         }
     }
 }
