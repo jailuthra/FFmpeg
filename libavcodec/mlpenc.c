@@ -1869,14 +1869,14 @@ static void determine_bits(MLPEncodeContext *ctx)
  *************** Functions that process the data in some way ****************
  ****************************************************************************/
 
-#define INT24_MAX ((1 << 23) - 1)
-#define INT24_MIN (~INT24_MAX)
+#define SAMPLE_MAX(bitdepth) ((1 << (bitdepth)) - 1)
+#define SAMPLE_MIN(bitdepth) (~SAMPLE_MAX(bitdepth))
 
 #define MSB_MASK(bits)  (-1u << bits)
 
 /** Applies the filter to the current samples, and saves the residual back
  *  into the samples buffer. If the filter is too bad and overflows the
- *  maximum amount of bits allowed (24), the samples buffer is left as is and
+ *  maximum amount of bits allowed (16 or 24), the samples buffer is left as is and
  *  the function returns -1.
  */
 static int apply_filter(MLPEncodeContext *ctx, unsigned int channel)
@@ -1919,7 +1919,7 @@ static int apply_filter(MLPEncodeContext *ctx, unsigned int channel)
         accum  >>= filter_shift;
         residual = sample - (accum & mask);
 
-        if (residual < INT24_MIN || residual > INT24_MAX)
+        if (residual < SAMPLE_MIN(ctx->wordlength) || residual > SAMPLE_MAX(ctx->wordlength))
             return -1;
 
         filter_state_buffer[FIR][i] = sample;
