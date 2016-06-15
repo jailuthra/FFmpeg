@@ -541,9 +541,9 @@ static av_cold int mlp_encode_init(AVCodecContext *avctx)
     ctx->coded_peak_bitrate = mlp_peak_bitrate(9600000, avctx->sample_rate);
 
     /* TODO support more channels. */
-    if (avctx->channels != 2) {
+    if (avctx->channels > 2) {
         av_log(avctx, AV_LOG_ERROR,
-               "Only stereo is supported at the moment.\n");
+               "Only mono and stereo are supported at the moment.\n");
         return -1;
     }
 
@@ -676,7 +676,8 @@ static av_cold int mlp_encode_init(AVCodecContext *avctx)
 
         rh->min_channel        = 0;
         rh->max_channel        = avctx->channels - 1;
-        rh->max_matrix_channel = 1;
+        /* FIXME: this works for 1 and 2 channels, but check for more */
+        rh->max_matrix_channel = rh->max_channel;
     }
 
     clear_channel_params(ctx, restart_channel_params);
