@@ -1,6 +1,6 @@
 /**
  * MLP encoder
- * Copyright (c) 2008 Ramiro Polla <ramiro@lisha.ufsc.br>
+ * Copyright (c) 2008 Ramiro Polla
  *
  * This file is part of FFmpeg.
  *
