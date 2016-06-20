@@ -2455,14 +2455,16 @@ static av_cold int mlp_encode_close(AVCodecContext *avctx)
 }
 
 AVCodec ff_mlp_encoder = {
-    .name              ="mlp",
-    .long_name         = NULL_IF_CONFIG_SMALL("MLP (Meridian Lossless Packing)"),
-    .type              = AVMEDIA_TYPE_AUDIO,
-    .id                = AV_CODEC_ID_MLP,
-    .priv_data_size    = sizeof(MLPEncodeContext),
-    .init              = mlp_encode_init,
-    .encode2           = mlp_encode_frame,
-    .close             = mlp_encode_close,
-    .capabilities      = CODEC_CAP_SMALL_LAST_FRAME | CODEC_CAP_DELAY,
-    .sample_fmts       = (enum AVSampleFormat[]){AV_SAMPLE_FMT_S16,AV_SAMPLE_FMT_S32,AV_SAMPLE_FMT_NONE},
+    .name                   ="mlp",
+    .long_name              = NULL_IF_CONFIG_SMALL("MLP (Meridian Lossless Packing)"),
+    .type                   = AVMEDIA_TYPE_AUDIO,
+    .id                     = AV_CODEC_ID_MLP,
+    .priv_data_size         = sizeof(MLPEncodeContext),
+    .init                   = mlp_encode_init,
+    .encode2                = mlp_encode_frame,
+    .close                  = mlp_encode_close,
+    .capabilities           = CODEC_CAP_SMALL_LAST_FRAME | CODEC_CAP_DELAY,
+    .sample_fmts            = (const enum AVSampleFormat[]) {AV_SAMPLE_FMT_S16, AV_SAMPLE_FMT_S32, AV_SAMPLE_FMT_NONE},
+    .supported_samplerates  = (const int[]) {44100, 48000, 88200, 96000, 176400, 192000, 0},
+    .channel_layouts        = (const uint64_t[]) {AV_CH_LAYOUT_MONO, AV_CH_LAYOUT_STEREO, 0},
 };
