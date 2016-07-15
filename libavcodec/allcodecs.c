@@ -448,7 +448,7 @@ void avcodec_register_all(void)
     REGISTER_ENCDEC (SONIC,             sonic);
     REGISTER_ENCODER(SONIC_LS,          sonic_ls);
     REGISTER_DECODER(TAK,               tak);
-    REGISTER_DECODER(TRUEHD,            truehd);
+    REGISTER_ENCDEC (TRUEHD,            truehd);
     REGISTER_DECODER(TRUESPEECH,        truespeech);
     REGISTER_ENCDEC (TTA,               tta);
     REGISTER_DECODER(TWINVQ,            twinvq);

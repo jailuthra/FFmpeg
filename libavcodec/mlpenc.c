@@ -623,9 +623,15 @@ static av_cold int mlp_encode_init(AVCodecContext *avctx)
      * we only accept mono and stereo. */
     ctx->channel_arrangement = avctx->channels - 1;
     ctx->num_substreams = 1;
-    ctx->flags = FLAGS_DVDA;
-    ctx->channel_occupancy = ff_mlp_ch_info[avctx->channels - 1].channel_occupancy;
-    ctx->summary_info      = ff_mlp_ch_info[avctx->channels - 1].summary_info     ;
+    if (ctx->avctx->codec_id == AV_CODEC_ID_MLP) {
+        ctx->flags = FLAGS_DVDA;
+        ctx->channel_occupancy = ff_mlp_ch_info[ctx->channel_arrangement].channel_occupancy;
+        ctx->summary_info      = ff_mlp_ch_info[ctx->channel_arrangement].summary_info     ;
+    } else {
+        ctx->flags = 0;
+        ctx->channel_occupancy = 0;
+        ctx->summary_info = 0;
+    }
 
     size = sizeof(unsigned int) * ctx->max_restart_interval;
 
@@ -827,15 +833,28 @@ static void write_major_sync(MLPEncodeContext *ctx, uint8_t *buf, int buf_size)
     init_put_bits(&pb, buf, buf_size);
 
     put_bits(&pb, 24, SYNC_MAJOR               );
-    put_bits(&pb,  8, SYNC_MLP                 );
-    put_bits(&pb,  4, ctx->coded_sample_fmt [0]);
-    put_bits(&pb,  4, ctx->coded_sample_fmt [1]);
-    put_bits(&pb,  4, ctx->coded_sample_rate[0]);
-    put_bits(&pb,  4, ctx->coded_sample_rate[1]);
-    put_bits(&pb,  4, 0                        ); /* ignored */
-    put_bits(&pb,  4, 0                        ); /* multi_channel_type */
-    put_bits(&pb,  3, 0                        ); /* ignored */
-    put_bits(&pb,  5, ctx->channel_arrangement );
+
+    if (ctx->avctx->codec_id == AV_CODEC_ID_MLP) {
+        put_bits(&pb,  8, SYNC_MLP                 );
+        put_bits(&pb,  4, ctx->coded_sample_fmt [0]);
+        put_bits(&pb,  4, ctx->coded_sample_fmt [1]);
+        put_bits(&pb,  4, ctx->coded_sample_rate[0]);
+        put_bits(&pb,  4, ctx->coded_sample_rate[1]);
+        put_bits(&pb,  4, 0                        ); /* ignored */
+        put_bits(&pb,  4, 0                        ); /* multi_channel_type */
+        put_bits(&pb,  3, 0                        ); /* ignored */
+        put_bits(&pb,  5, ctx->channel_arrangement );
+    } else if (ctx->avctx->codec_id == AV_CODEC_ID_TRUEHD) {
+        put_bits(&pb,  8, SYNC_TRUEHD              );
+        put_bits(&pb,  4, ctx->coded_sample_rate[0]);
+        put_bits(&pb,  4, 0                        ); /* ignored */
+        /* TODO: Add variables in context for these */
+        put_bits(&pb,  2, 0                        ); /* channel_modifier0 */
+        put_bits(&pb,  2, 0                        ); /* channel_modifier1 */
+        put_bits(&pb,  5, 1                        ); /* channel_arrangement */
+        put_bits(&pb,  2, 0                        ); /* channel_modifier2 */
+        put_bits(&pb, 13, 1                        ); /* channel_arrangement */
+    }
 
     put_bits(&pb, 16, MAJOR_SYNC_INFO_SIGNATURE);
     put_bits(&pb, 16, ctx->flags               );
@@ -2454,6 +2473,7 @@ static av_cold int mlp_encode_close(AVCodecContext *avctx)
     return 0;
 }
 
+#if CONFIG_MLP_ENCODER
 AVCodec ff_mlp_encoder = {
     .name                   ="mlp",
     .long_name              = NULL_IF_CONFIG_SMALL("MLP (Meridian Lossless Packing)"),
@@ -2468,3 +2488,20 @@ AVCodec ff_mlp_encoder = {
     .supported_samplerates  = (const int[]) {44100, 48000, 88200, 96000, 176400, 192000, 0},
     .channel_layouts        = (const uint64_t[]) {AV_CH_LAYOUT_MONO, AV_CH_LAYOUT_STEREO, 0},
 };
+#endif
+#if CONFIG_TRUEHD_ENCODER
+AVCodec ff_truehd_encoder = {
+    .name                   ="truehd",
+    .long_name              = NULL_IF_CONFIG_SMALL("TrueHD"),
+    .type                   = AVMEDIA_TYPE_AUDIO,
+    .id                     = AV_CODEC_ID_TRUEHD,
+    .priv_data_size         = sizeof(MLPEncodeContext),
+    .init                   = mlp_encode_init,
+    .encode2                = mlp_encode_frame,
+    .close                  = mlp_encode_close,
+    .capabilities           = CODEC_CAP_SMALL_LAST_FRAME | CODEC_CAP_DELAY,
+    .sample_fmts            = (const enum AVSampleFormat[]) {AV_SAMPLE_FMT_S16, AV_SAMPLE_FMT_S32, AV_SAMPLE_FMT_NONE},
+    .supported_samplerates  = (const int[]) {44100, 48000, 88200, 96000, 176400, 192000, 0},
+    .channel_layouts        = (const uint64_t[]) {AV_CH_LAYOUT_STEREO, 0},
+};
+#endif
