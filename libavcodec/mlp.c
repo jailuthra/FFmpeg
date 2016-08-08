@@ -55,6 +55,13 @@ const ChannelInformation ff_mlp_ch_info[21] = {
     { 0x3F, 0x04, 0x02, 0x00 },
 };
 
+const uint64_t ff_mlp_channel_layouts[12] = {
+    AV_CH_LAYOUT_MONO, AV_CH_LAYOUT_STEREO, AV_CH_LAYOUT_2_1,
+    AV_CH_LAYOUT_QUAD, AV_CH_LAYOUT_2POINT1, AV_CH_LAYOUT_SURROUND,
+    AV_CH_LAYOUT_4POINT0, AV_CH_LAYOUT_5POINT0_BACK, AV_CH_LAYOUT_3POINT1,
+    AV_CH_LAYOUT_4POINT1, AV_CH_LAYOUT_5POINT1_BACK, 0,
+};
+
 static int crc_init = 0;
 #if CONFIG_SMALL
 #define CRC_TABLE_SIZE 257

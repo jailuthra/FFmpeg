@@ -542,9 +542,8 @@ static av_cold int mlp_encode_init(AVCodecContext *avctx)
 
     /* TODO support more channels. */
     if (avctx->channels > 2) {
-        av_log(avctx, AV_LOG_ERROR,
+        av_log(avctx, AV_LOG_WARNING,
                "Only mono and stereo are supported at the moment.\n");
-        return -1;
     }
 
     ctx->substream_info |= SUBSTREAM_INFO_ALWAYS_SET;
@@ -619,15 +618,42 @@ static av_cold int mlp_encode_init(AVCodecContext *avctx)
 
     ff_mlp_init_crc();
 
-    /* TODO channel_arrangement is more complex, but for now
-     * we only accept mono and stereo. */
-    ctx->channel_arrangement = avctx->channels - 1;
-    ctx->num_substreams = 1;
+    ctx->num_substreams = 1; // TODO: change this after adding multi-channel support for TrueHD
+
     if (ctx->avctx->codec_id == AV_CODEC_ID_MLP) {
+        /* MLP */
+        switch(avctx->channel_layout) {
+        case AV_CH_LAYOUT_MONO:
+            ctx->channel_arrangement = 0; break;
+        case AV_CH_LAYOUT_STEREO:
+            ctx->channel_arrangement = 1; break;
+        case AV_CH_LAYOUT_2_1:
+            ctx->channel_arrangement = 2; break;
+        case AV_CH_LAYOUT_QUAD:
+            ctx->channel_arrangement = 3; break;
+        case AV_CH_LAYOUT_2POINT1:
+            ctx->channel_arrangement = 4; break;
+        case AV_CH_LAYOUT_SURROUND:
+            ctx->channel_arrangement = 7; break;
+        case AV_CH_LAYOUT_4POINT0:
+            ctx->channel_arrangement = 8; break;
+        case AV_CH_LAYOUT_5POINT0_BACK:
+            ctx->channel_arrangement = 9; break;
+        case AV_CH_LAYOUT_3POINT1:
+            ctx->channel_arrangement = 10; break;
+        case AV_CH_LAYOUT_4POINT1:
+            ctx->channel_arrangement = 11; break;
+        case AV_CH_LAYOUT_5POINT1_BACK:
+            ctx->channel_arrangement = 12; break;
+        default:
+            av_log(avctx, AV_LOG_ERROR, "Unsupported channel arrangement\n");
+            return -1;
+        }
         ctx->flags = FLAGS_DVDA;
         ctx->channel_occupancy = ff_mlp_ch_info[ctx->channel_arrangement].channel_occupancy;
         ctx->summary_info      = ff_mlp_ch_info[ctx->channel_arrangement].summary_info     ;
     } else {
+        /* TrueHD */
         ctx->flags = 0;
         ctx->channel_occupancy = 0;
         ctx->summary_info = 0;
@@ -849,6 +875,8 @@ static void write_major_sync(MLPEncodeContext *ctx, uint8_t *buf, int buf_size)
         put_bits(&pb,  4, ctx->coded_sample_rate[0]);
         put_bits(&pb,  4, 0                        ); /* ignored */
         /* TODO: Add variables in context for these */
+        /* TODO channel_arrangement is more complex, but for now
+         * we only accept mono and stereo. */
         put_bits(&pb,  2, 0                        ); /* channel_modifier0 */
         put_bits(&pb,  2, 0                        ); /* channel_modifier1 */
         put_bits(&pb,  5, 1                        ); /* channel_arrangement */
@@ -1586,8 +1614,8 @@ static void lossless_matrix_coeffs(MLPEncodeContext *ctx)
     unsigned int channel;
     int mode, mat;
 
-    /* No decorrelation for mono. */
-    if (ctx->num_channels - 2 == 1) {
+    /* No decorrelation for non-stereo. */
+    if (ctx->num_channels - 2 != 2) {
         mp->count = 0;
         return;
     }
@@ -2491,7 +2519,7 @@ AVCodec ff_mlp_encoder = {
     .capabilities           = CODEC_CAP_SMALL_LAST_FRAME | CODEC_CAP_DELAY,
     .sample_fmts            = (const enum AVSampleFormat[]) {AV_SAMPLE_FMT_S16, AV_SAMPLE_FMT_S32, AV_SAMPLE_FMT_NONE},
     .supported_samplerates  = (const int[]) {44100, 48000, 88200, 96000, 176400, 192000, 0},
-    .channel_layouts        = (const uint64_t[]) {AV_CH_LAYOUT_MONO, AV_CH_LAYOUT_STEREO, 0},
+    .channel_layouts        = ff_mlp_channel_layouts,
 };
 #endif
 #if CONFIG_TRUEHD_ENCODER

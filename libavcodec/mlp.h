@@ -134,6 +134,8 @@ typedef struct {
  */
 extern const ChannelInformation ff_mlp_ch_info[21];
 
+extern const uint64_t ff_mlp_channel_layouts[12];
+
 /** MLP uses checksums that seem to be based on the standard CRC algorithm, but
  *  are not (in implementation terms, the table lookup and XOR are reversed).
  *  We can implement this behavior using a standard av_crc on all but the
