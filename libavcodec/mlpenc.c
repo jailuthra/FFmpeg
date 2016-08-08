@@ -222,10 +222,10 @@ static BestOffset      restart_best_offset[NUM_CODEBOOKS] = {{0}};
 /** Compares two FilterParams structures and returns 1 if anything has
  *  changed. Returns 0 if they are both equal.
  */
-static int compare_filter_params(ChannelParams *prev_cp, ChannelParams *cp, int filter)
+static int compare_filter_params(const ChannelParams *prev_cp, const ChannelParams *cp, int filter)
 {
-    FilterParams *prev = &prev_cp->filter_params[filter];
-    FilterParams *fp = &cp->filter_params[filter];
+    const FilterParams *prev = &prev_cp->filter_params[filter];
+    const FilterParams *fp = &cp->filter_params[filter];
     int i;
 
     if (prev->order != fp->order)
@@ -247,7 +247,7 @@ static int compare_filter_params(ChannelParams *prev_cp, ChannelParams *cp, int 
 /** Compare two primitive matrices and returns 1 if anything has changed.
  *  Returns 0 if they are both equal.
  */
-static int compare_matrix_params(MLPEncodeContext *ctx, MatrixParams *prev, MatrixParams *mp)
+static int compare_matrix_params(MLPEncodeContext *ctx, const MatrixParams *prev, const MatrixParams *mp)
 {
     RestartHeader *rh = ctx->cur_restart_header;
     unsigned int channel, mat;
@@ -1914,6 +1914,11 @@ static int apply_filter(MLPEncodeContext *ctx, unsigned int channel)
     for (i = 0; i < NUM_FILTERS; i++) {
         unsigned int size = ctx->number_of_samples;
         filter_state_buffer[i] = av_malloc(size*sizeof(int32_t));
+        if (!filter_state_buffer[i]) {
+            av_log(ctx->avctx, AV_LOG_ERROR,
+                   "Not enough memory for applying filters.\n");
+            return -1;
+        }
     }
 
     for (i = 0; i < 8; i++) {
