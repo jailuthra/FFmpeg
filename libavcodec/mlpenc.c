@@ -152,6 +152,10 @@ typedef struct {
 
     uint8_t         channel_arrangement;    ///< channel arrangement for MLP streams
 
+    uint8_t         ch_modifier_thd0;       ///< channel modifier for TrueHD stream 0
+    uint8_t         ch_modifier_thd1;       ///< channel modifier for TrueHD stream 1
+    uint8_t         ch_modifier_thd2;       ///< channel modifier for TrueHD stream 2
+
     unsigned int    seq_size  [MAJOR_HEADER_INTERVAL];
     unsigned int    seq_offset[MAJOR_HEADER_INTERVAL];
     unsigned int    sequence_size;
@@ -646,6 +650,29 @@ static av_cold int mlp_encode_init(AVCodecContext *avctx)
         ctx->summary_info      = ff_mlp_ch_info[ctx->channel_arrangement].summary_info     ;
     } else {
         /* TrueHD */
+        switch(avctx->channel_layout) {
+        case AV_CH_LAYOUT_STEREO:
+            ctx->ch_modifier_thd0    = 0;
+            ctx->ch_modifier_thd1    = 0;
+            ctx->ch_modifier_thd2    = 0;
+            ctx->channel_arrangement = 1;
+            break;
+        case AV_CH_LAYOUT_5POINT0_BACK:
+            ctx->ch_modifier_thd0    = 1;
+            ctx->ch_modifier_thd1    = 1;
+            ctx->ch_modifier_thd2    = 1;
+            ctx->channel_arrangement = 11;
+            break;
+        case AV_CH_LAYOUT_5POINT1_BACK:
+            ctx->ch_modifier_thd0    = 2;
+            ctx->ch_modifier_thd1    = 1;
+            ctx->ch_modifier_thd2    = 2;
+            ctx->channel_arrangement = 15;
+            break;
+        default:
+            av_log(avctx, AV_LOG_ERROR, "Unsupported channel arrangement\n");
+            return -1;
+        }
         ctx->flags = 0;
         ctx->channel_occupancy = 0;
         ctx->summary_info = 0;
@@ -746,14 +773,11 @@ static void write_major_sync(MLPEncodeContext *ctx, uint8_t *buf, int buf_size)
         put_bits(&pb,  8, SYNC_TRUEHD              );
         put_bits(&pb,  4, ctx->coded_sample_rate[0]);
         put_bits(&pb,  4, 0                        ); /* ignored */
-        /* TODO: Add variables in context for these */
-        /* TODO channel_arrangement is more complex, but for now
-         * we only accept stereo. */
-        put_bits(&pb,  2, 0                        ); /* channel_modifier0 */
-        put_bits(&pb,  2, 0                        ); /* channel_modifier1 */
-        put_bits(&pb,  5, 1                        ); /* channel_arrangement */
-        put_bits(&pb,  2, 0                        ); /* channel_modifier2 */
-        put_bits(&pb, 13, 1                        ); /* channel_arrangement */
+        put_bits(&pb,  2, ctx->ch_modifier_thd0    );
+        put_bits(&pb,  2, ctx->ch_modifier_thd1    );
+        put_bits(&pb,  5, ctx->channel_arrangement );
+        put_bits(&pb,  2, ctx->ch_modifier_thd2    );
+        put_bits(&pb, 13, ctx->channel_arrangement );
     }
 
     put_bits(&pb, 16, MAJOR_SYNC_INFO_SIGNATURE);
@@ -2393,6 +2417,6 @@ AVCodec ff_truehd_encoder = {
     .capabilities           = AV_CODEC_CAP_SMALL_LAST_FRAME | AV_CODEC_CAP_DELAY | AV_CODEC_CAP_EXPERIMENTAL,
     .sample_fmts            = (const enum AVSampleFormat[]) {AV_SAMPLE_FMT_S16, AV_SAMPLE_FMT_S32, AV_SAMPLE_FMT_NONE},
     .supported_samplerates  = (const int[]) {44100, 48000, 88200, 96000, 176400, 192000, 0},
-    .channel_layouts        = (const uint64_t[]) {AV_CH_LAYOUT_STEREO, 0},
+    .channel_layouts        = (const uint64_t[]) {AV_CH_LAYOUT_STEREO, AV_CH_LAYOUT_5POINT0_BACK, AV_CH_LAYOUT_5POINT1_BACK, 0},
 };
 #endif
