@@ -1799,7 +1799,7 @@ static void determine_bits(MLPEncodeContext *ctx)
  *************** Functions that process the data in some way ****************
  ****************************************************************************/
 
-#define SAMPLE_MAX(bitdepth) ((1 << (bitdepth)) - 1)
+#define SAMPLE_MAX(bitdepth) ((1 << (bitdepth - 1)) - 1)
 #define SAMPLE_MIN(bitdepth) (~SAMPLE_MAX(bitdepth))
 
 #define MSB_MASK(bits)  (-1u << bits)
