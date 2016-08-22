@@ -551,11 +551,13 @@ static av_cold int mlp_encode_init(AVCodecContext *avctx)
     case AV_SAMPLE_FMT_S16:
         ctx->coded_sample_fmt[0] = BITS_16;
         ctx->wordlength = 16;
+        avctx->bits_per_raw_sample = 16;
         break;
     /* TODO 20 bits: */
     case AV_SAMPLE_FMT_S32:
         ctx->coded_sample_fmt[0] = BITS_24;
         ctx->wordlength = 24;
+        avctx->bits_per_raw_sample = 24;
         break;
     default:
         av_log(avctx, AV_LOG_ERROR, "Sample format not supported. "
