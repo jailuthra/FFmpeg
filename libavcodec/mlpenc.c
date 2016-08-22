@@ -574,16 +574,8 @@ static av_cold int mlp_encode_init(AVCodecContext *avctx)
     /* TODO Let user pass major header interval as parameter. */
     ctx->max_restart_interval = MAJOR_HEADER_INTERVAL;
 
-    if (avctx->compression_level == -1) {
-        ctx->max_codebook_search = 3;
-        ctx->min_restart_interval = MAJOR_HEADER_INTERVAL;
-    } else {
-        /* TODO Decide how much to test with the compression_level the user wants. */
-        ctx->max_codebook_search = 3 * avctx->compression_level;
-        ctx->min_restart_interval = MAJOR_HEADER_INTERVAL >> avctx->compression_level;
-        if (!ctx->min_restart_interval)
-            ctx->min_restart_interval = 1;
-    }
+    ctx->max_codebook_search = 3;
+    ctx->min_restart_interval = MAJOR_HEADER_INTERVAL;
     ctx->restart_intervals = ctx->max_restart_interval / ctx->min_restart_interval;
 
     /* TODO Let user pass parameters for LPC filter. */
@@ -1530,18 +1522,18 @@ static void lossless_matrix_coeffs(MLPEncodeContext *ctx)
         case MLP_CHMODE_LEFT_SIDE:
             mp->count    = 1;
             mp->outch[0] = 1;
-            mp->coeff[0][0] =  1 << 14; mp->coeff[0][1] = -1 << 14;
-            mp->coeff[0][2] =  0 << 14; mp->coeff[0][2] =  0 << 14;
-            mp->forco[0][0] =  1 << 14; mp->forco[0][1] = -1 << 14;
-            mp->forco[0][2] =  0 << 14; mp->forco[0][2] =  0 << 14;
+            mp->coeff[0][0] =  1 << 14; mp->coeff[0][1] = -(1 << 14);
+            mp->coeff[0][2] =  0 << 14; mp->coeff[0][2] =   0 << 14;
+            mp->forco[0][0] =  1 << 14; mp->forco[0][1] = -(1 << 14);
+            mp->forco[0][2] =  0 << 14; mp->forco[0][2] =   0 << 14;
             break;
         case MLP_CHMODE_RIGHT_SIDE:
             mp->count    = 1;
             mp->outch[0] = 0;
-            mp->coeff[0][0] =  1 << 14; mp->coeff[0][1] =  1 << 14;
-            mp->coeff[0][2] =  0 << 14; mp->coeff[0][2] =  0 << 14;
-            mp->forco[0][0] =  1 << 14; mp->forco[0][1] = -1 << 14;
-            mp->forco[0][2] =  0 << 14; mp->forco[0][2] =  0 << 14;
+            mp->coeff[0][0] =  1 << 14; mp->coeff[0][1] =   1 << 14;
+            mp->coeff[0][2] =  0 << 14; mp->coeff[0][2] =   0 << 14;
+            mp->forco[0][0] =  1 << 14; mp->forco[0][1] = -(1 << 14);
+            mp->forco[0][2] =  0 << 14; mp->forco[0][2] =   0 << 14;
             break;
     }
 
