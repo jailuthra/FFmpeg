@@ -2220,17 +2220,20 @@ static int mlp_encode_frame(AVCodecContext *avctx, AVPacket *avpkt,
     int restart_frame, ret;
     uint8_t *data;
 
+    /* add current frame to queue */
+    if (frame) {
+        if ((ret = ff_af_queue_add(&ctx->afq, frame)) < 0)
+            return ret;
+    } else {
+        if (ctx->last_frame == ctx->inout_buffer) {
+            return 0;
+        }
+    }
+
     if ((ret = ff_alloc_packet2(avctx, avpkt, 87500 * avctx->channels, 0)) < 0)
         return ret;
 
-    if (!frame)
-        return 1;
-
-    /* add current frame to queue */
-    if ((ret = ff_af_queue_add(&ctx->afq, frame)) < 0)
-        return ret;
-
-    data = frame->data[0];
+    data = frame ? frame->data[0] : NULL;
 
     ctx->frame_index = avctx->frame_number % ctx->max_restart_interval;
 
@@ -2326,6 +2329,8 @@ input_and_return:
                 number_of_samples += ctx->frame_size[(ctx->starting_frame_index + index) % ctx->max_restart_interval];
             }
             ctx->number_of_samples = number_of_samples;
+            if (!ctx->number_of_samples)
+                break;
 
             for (index = 0; index < ctx->seq_size[seq_index]; index++) {
                 clear_channel_params(ctx, ctx->seq_channel_params + index*(ctx->avctx->channels));
