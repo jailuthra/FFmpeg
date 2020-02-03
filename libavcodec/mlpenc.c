@@ -2142,6 +2142,23 @@ static void set_major_params(MLPEncodeContext *ctx)
     ctx->major_cur_subblock_index = 0;
 }
 
+static void assert_bitbound(MLPEncodeContext *ctx)
+{
+    DecodingParams *dp = ctx->cur_decoding_params;
+    RestartHeader  *rh = ctx->cur_restart_header;
+    unsigned int channel;
+    int i;
+
+    for (channel = 0; channel <= rh->max_channel; channel++) {
+        int32_t *sample_buffer = ctx->sample_buffer + channel;
+        for (i = 0; i < dp->blocksize; i++) {
+            int32_t sample = *sample_buffer;
+            av_assert0(sample <= SAMPLE_MAX(24) && sample >= SAMPLE_MIN(24));
+            sample_buffer += ctx->num_channels;
+        }
+    }
+}
+
 static void analyze_sample_buffer(MLPEncodeContext *ctx)
 {
     ChannelParams *seq_cp = ctx->seq_channel_params;
@@ -2159,6 +2176,7 @@ static void analyze_sample_buffer(MLPEncodeContext *ctx)
         generate_2_noise_channels(ctx);
         lossless_matrix_coeffs   (ctx);
         rematrix_channels        (ctx);
+        assert_bitbound(ctx);
         determine_filters        (ctx);
         apply_filters            (ctx);
 
