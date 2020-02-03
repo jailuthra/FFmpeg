@@ -126,7 +126,7 @@ typedef struct {
     int32_t        *write_buffer;           ///< Pointer to data currently being written to bitstream.
     int32_t        *sample_buffer;          ///< Pointer to current access unit samples.
     int32_t        *major_scratch_buffer;   ///< Scratch buffer big enough to fit all data for one entire major frame interval.
-    int32_t        *last_frame;             ///< Pointer to last frame with data to encode.
+    int32_t         flush_frames;           ///< Number of frames left to flush.
 
     int32_t        *lpc_sample_buffer;
 
@@ -1112,7 +1112,7 @@ static uint8_t *write_substrs(MLPEncodeContext *ctx, uint8_t *buf, int buf_size,
 
         rh->lossless_check_data ^= *lossless_check_data++;
 
-        if (ctx->last_frame == ctx->inout_buffer) {
+        if (ctx->flush_frames == 1) {
             /* TODO find a sample and implement shorten_by. */
             put_bits(&pb, 32, END_OF_STREAM);
         }
@@ -2223,26 +2223,30 @@ static int mlp_encode_frame(AVCodecContext *avctx, AVPacket *avpkt,
     int restart_frame, ret;
     uint8_t *data;
 
+    if (!frame) {
+        if (!ctx->flush_frames) {
+            ctx->flush_frames = ctx->major_number_of_frames;
+        } else {
+            ctx->flush_frames--;
+        }
+
+        if (ctx->flush_frames == 0)
+            return 0;
+    }
+
     if ((ret = ff_alloc_packet2(avctx, avpkt, 87500 * avctx->channels, 0)) < 0)
         return ret;
 
-    if (!frame)
-        return 1;
-
     /* add current frame to queue */
-    if ((ret = ff_af_queue_add(&ctx->afq, frame)) < 0)
+    if (frame && (ret = ff_af_queue_add(&ctx->afq, frame)) < 0)
         return ret;
 
-    data = frame->data[0];
+    data = frame ? frame->data[0] : NULL;
 
     ctx->frame_index = avctx->frame_number % ctx->max_restart_interval;
 
     ctx->inout_buffer = ctx->major_inout_buffer
                       + ctx->frame_index * ctx->one_sample_buffer_size;
-
-    if (ctx->last_frame == ctx->inout_buffer) {
-        return 0;
-    }
 
     ctx->sample_buffer = ctx->major_scratch_buffer
                        + ctx->frame_index * ctx->one_sample_buffer_size;
@@ -2293,8 +2297,6 @@ input_and_return:
         ctx->next_major_frame_size += avctx->frame_size;
         ctx->next_major_number_of_frames++;
         input_data(ctx, data);
-    } else if (!ctx->last_frame) {
-        ctx->last_frame = ctx->inout_buffer;
     }
 
     restart_frame = (ctx->frame_index + 1) % ctx->min_restart_interval;
@@ -2353,8 +2355,9 @@ input_and_return:
 
 no_data_left:
 
-    ff_af_queue_remove(&ctx->afq, avctx->frame_size, &avpkt->pts,
-                       &avpkt->duration);
+    if (ctx->afq.remaining_samples > 0)
+        ff_af_queue_remove(&ctx->afq, avctx->frame_size, &avpkt->pts,
+                           &avpkt->duration);
     avpkt->size = bytes_written;
     *got_packet = 1;
     return 0;
