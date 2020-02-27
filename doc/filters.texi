@@ -6608,7 +6608,8 @@ The threshold below which a pixel value is considered black; it defaults to
 
 @end table
 
-@section blend, tblend
+@anchor{blend}
+@section blend
 
 Blend two video frames into each other.
 
@@ -6994,6 +6995,21 @@ Only deinterlace frames marked as interlaced.
 @end table
 
 The default value is @code{all}.
+@end table
+
+@section cas
+
+Apply Contrast Adaptive Sharpen filter to video stream.
+
+The filter accepts the following options:
+
+@table @option
+@item strength
+Set the sharpening strength. Default value is 0.
+
+@item planes
+Set planes to filter. Default value is to filter all
+planes except alpha plane.
 @end table
 
 @section chromahold
@@ -17802,6 +17818,11 @@ the position in the file of the input frame, NAN if unknown
 @section swapuv
 Swap U & V plane.
 
+@section tblend
+Blend successive video frames.
+
+See @ref{blend}
+
 @section telecine
 
 Apply telecine process to the video.
@@ -18911,7 +18932,8 @@ Default value is @b{@samp{0}}.
 
 @item barrel
 @item fb
-Facebook's 360 format.
+@item barrelsplit
+Facebook's 360 formats.
 
 @item sg
 Stereographic format.
@@ -19114,6 +19136,10 @@ Convert transposed and horizontally flipped Equi-Angular Cubemap in side-by-side
 v360=eac:equirect:in_stereo=sbs:in_trans=1:ih_flip=1:out_stereo=tb
 @end example
 @end itemize
+
+@subsection Commands
+
+This filter supports subset of above options as @ref{commands}.
 
 @section vaguedenoiser
 
