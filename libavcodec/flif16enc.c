@@ -1,11 +1,14 @@
 #include "flif16.h"
 #include "avcodec.h"
 
+#include "bytestream.h"
+
 // TODO Add all Functions
 static int flif16_encode_frame(AVCodecContext *avctx, AVPacket *pkt,
                             const AVFrame *pict, int *got_packet)
 {
-    return -1;
+    
+    return AVERROR(EINVAL);
 }
 
 AVCodec ff_flif16_encoder = {
