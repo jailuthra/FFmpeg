@@ -49,7 +49,7 @@ typedef struct FLIF16RangeCoder {
     GetByteContext *gb;
 } FLIF16RangeCoder;
 
-FLIF16RangeCoder *ff_flif16_rac_init();
+FLIF16RangeCoder *ff_flif16_rac_init(GetByteContext *gb);
 
 static inline uint32_t ff_flif16_rac_read_chance(uint16_t b12, uint32_t range)
 {
@@ -73,10 +73,10 @@ bool inline read_12bit_chance(uint16_t b12) ATTRIBUTE_HOT
 inline void ff_flif16_rac_renorm(FLIF16RangeCoder *rc)
 {
     // Replaced with a while loop
-    while (range <= FF_FLIF16_MIN_RANGE) {
+    while (rc->range <= FLIF16_RAC_MIN_RANGE) {
         rc->low <<= 8;
         rc->range <<= 8;
-        rc->low |= ff_flif16_rac_read(rc);
+        rc->low |= bytestream2_get_byte(rc->gb);
     }
 }
 
@@ -84,26 +84,26 @@ inline uint8_t ff_flif16_rac_get(FLIF16RangeCoder *rc, uint32_t chance)
 {
     // assert(rc->chance > 0);
     // assert(rc->chance < rc->range);
-    if (rc->low >= rc->range - rc->chance) {
-        rc->low -= rc->range - rc->chance;
-        rc->range = rc->chance;
+    if (rc->low >= rc->range - chance) {
+        rc->low -= rc->range - chance;
+        rc->range = chance;
         ff_flif16_rac_renorm(rc);
         return 1;
     } else {
-        rc->range -= rc->chance;
+        rc->range -= chance;
         ff_flif16_rac_renorm(rc);
         return 0;
     }
 }
 
-uint8_t inline ff_flif16_rac_read_bit(FLIF16RangeCoder *rc)
+inline uint8_t ff_flif16_rac_read_bit(FLIF16RangeCoder *rc)
 {
     return ff_flif16_rac_get(rc, rc->range >> 1);
 }
 
 /**
  * Reads a Uniform Symbol Coded Integer.
-*/
+ */
 inline int ff_flif16_rac_read_uni_int(FLIF16RangeCoder *rc, int min, int len)
 {
     // assert(len >= 0);
@@ -115,19 +115,17 @@ inline int ff_flif16_rac_read_uni_int(FLIF16RangeCoder *rc, int min, int len)
         med = len / 2;
         if (bit) {
             min = min + med + 1;
-            len = len - (med + 1));
+            len = len - (med + 1);
         }
     }
     return min;
 }
 
-/* overload of above function
-int read_int(int bits)
+// Overload of above function in original code
+inline int ff_flif16_rac_read_uni_int_bits(FLIF16RangeCoder *rc, int bits)
 {
-    return read_int(0, (1<<bits)-1);
+    return ff_flif16_rac_read_uni_int(rc, 0, (1 << bits) - 1);
 }
-*/
-
 
 #endif /* FLIF16_RANGECODER_H */
 

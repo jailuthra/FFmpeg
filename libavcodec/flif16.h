@@ -31,14 +31,6 @@
 #include <stdlib.h>
 
 static const uint8_t flif16_header[4] = "FLIF";
-
-/* WIP
-void flif16_read_rac(b, chance);
-void flif16_read_uni_int();
-void flif16_read_nz_int();
-void flif16_read_gnz_int();
-*/
-
 #define FF_FLIF16_VARINT_APPEND(a,x) a = (a << 7) | (uint64_t) (x & 127)
 
 #endif /* AVCODEC_FLIF16_H */

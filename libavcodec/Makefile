@@ -76,6 +76,7 @@ OBJS-$(CONFIG_EXIF)                    += exif.o tiff_common.o
 OBJS-$(CONFIG_FAANDCT)                 += faandct.o
 OBJS-$(CONFIG_FAANIDCT)                += faanidct.o
 OBJS-$(CONFIG_FDCTDSP)                 += fdctdsp.o jfdctfst.o jfdctint.o
+OBJS-$(CONFIG_FLIF16_RANGECODER)       += flif16_rangecoder.o
 FFT-OBJS-$(CONFIG_HARDCODED_TABLES)    += cos_tables.o cos_fixed_tables.o
 OBJS-$(CONFIG_FFT)                     += avfft.o fft_fixed.o fft_float.o \
                                           fft_fixed_32.o fft_init_table.o \
@@ -314,6 +315,8 @@ OBJS-$(CONFIG_FITS_DECODER)            += fitsdec.o fits.o
 OBJS-$(CONFIG_FITS_ENCODER)            += fitsenc.o
 OBJS-$(CONFIG_FLAC_DECODER)            += flacdec.o flacdata.o flac.o
 OBJS-$(CONFIG_FLAC_ENCODER)            += flacenc.o flacdata.o flac.o vorbis_data.o
+OBJS-$(CONFIG_FLIF16_DECODER)          += flif16dec.o flif16_rangecoder.o
+OBJS-$(CONFIG_FLIF16_ENCODER)          += flif16enc.o flif16_rangecoder.o
 OBJS-$(CONFIG_FLASHSV_DECODER)         += flashsv.o
 OBJS-$(CONFIG_FLASHSV_ENCODER)         += flashsvenc.o
 OBJS-$(CONFIG_FLASHSV2_ENCODER)        += flashsv2enc.o

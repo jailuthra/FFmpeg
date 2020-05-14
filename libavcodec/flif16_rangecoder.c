@@ -24,23 +24,24 @@
   * Range coder for FLIF16
   */
 
-#include "flif16_rac.h"
+#include "flif16_rangecoder.h"
 
 FLIF16RangeCoder *ff_flif16_rac_init(GetByteContext *gb)
 {
-    FLIF16RangeCoder *rc = av_mallocz(sizeof(*k));
+    FLIF16RangeCoder *rc = av_mallocz(sizeof(*rc));
+    uint32_t r;
     if (!rc)
         return NULL;
 
     rc->range  = FLIF16_RAC_MAX_RANGE;
     rc->gb     = gb;
-    uint32_t r = FLIF16_RAC_MIN_RANGE;
+    r          = FLIF16_RAC_MIN_RANGE;
     while (r > 1) {
         rc->low <<= 8;
-        rc->low |= bytestream2_get_byte(k->gb);
+        rc->low |= bytestream2_get_byte(rc->gb);
         r >>= 8;
     }
-    return k;
+    return rc;
 }
 
 
