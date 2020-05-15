@@ -39,12 +39,12 @@ static int flif16_parse(AVCodecParserContext *s, AVCodecContext *avctx,
 {
     // The bitstream does not have a determinate endpoint. The only thing we
     // can do in the parser is pass the block to the decoder.
-
-    if (ff_combine_frame(NULL, buf_size - 1, &buf, &buf_size) < 0) {
+    __PLN__
+    /*if (ff_combine_frame(NULL, buf_size - 1, &buf, &buf_size) < 0) {
         *poutbuf      = NULL;
         *poutbuf_size = 0;
         return buf_size;
-    }
+    }*/
     printf("[%s] Packet Size = %d\n", __func__, buf_size);
     *poutbuf      = buf;
     *poutbuf_size = buf_size;

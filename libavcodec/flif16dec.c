@@ -46,7 +46,7 @@ enum FLIF16States {
 };
 
 typedef struct FLIF16DecoderContext {
-    GetByteContext *gb;  ///< Bytestream management context for bytestream2
+    GetByteContext gb;  ///< Bytestream management context for bytestream2
     FLIF16RangeCoder *rc;
     // Transform  *tlist;  ///< Transform list
     int state;           ///< The section of the file the parser is in currently.
@@ -90,30 +90,31 @@ static int flif16_read_header(AVCodecContext *avctx)
     // TODO Make do without this array
     uint32_t *vlist[] = { &s->width, &s->height, &s->frames };
     // Minimum size has empirically found to be 14 bytes.
-    if (bytestream2_size(s->gb) < 14) {
+    __PLN__
+    if (bytestream2_size(&s->gb) < 14) {
         av_log(avctx, AV_LOG_ERROR, "buf size too small (%d)\n", 
-               bytestream2_size(s->gb));
+               bytestream2_size(&s->gb));
         return AVERROR(EINVAL);
     }
-    
-    if (bytestream2_get_be32(s->gb) != ((uint32_t) flif16_header)) {
+    __PLN__
+    if (bytestream2_get_le32(&s->gb) != (*((uint32_t *) flif16_header))) {
         av_log(avctx, AV_LOG_ERROR, "bad magic number\n");
         return AVERROR(EINVAL);
     }
-    
+    __PLN__
     s->state = FLIF16_HEADER;
 
-    temp = bytestream2_get_byte(s->gb);
+    temp = bytestream2_get_byte(&s->gb);
     s->ia       = temp >> 4;
     s->channels = (0xF0 & temp);
-    s->bpc      = bytestream2_get_byte(s->gb);
-    
+    s->bpc      = bytestream2_get_byte(&s->gb);
+    __PLN__
     // Will be later updated by the secondary header step.
     s->channelbpc = (s->bpc == '1') ? 8 : 16;
     
     // Handle dimensions and frames
     for(int i = 0; i < 2 + ((s->ia > 4) ? 1 : 0); ++i) {
-        while ((temp = bytestream2_get_byte(s->gb)) > 127) {
+        while ((temp = bytestream2_get_byte(&s->gb)) > 127) {
             FF_FLIF16_VARINT_APPEND(*vlist[i], temp);
             if (!count) {
                 av_log(avctx, AV_LOG_ERROR, "image dimensions too big\n");
@@ -123,17 +124,17 @@ static int flif16_read_header(AVCodecContext *avctx)
         FF_FLIF16_VARINT_APPEND(*vlist[i], temp);
         count = 3;
     }
-
+__PLN__
     s->width++;
     s->height++;
     (s->frames == 0) ? (s->frames = 1) : (s->frames += 2);
     
     // Handle Metadata Chunk. Currently it discards all data.
-
-    while ((temp = bytestream2_get_byte(s->gb)) != 0) {
-        bytestream2_seek(s->gb, 3, SEEK_CUR);
+__PLN__
+    while ((temp = bytestream2_get_byte(&s->gb)) != 0) {
+        bytestream2_seek(&s->gb, 3, SEEK_CUR);
         // Read varint
-        while ((temp = bytestream2_get_byte(s->gb)) > 127) {
+        while ((temp = bytestream2_get_byte(&s->gb)) > 127) {
             FF_FLIF16_VARINT_APPEND(s->meta, temp);
             if (!count) {
                 av_log(avctx, AV_LOG_ERROR, "image dimensions too big\n");
@@ -141,7 +142,7 @@ static int flif16_read_header(AVCodecContext *avctx)
             }
         }
         FF_FLIF16_VARINT_APPEND(s->meta, temp);
-        bytestream2_seek(s->gb, s->meta, SEEK_CUR);
+        bytestream2_seek(&s->gb, s->meta, SEEK_CUR);
     }
     
     s->state = FLIF16_SECONDHEADER;
@@ -152,10 +153,10 @@ static int fli16_read_second_header(AVCodecContext *avctx)
 {
     uint8_t temp;
     FLIF16DecoderContext *s = avctx->priv_data;
-    s->rc = ff_flif16_rac_init(s->gb);
-    
-    // In original source this is handled in what seems a very bogus manner. 
-    // It takes all the bpps of all channels and takes the max.
+    s->rc = ff_flif16_rac_init(&s->gb);
+    __PLN__
+    // In original source this is handled in what seems to be a very bogus 
+    // manner. It takes all the bpps of all channels and then takes the max.
     if (s->bpc == '0')
         for(uint8_t i = 0; i < s->channels; ++i) 
             s->channelbpc = ff_flif16_rac_read_uni_int(s->rc, 1, 16);
@@ -168,7 +169,7 @@ static int fli16_read_second_header(AVCodecContext *avctx)
         for (uint32_t i = 0; i < s->frames; i++)
             s->framedelay[i] = ff_flif16_rac_read_uni_int(s->rc, 0, 60000);
     }
-    
+    __PLN__
     // Has custom alpha flag
     temp = ff_flif16_rac_read_uni_int(s->rc, 0, 1);
     
@@ -177,12 +178,12 @@ static int fli16_read_second_header(AVCodecContext *avctx)
         s->alphadiv = ff_flif16_rac_read_uni_int(s->rc, 2, 128);
         s->custombc = ff_flif16_rac_read_uni_int(s->rc, 0, 1);
     }
-    
+    __PLN__
     if (s->custombc) {
         av_log(avctx, AV_LOG_ERROR, "custom bitchances not implemented\n");
         return AVERROR_PATCHWELCOME;
     }
-    
+    __PLN__
     return AVERROR_EOF; // We are testing upto this point
     
     // Transformations
@@ -190,6 +191,7 @@ static int fli16_read_second_header(AVCodecContext *avctx)
         temp = ff_flif16_rac_read_uni_int(s->rc, 0, 13); // Transform number
         // ff_flif16_transform_process(temp, tlist, rc);
     }
+    s->state = FLIF16_PIXELDATA;
     return 0;
 }
 
@@ -208,16 +210,14 @@ static int flif16_decode_frame(AVCodecContext *avctx,
                                void *data, int *got_frame,
                                AVPacket *avpkt)
 {
-    printf("[Decode]\n");
     int ret = AVERROR(EINVAL);
-    
     FLIF16DecoderContext *s = avctx->priv_data;
     const uint8_t *buf      = avpkt->data;
     int buf_size            = avpkt->size;
     AVFrame *p              = data;
-    
-    bytestream2_init(s->gb, buf, buf_size);
-    
+    printf("[Decode]\n");
+    bytestream2_init(&s->gb, buf, buf_size);
+    __PLN__
     // Looping is done to change states in between functions.
     // Function will either exit on AVERROR(EAGAIN) or AVERROR_EOF
     do {
@@ -231,6 +231,7 @@ static int flif16_decode_frame(AVCodecContext *avctx,
                 break;
 
             case FLIF16_PIXELDATA:
+                __PLN__
                 ret = flif16_read_pixeldata(avctx, p);
                 break;
 
@@ -240,8 +241,8 @@ static int flif16_decode_frame(AVCodecContext *avctx,
         }
     } while (!ret);
 
-    printf("Result:\n"                        \
-           "Width: %u, Height: %u, Frames: %u"\
+    printf("[Decode Result]\n"                \
+           "Width: %u, Height: %u, Frames: %u\n"\
            "ia: %x bpc: %c channels: %u\n"    \
            "channelbpc: %u\n"                 \
            "alphazero: %u custombc: %u\n"     \

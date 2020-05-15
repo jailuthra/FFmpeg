@@ -29,7 +29,8 @@
 
 #include <stdint.h>
 #include <stdlib.h>
-
+// Remove this
+#define __PLN__ printf("At: [%s] %s, %d\n", __func__, __FILE__, __LINE__);
 static const uint8_t flif16_header[4] = "FLIF";
 #define FF_FLIF16_VARINT_APPEND(a,x) a = (a << 7) | (uint64_t) (x & 127)
 

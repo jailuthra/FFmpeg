@@ -28,8 +28,8 @@
 #define FLIF16_RANGECODER_H
 
 #include "rangecoder.h"
+#include "flif16.h"
 
-#include "libavutil/avassert.h"
 #include "libavutil/mem.h"
 #include "bytestream.h"
 
@@ -70,20 +70,27 @@ bool inline read_12bit_chance(uint16_t b12) ATTRIBUTE_HOT
 }
 */
 
-inline void ff_flif16_rac_renorm(FLIF16RangeCoder *rc)
+static inline void ff_flif16_rac_renorm(FLIF16RangeCoder *rc)
 {
-    // Replaced with a while loop
-    while (rc->range <= FLIF16_RAC_MIN_RANGE) {
+    // If replaced with a while loop, this enters an infinite loop. Investigate.
+    if (rc->range <= FLIF16_RAC_MIN_RANGE) {
+        rc->low <<= 8;
+        rc->range <<= 8;
+        rc->low |= bytestream2_get_byte(rc->gb);
+    }
+    
+    if (rc->range <= FLIF16_RAC_MIN_RANGE) {
         rc->low <<= 8;
         rc->range <<= 8;
         rc->low |= bytestream2_get_byte(rc->gb);
     }
 }
 
-inline uint8_t ff_flif16_rac_get(FLIF16RangeCoder *rc, uint32_t chance)
+static inline uint8_t ff_flif16_rac_get(FLIF16RangeCoder *rc, uint32_t chance)
 {
     // assert(rc->chance > 0);
     // assert(rc->chance < rc->range);
+    printf("[%s] low: %u range: %u chance: %u\n", __func__, rc->low, rc->range, chance);
     if (rc->low >= rc->range - chance) {
         rc->low -= rc->range - chance;
         rc->range = chance;
@@ -96,7 +103,7 @@ inline uint8_t ff_flif16_rac_get(FLIF16RangeCoder *rc, uint32_t chance)
     }
 }
 
-inline uint8_t ff_flif16_rac_read_bit(FLIF16RangeCoder *rc)
+static inline uint8_t ff_flif16_rac_read_bit(FLIF16RangeCoder *rc)
 {
     return ff_flif16_rac_get(rc, rc->range >> 1);
 }
@@ -104,7 +111,7 @@ inline uint8_t ff_flif16_rac_read_bit(FLIF16RangeCoder *rc)
 /**
  * Reads a Uniform Symbol Coded Integer.
  */
-inline int ff_flif16_rac_read_uni_int(FLIF16RangeCoder *rc, int min, int len)
+static inline int ff_flif16_rac_read_uni_int(FLIF16RangeCoder *rc, int min, int len)
 {
     // assert(len >= 0);
     int med;
@@ -117,12 +124,13 @@ inline int ff_flif16_rac_read_uni_int(FLIF16RangeCoder *rc, int min, int len)
             min = min + med + 1;
             len = len - (med + 1);
         }
+       __PLN__
     }
     return min;
 }
 
 // Overload of above function in original code
-inline int ff_flif16_rac_read_uni_int_bits(FLIF16RangeCoder *rc, int bits)
+static inline int ff_flif16_rac_read_uni_int_bits(FLIF16RangeCoder *rc, int bits)
 {
     return ff_flif16_rac_read_uni_int(rc, 0, (1 << bits) - 1);
 }
