@@ -51,6 +51,18 @@ typedef struct FLIF16RangeCoder {
 
 FLIF16RangeCoder *ff_flif16_rac_init(GetByteContext *gb);
 
+// NearZero Integer Definitions:
+static uint16_t flif16_nz_int_chances[20] = {
+    1000, // Zero
+    2048, // Sign
+    
+    // Exponents
+    1000, 1200, 1500, 1750, 2000, 2300, 2800, 2400, 2300, 2048, // <- exp >= 9
+    
+    // Mantisaa
+    1900, 1850, 1800, 1750, 1650, 1600, 1600, 2048 // <- mant >= 7
+};
+
 static inline uint32_t ff_flif16_rac_read_chance(uint16_t b12, uint32_t range)
 {
     // assert((b12 > 0) && (b12 >> 12) == 0);
@@ -124,7 +136,6 @@ static inline int ff_flif16_rac_read_uni_int(FLIF16RangeCoder *rc, int min, int 
             min = min + med + 1;
             len = len - (med + 1);
         } else {
-            // min = min;
             len = med;
         }
        __PLN__

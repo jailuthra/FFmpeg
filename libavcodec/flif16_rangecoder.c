@@ -35,7 +35,7 @@ FLIF16RangeCoder *ff_flif16_rac_init(GetByteContext *gb)
 
     rc->range  = FLIF16_RAC_MAX_RANGE;
     rc->gb     = gb;
-    r          = FLIF16_RAC_MIN_RANGE;
+    r          = FLIF16_RAC_MAX_RANGE;
     while (r > 1) {
         rc->low <<= 8;
         rc->low |= bytestream2_get_byte(rc->gb);
