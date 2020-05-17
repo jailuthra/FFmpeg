@@ -48,7 +48,7 @@ static int flif16_parse(AVCodecParserContext *s, AVCodecContext *avctx,
     printf("[%s] Packet Size = %d\n", __func__, buf_size);
     *poutbuf      = buf;
     *poutbuf_size = buf_size;
-    return buf_size - 1;
+    return buf_size;
 }
 
 AVCodecParser ff_flif16_parser = {

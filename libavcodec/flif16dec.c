@@ -106,10 +106,10 @@ static int flif16_read_header(AVCodecContext *avctx)
 
     temp = bytestream2_get_byte(&s->gb);
     s->ia       = temp >> 4;
-    s->channels = (0xF0 & temp);
+    s->channels = (0x0F & temp);
     s->bpc      = bytestream2_get_byte(&s->gb);
     __PLN__
-    // Will be later updated by the secondary header step.
+    // Will be later updated by the secondary header step, if bpc = 3
     s->channelbpc = (s->bpc == '1') ? 8 : 16;
     
     // Handle dimensions and frames
@@ -124,14 +124,15 @@ static int flif16_read_header(AVCodecContext *avctx)
         FF_FLIF16_VARINT_APPEND(*vlist[i], temp);
         count = 3;
     }
-__PLN__
+    __PLN__
     s->width++;
     s->height++;
-    (s->frames == 0) ? (s->frames = 1) : (s->frames += 2);
+    (s->ia > 4) ? (s->frames += 2) : (s->frames = 1);
     
     // Handle Metadata Chunk. Currently it discards all data.
-__PLN__
+    __PLN__
     while ((temp = bytestream2_get_byte(&s->gb)) != 0) {
+        printf("?????\n");
         bytestream2_seek(&s->gb, 3, SEEK_CUR);
         // Read varint
         while ((temp = bytestream2_get_byte(&s->gb)) > 127) {
@@ -166,6 +167,7 @@ static int fli16_read_second_header(AVCodecContext *avctx)
     
     if (s->frames > 1) {
         s->loops = ff_flif16_rac_read_uni_int(s->rc, 0, 100);
+        s->framedelay = av_mallocz(sizeof(*(s->framedelay)) * s->frames);
         for (uint32_t i = 0; i < s->frames; i++)
             s->framedelay[i] = ff_flif16_rac_read_uni_int(s->rc, 0, 60000);
     }

@@ -123,6 +123,9 @@ static inline int ff_flif16_rac_read_uni_int(FLIF16RangeCoder *rc, int min, int 
         if (bit) {
             min = min + med + 1;
             len = len - (med + 1);
+        } else {
+            // min = min;
+            len = med;
         }
        __PLN__
     }
