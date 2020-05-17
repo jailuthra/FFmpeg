@@ -1,11 +1,28 @@
-#include "transformflif16.h"
+#include "flif16_transform.h"
 
-int process(Transform transform, AVFrame *frame, int p){
-    switch(transform.transform_number){
+int process(Transform transform, AVFrame *frame, int planes, interimPixelData *pixelData){
+	if(!pixelData->initialized){
+		int r, c;
+		int p;
+		int width = frame->width, height = frame->height;
+		pixelData->height = height;
+		pixelData->width = width;
+		pixelData->num_planes = planes;
+		for(p = 0; p < p; p++){
+			pixelData->data[p] = (ColorVal*)malloc(height*width*sizeof(ColorVal));
+			for(r = 0; r < frame->height; r++){
+				for(c = 0; c < frame->width; c++){
+					pixelData->data[p][r*width + c] = frame->data[p][r*width + c];
+				}
+			}
+		}
+		pixelData->initialized = 1;
+	}
+	switch(transform.transform_number){
         case 1: //Transform number for YCoCg transformation is 1 officially.
         if(!transform.done){
-			TransformYCoCg transformYCoCg = initYCoCg(frame, p);
-            if(!processYCoCg(frame))
+			TransformYCoCg transformYCoCg = initYCoCg(pixelData);
+            if(!processYCoCg(pixelData))
             	transform.done = 1;
             return 0;
         }
@@ -21,44 +38,46 @@ int process(Transform transform, AVFrame *frame, int p){
     return 0;
 }
 
-TransformYCoCg initYCoCg(AVFrame *frame, int p){
+TransformYCoCg initYCoCg(interimPixelData *pixelData){
 	TransformYCoCg transform;
-	transform.num_planes = p;
-	transform.ranges = getRanges(transform.num_planes, frame);
+	transform.ranges = getRanges(pixelData);
     transform.origmax4 = max(transform.ranges[0].max, transform.ranges[1].max, transform.ranges[2].max)/4 -1;
-    for(p=0; p<transform.num_planes; p++){
+    int p;
+	for(p=0; p<pixelData->num_planes; p++){
     	transform.ranges[p].max = max_range_YCoCg(p, transform.origmax4);
     	transform.ranges[p].min = min_range_YCoCg(p, transform.origmax4);
 	}
     return transform;
 }
 
-int processYCoCg(AVFrame *frame){
+int processYCoCg(interimPixelData *pixelData){
     int r, c;
     ColorVal R,G,B,Y,Co,Cg;
     
     //Assuming all the channels will have same width and height
-	int height = frame[0].height;
-    int width = frame[0].width;
+	int height = pixelData->height;
+    int width = pixelData->width;
     
 	for (r=0; r<height; r++) {
         for (c=0; c<width; c++) {
-            R = frame->data[0][r*width + c];
-            G = frame->data[1][r*width + c];
-            B = frame->data[2][r*width + c];
+            R = pixelData->data[0][r*width + c];
+            G = pixelData->data[1][r*width + c];
+            B = pixelData->data[2][r*width + c];
 
             Y = (((R + B)>>1) + G)>>1;
             Co = R - B;
             Cg = G - ((R + B)>>1);
 
-            frame->data[0][r*width + c] = Y;
-            frame->data[1][r*width + c] = Co;
-            frame->data[2][r*width + c] = Cg;
+            pixelData->data[0][r*width + c] = Y;
+            pixelData->data[1][r*width + c] = Co;
+            pixelData->data[2][r*width + c] = Cg;
         }
     }
 	return 0;
 }
 
+// TODO inversetransform requires more work. 
+/*
 int invProcessYCoCg(AVFrame *frame){
 	int r, c;
     ColorVal R,G,B,Y,Co,Cg;
@@ -84,23 +103,25 @@ int invProcessYCoCg(AVFrame *frame){
     }
 	return 0;
 }
+*/
 
-ColorRanges* getRanges(int p, AVFrame *frame){
-    ColorRanges ranges[p];
+ColorRanges* getRanges(interimPixelData *pixelData){
+    int p = pixelData->num_planes;
+	ColorRanges ranges[p];
     int i, c, r, width, height;
-    uint8_t min, max;
+    ColorVal min, max;
     
     for(i=0; i<p; i++){
-        width = frame[p].width;
-        height = frame[p].height;
-        min = frame->data[p][0];
-        max = frame->data[p][0];
-        for(r=0; r<frame[p].height; r++){
-            for(c=0; c<frame[p].width; r++){
-                if(min > frame->data[p][r*width + c])
-                    min = frame->data[p][r*width + c];
-                if(max < frame->data[p][r*width + c])
-                    max = frame->data[p][r*width + c];
+        width = pixelData->width;
+        height = pixelData->height;
+        min = pixelData->data[p][0];
+        max = pixelData->data[p][0];
+        for(r=0; r<pixelData->height; r++){
+            for(c=0; c<pixelData->width; r++){
+                if(min > pixelData->data[p][r*width + c])
+                    min = pixelData->data[p][r*width + c];
+                if(max < pixelData->data[p][r*width + c])
+                    max = pixelData->data[p][r*width + c];
             }
         }
         ranges[p].min = min;
