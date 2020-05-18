@@ -177,7 +177,7 @@ static int fli16_read_second_header(AVCodecContext *avctx)
     __PLN__
     // Has custom alpha flag
     temp = ff_flif16_rac_read_uni_int(s->rc, 0, 1);
-    printf("[%s] temp = %d\n", __func__, temp);
+    printf("[%s] has_custom_cutoff_alpha = %d\n", __func__, temp);
     if (temp) {
         s->cutoff   = ff_flif16_rac_read_uni_int(s->rc, 1, 128);
         s->alphadiv = ff_flif16_rac_read_uni_int(s->rc, 2, 128);
@@ -210,7 +210,6 @@ static int flif16_read_checksum(AVCodecContext *avctx)
     return AVERROR_EOF;
 }
 
-// TODO Add all Functions
 static int flif16_decode_frame(AVCodecContext *avctx,
                                void *data, int *got_frame,
                                AVPacket *avpkt)

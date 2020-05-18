@@ -49,19 +49,34 @@ typedef struct FLIF16RangeCoder {
     GetByteContext *gb;
 } FLIF16RangeCoder;
 
+typedef struct FLIF16ChanceTable {
+    uint8_t zero_state[256];
+    uint8_t one_state[256];
+} FLIF16ChanceTable;
+
 FLIF16RangeCoder *ff_flif16_rac_init(GetByteContext *gb);
 
 // NearZero Integer Definitions:
+// Maybe pad with extra 2048s for faster access like in original code.
 static uint16_t flif16_nz_int_chances[20] = {
     1000, // Zero
     2048, // Sign
     
     // Exponents
-    1000, 1200, 1500, 1750, 2000, 2300, 2800, 2400, 2300, 2048, // <- exp >= 9
+    1000, 1200, 1500, 1750, 2000, 2300, 2800, 2400, 2300, 
+    2048, // <- exp >= 9
     
     // Mantisaa
-    1900, 1850, 1800, 1750, 1650, 1600, 1600, 2048 // <- mant >= 7
+    1900, 1850, 1800, 1750, 1650, 1600, 1600, 
+    2048 // <- mant > 7
 };
+
+#define NZ_INT_ZERO (flif16_nz_int_chances[0])
+#define NZ_INT_SIGN (flif16_nz_int_chances[1])
+#define NZ_INT_EXP(k) ((k < 9) ? flif16_nz_int_chances[2 + (k)] : \
+                                 flif16_nz_int_chances[11])
+#define NZ_INT_MANT(k) ((k < 8) ? flif16_nz_int_chances[12 + (k)] : \
+                                  flif16_nz_int_chances[19])
 
 static inline uint32_t ff_flif16_rac_read_chance(uint16_t b12, uint32_t range)
 {
@@ -84,14 +99,7 @@ bool inline read_12bit_chance(uint16_t b12) ATTRIBUTE_HOT
 
 static inline void ff_flif16_rac_renorm(FLIF16RangeCoder *rc)
 {
-    // If replaced with a while loop, this enters an infinite loop. Investigate.
-    if (rc->range <= FLIF16_RAC_MIN_RANGE) {
-        rc->low <<= 8;
-        rc->range <<= 8;
-        rc->low |= bytestream2_get_byte(rc->gb);
-    }
-    
-    if (rc->range <= FLIF16_RAC_MIN_RANGE) {
+    while (rc->range <= FLIF16_RAC_MIN_RANGE) {
         rc->low <<= 8;
         rc->range <<= 8;
         rc->low |= bytestream2_get_byte(rc->gb);
@@ -102,7 +110,8 @@ static inline uint8_t ff_flif16_rac_get(FLIF16RangeCoder *rc, uint32_t chance)
 {
     // assert(rc->chance > 0);
     // assert(rc->chance < rc->range);
-    printf("[%s] low: %u range: %u chance: %u\n", __func__, rc->low, rc->range, chance);
+
+    // printf("[%s] low: %u range: %u chance: %u\n", __func__, rc->low, rc->range, chance);
     if (rc->low >= rc->range - chance) {
         rc->low -= rc->range - chance;
         rc->range = chance;
@@ -138,9 +147,63 @@ static inline int ff_flif16_rac_read_uni_int(FLIF16RangeCoder *rc, int min, int 
         } else {
             len = med;
         }
-       __PLN__
+       //__PLN__
     }
     return min;
+}
+
+static inline int ff_flif16_rac_read_nz_int(FLIF16RangeCoder *rc,
+                                            FLIF16ChanceTable *ct, int min,
+                                            int max)
+{
+    // assert(min<=max);
+    const int amin = 1;
+    const int amax = (sign ? max : -min);
+
+    if (min == max)
+        return min;
+    uint8_t sign;
+    // assert(min <= 0 && max >= 0); // should always be the case, because guess should always be in valid range
+
+    if (coder.read(BIT_ZERO))
+        return 0;
+
+    if (min < 0) {
+        if (max > 0)
+            sign = coder.read(BIT_SIGN);
+        else
+            sign = false;
+    } else {
+        sign = true;
+    }
+
+    const int emax = ff_flif16_ilog2(amax);
+    int e = ff_flif16_ilog2(amin);
+
+    for (; e < emax; e++) {
+        // if exponent >e is impossible, we are done
+        // actually that cannot happen
+        //if ((1 << (e+1)) > amax) break;
+        if (coder.read(BIT_EXP,(e<<1)+sign))
+            break;
+    }
+
+    int have = (1 << e);
+    int left = have-1;
+    for (int pos = e; pos>0;) {
+        left >>= 1;
+        pos--;
+        int minabs1 = have | (1<<pos);
+        int maxabs0 = have | left;
+        if (minabs1 > amax) {
+            continue;
+        } else if (maxabs0 >= amin) { // 0-bit and 1-bit are both possible
+            if (coder.read(BIT_MANT,pos))
+                have = minabs1;
+        } 
+        else have = minabs1;
+    }
+    return (sign ? have : -have);
 }
 
 // Overload of above function in original code

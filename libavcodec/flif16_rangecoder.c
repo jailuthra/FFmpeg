@@ -44,4 +44,5 @@ FLIF16RangeCoder *ff_flif16_rac_init(GetByteContext *gb)
     return rc;
 }
 
+FLIF16RangeCoder *ff_flif16_nz_init_context()
 
