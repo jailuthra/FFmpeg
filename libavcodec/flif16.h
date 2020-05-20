@@ -34,4 +34,7 @@
 static const uint8_t flif16_header[4] = "FLIF";
 #define FF_FLIF16_VARINT_APPEND(a,x) a = (a << 7) | (uint64_t) (x & 127)
 
+void ff_flif16_build_log4k_table(FLIF16RangeCoder *ct);
+int ff_flif16_ilog2(uint32_t l);
+
 #endif /* AVCODEC_FLIF16_H */

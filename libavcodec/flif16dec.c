@@ -48,6 +48,7 @@ enum FLIF16States {
 typedef struct FLIF16DecoderContext {
     GetByteContext gb;  ///< Bytestream management context for bytestream2
     FLIF16RangeCoder *rc;
+    uint8_t *bytestream; 
     // Transform  *tlist;  ///< Transform list
     int state;           ///< The section of the file the parser is in currently.
     unsigned int index;  ///< An index based on the current state. 
@@ -91,11 +92,12 @@ static int flif16_read_header(AVCodecContext *avctx)
     uint32_t *vlist[] = { &s->width, &s->height, &s->frames };
     // Minimum size has empirically found to be 14 bytes.
     __PLN__
+    /*
     if (bytestream2_size(&s->gb) < 14) {
         av_log(avctx, AV_LOG_ERROR, "buf size too small (%d)\n", 
                bytestream2_size(&s->gb));
         return AVERROR(EINVAL);
-    }
+    }*/
     __PLN__
     if (bytestream2_get_le32(&s->gb) != (*((uint32_t *) flif16_header))) {
         av_log(avctx, AV_LOG_ERROR, "bad magic number\n");
@@ -106,10 +108,10 @@ static int flif16_read_header(AVCodecContext *avctx)
 
     temp = bytestream2_get_byte(&s->gb);
     s->ia       = temp >> 4;
-    s->channels = (0xF0 & temp);
+    s->channels = (0x0F & temp);
     s->bpc      = bytestream2_get_byte(&s->gb);
     __PLN__
-    // Will be later updated by the secondary header step.
+    // Will be later updated by the secondary header step, if bpc = 3
     s->channelbpc = (s->bpc == '1') ? 8 : 16;
     
     // Handle dimensions and frames
@@ -124,20 +126,20 @@ static int flif16_read_header(AVCodecContext *avctx)
         FF_FLIF16_VARINT_APPEND(*vlist[i], temp);
         count = 3;
     }
-__PLN__
+    __PLN__
     s->width++;
     s->height++;
-    (s->frames == 0) ? (s->frames = 1) : (s->frames += 2);
+    (s->ia > 4) ? (s->frames += 2) : (s->frames = 1);
     
     // Handle Metadata Chunk. Currently it discards all data.
-__PLN__
+    __PLN__
     while ((temp = bytestream2_get_byte(&s->gb)) != 0) {
         bytestream2_seek(&s->gb, 3, SEEK_CUR);
         // Read varint
         while ((temp = bytestream2_get_byte(&s->gb)) > 127) {
             FF_FLIF16_VARINT_APPEND(s->meta, temp);
             if (!count) {
-                av_log(avctx, AV_LOG_ERROR, "image dimensions too big\n");
+                av_log(avctx, AV_LOG_ERROR, "metadata chunk too big \n");
                 return AVERROR(ENOMEM);
             }
         }
@@ -159,20 +161,23 @@ static int fli16_read_second_header(AVCodecContext *avctx)
     // manner. It takes all the bpps of all channels and then takes the max.
     if (s->bpc == '0')
         for(uint8_t i = 0; i < s->channels; ++i) 
-            s->channelbpc = ff_flif16_rac_read_uni_int(s->rc, 1, 16);
+            s->channelbpc = ((s->channelbpc > 
+                            (temp = (1 << ff_flif16_rac_read_uni_int(s->rc, 1, 15)) - 1)) ?
+                            s->channelbpc : temp);
     
     if (s->channels > 3)
         s->alphazero = ff_flif16_rac_read_uni_int(s->rc, 0, 1);
     
     if (s->frames > 1) {
         s->loops = ff_flif16_rac_read_uni_int(s->rc, 0, 100);
+        s->framedelay = av_mallocz(sizeof(*(s->framedelay)) * s->frames);
         for (uint32_t i = 0; i < s->frames; i++)
             s->framedelay[i] = ff_flif16_rac_read_uni_int(s->rc, 0, 60000);
     }
     __PLN__
     // Has custom alpha flag
     temp = ff_flif16_rac_read_uni_int(s->rc, 0, 1);
-    
+    printf("[%s] has_custom_cutoff_alpha = %d\n", __func__, temp);
     if (temp) {
         s->cutoff   = ff_flif16_rac_read_uni_int(s->rc, 1, 128);
         s->alphadiv = ff_flif16_rac_read_uni_int(s->rc, 2, 128);
@@ -205,7 +210,6 @@ static int flif16_read_checksum(AVCodecContext *avctx)
     return AVERROR_EOF;
 }
 
-// TODO Add all Functions
 static int flif16_decode_frame(AVCodecContext *avctx,
                                void *data, int *got_frame,
                                AVPacket *avpkt)
@@ -215,7 +219,7 @@ static int flif16_decode_frame(AVCodecContext *avctx,
     const uint8_t *buf      = avpkt->data;
     int buf_size            = avpkt->size;
     AVFrame *p              = data;
-    printf("[Decode]\n");
+    printf("[Decode] Packet Size = %d\n", buf_size);
     bytestream2_init(&s->gb, buf, buf_size);
     __PLN__
     // Looping is done to change states in between functions.
@@ -250,6 +254,12 @@ static int flif16_decode_frame(AVCodecContext *avctx,
            "loops: %u\n", s->width, s->height, s->frames, s->ia, s->bpc, 
            s->channels, s->channelbpc, s->alphazero, s->custombc, s->cutoff,
            s->alphadiv, s->loops);
+    if (s->framedelay) {
+        printf("Framedelays:\n");
+        for(uint32_t i = 0; i < s->frames; ++i)
+            printf("%u, ", s->framedelay[i]);
+        printf("\n");
+    }
     return ret;
 }
 
@@ -257,6 +267,8 @@ static av_cold int flif16_decode_end(AVCodecContext *avctx)
 {
     FLIF16DecoderContext *s = avctx->priv_data;
     av_free(s->rc);
+    if(s->framedelay)
+        av_free(s->framedelay);
     return 0;
 }
 

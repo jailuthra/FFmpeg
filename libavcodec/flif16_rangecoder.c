@@ -1,6 +1,6 @@
 /*
  * Range coder for FLIF16
- * Copyright (c) 2020 Anamitra Ghorui
+ * Copyright (c) 2004, 2020 Jon Sneyers, Michael Niedermayer, Anamitra Ghorui
  *
  * This file is part of FFmpeg.
  *
@@ -30,18 +30,59 @@ FLIF16RangeCoder *ff_flif16_rac_init(GetByteContext *gb)
 {
     FLIF16RangeCoder *rc = av_mallocz(sizeof(*rc));
     uint32_t r;
+
     if (!rc)
         return NULL;
 
     rc->range  = FLIF16_RAC_MAX_RANGE;
     rc->gb     = gb;
-    r          = FLIF16_RAC_MIN_RANGE;
-    while (r > 1) {
+
+    for (uint32_t r = FLIF16_RAC_MAX_RANGE, r > 1, r >>= 8) {
         rc->low <<= 8;
         rc->low |= bytestream2_get_byte(rc->gb);
-        r >>= 8;
     }
     return rc;
 }
 
+// TODO Maybe restructure rangecoder.c/h to fit a more generic case
+static void build_table(uint16_t *zero_state, uint16_t *one_state, size_t size,
+                        uint32_t factor, unsigned int max_p)
+{
+    const int64_t one = 1LL << 32;
+    int64_t p = one / 2;
+    unsigned int last_p8 = 0, p8;
+    unsigned int i;
 
+    for (i = 0; i < size / 2; i++) {
+        p8 = (size * p + one / 2) >> 32;
+        if (p8 <= last_p8) 
+            p8 = last_p8 + 1;
+        if (last_p8 && last_p8 < size && p8 <= max_p)
+            one_state[last_p8] = p8;
+        p += ((one - p) * factor + one / 2) >> 32;
+        last_p8 = p8;
+    }
+
+    for (i = size - max_p; i <= max_p; i++) {
+        if (one_state[i])
+            continue;
+        p = (i * one + size / 2) / size;
+        p += ((one - p) * factor + one / 2) >> 32;
+        p8 = (size * p + one / 2) >> 32; //FIXME try without the one
+        if (p8 <= i) 
+            p8 = i + 1;
+        if (p8 > max_p) 
+            p8 = max_p;
+        one_state[i] = p8;
+    }
+
+    for (i = 1; i < size; i++)
+        zero_state[i] = size - one_state[size - i];
+}
+
+void ff_flif16_chancetable_init(FLIF16RangeCoder *rc) {
+    rc->chance = 0x800;
+    rc->ct = av_mallocz(*(rc->ct));
+    build_table(rc->ct->zero_state, rc->ct->one_state, 4096, alpha, 4096 - cut);
+    ff_flif16_build_log4k_table(rc);
+}
