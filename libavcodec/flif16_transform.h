@@ -32,7 +32,7 @@ typedef struct TransformPermute{
     ColorRanges *ranges;
 }TransformPermute; 
 
-ColorRanges* getRanges(interimPixelData* pixelData);
+ColorRanges* getRanges(interimPixelData* pixelData, ColorRanges *ranges);
 
 int getmax(ColorRanges* ranges, int p);
 

@@ -8,7 +8,7 @@ int process(Transform transform, AVFrame *frame, int planes, interimPixelData *p
 		pixelData->height = height;
 		pixelData->width = width;
 		pixelData->num_planes = planes;
-		for(p = 0; p < p; p++){
+		for(p = 0; p < planes; p++){
 			pixelData->data[p] = (ColorVal*)malloc(height*width*sizeof(ColorVal));
 			for(r = 0; r < frame->height; r++){
 				for(c = 0; c < frame->width; c++){
@@ -40,7 +40,8 @@ int process(Transform transform, AVFrame *frame, int planes, interimPixelData *p
 
 TransformYCoCg initYCoCg(interimPixelData *pixelData){
 	TransformYCoCg transform;
-	transform.ranges = getRanges(pixelData);
+    transform.ranges = (ColorRanges *)malloc(pixelData->num_planes*sizeof(ColorRanges));
+	transform.ranges = getRanges(pixelData, transform.ranges);
     transform.origmax4 = max(transform.ranges[0].max, transform.ranges[1].max, transform.ranges[2].max)/4 -1;
     int p;
 	for(p=0; p<pixelData->num_planes; p++){
@@ -105,19 +106,17 @@ int invProcessYCoCg(AVFrame *frame){
 }
 */
 
-ColorRanges* getRanges(interimPixelData *pixelData){
+ColorRanges* getRanges(interimPixelData *pixelData, ColorRanges *ranges){
     int p = pixelData->num_planes;
-	ColorRanges ranges[p];
     int i, c, r, width, height;
     ColorVal min, max;
-    
+	width = pixelData->width;
+    height = pixelData->height;
     for(i=0; i<p; i++){
-        width = pixelData->width;
-        height = pixelData->height;
         min = pixelData->data[p][0];
         max = pixelData->data[p][0];
         for(r=0; r<pixelData->height; r++){
-            for(c=0; c<pixelData->width; r++){
+            for(c=0; c<pixelData->width; c++){
                 if(min > pixelData->data[p][r*width + c])
                     min = pixelData->data[p][r*width + c];
                 if(max < pixelData->data[p][r*width + c])
