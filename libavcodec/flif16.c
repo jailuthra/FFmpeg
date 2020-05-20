@@ -1,5 +1,5 @@
 /*
- * FLIF16 Image Format Utility function
+ * FLIF16 Image Format Utility functions
  * Copyright (c) 2020 Anamitra Ghorui
  *
  * This file is part of FFmpeg.
@@ -43,7 +43,6 @@ int ff_flif16_ilog2(uint32_t l)
     return sizeof(unsigned int) * 8 - 1 - __builtin_clz(l);
 }
 
-
 static uint32_t log4kf(int x, uint32_t base)
 {
     int bits     = 8 * sizeof(int) - __builtin_clz(x);
@@ -61,12 +60,12 @@ static uint32_t log4kf(int x, uint32_t base)
     return res;
 }
 
-void ff_flif16_build_log4k_table(FLIF16ChanceTable *ct)
+void ff_flif16_build_log4k_table(FLIF16RangeCoder *rc)
 {
-    ct->log4k[0] = 0;
-    for (int i = 1; i <= 4096; i++) {
-        ct->log4k[i] = (log4kf(i, (65535UL << 16) / 12) + (1 << 15)) >> 16;
-    }
-    scale = 65535 / 12;
+    rc->log4k->table[0] = 0;
+    for (int i = 1; i <= 4096; i++)
+        rc->log4k->table[i] = (log4kf(i, (65535UL << 16) / 12) + 
+                               (1 << 15)) >> 16;
+    rc->log4k->scale = 65535 / 12;
 }
 
