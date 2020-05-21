@@ -80,6 +80,32 @@ static void build_table(uint16_t *zero_state, uint16_t *one_state, size_t size,
         zero_state[i] = size - one_state[size - i];
 }
 
+static uint32_t log4kf(int x, uint32_t base)
+{
+    int bits     = 8 * sizeof(int) - ff_clz(x);
+    uint64_t y   = ((uint64_t)x) << (32 - bits);
+    uint32_t res = base * (13 - bits);
+    uint32_t add = base;
+    while ((add > 1) && ((y & 0x7FFFFFFF) != 0)) {
+        y = (((uint64_t)y) * y + 0x40000000) >> 31;
+        add >>= 1;
+        if ((y >> 32) != 0) {
+            res -= add;
+            y >>= 1;
+        }
+    }
+    return res;
+}
+
+void ff_flif16_build_log4k_table(FLIF16RangeCoder *rc)
+{
+    rc->log4k->table[0] = 0;
+    for (int i = 1; i <= 4096; i++)
+        rc->log4k->table[i] = (log4kf(i, (65535UL << 16) / 12) + 
+                               (1 << 15)) >> 16;
+    rc->log4k->scale = 65535 / 12;
+}
+
 void ff_flif16_chancetable_init(FLIF16RangeCoder *rc) {
     rc->chance = 0x800;
     rc->ct = av_mallocz(*(rc->ct));

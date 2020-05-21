@@ -31,6 +31,7 @@
 #include "flif16.h"
 
 #include "libavutil/mem.h"
+#include "libavutil/intmath.h"
 #include "bytestream.h"
 
 #include <stdio.h> // Remove
@@ -63,6 +64,8 @@ typedef struct FLIF16RangeCoder {
 } FLIF16RangeCoder;
 
 FLIF16RangeCoder *ff_flif16_rac_init(GetByteContext *gb);
+void ff_flif16_chancetable_init(FLIF16RangeCoder *rc);
+void ff_flif16_build_log4k_table(FLIF16RangeCoder *rc);
 
 // NearZero Integer Definitions:
 // Maybe pad with extra 2048s for faster access like in original code.
@@ -196,11 +199,11 @@ static inline int ff_flif16_rac_read_nz_int(FLIF16RangeCoder *rc, int min,
     // assert(min<=max);
     const int amin = 1;
     const int amax = (sign ? max : -min);
+    int have, left, minabs1, minabs0;
     uint8_t sign;
     
-    const int emax = ff_flif16_ilog2(amax);
-    int e          = ff_flif16_ilog2(amin);
-    int have, left, minabs1, minabs0;
+    const int emax = av_log2(amax);
+    int e          = av_log2(amin);
 
     if (min == max)
         return min;
