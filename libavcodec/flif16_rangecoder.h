@@ -44,27 +44,38 @@
 #define FLIF16_RAC_MIN_RANGE (uint32_t) 1 << FLIF16_RAC_MIN_RANGE_BITS
 
 
+typedef enum FLIF16RACTypes {
+    FLIF16_RAC_BIT = 0,
+    FLIF16_RAC_UNI_INT,
+    FLIF16_RAC_CHANCE,
+    FLIF16_RAC_NZ_INT,
+    FLIF16_RAC_GNZ_INT
+} FLIF16RACReaders;
+
 typedef struct FLIF16ChanceTable {
-    uint8_t zero_state[4096];
-    uint8_t one_state[4096];
+    uint16_t zero_state[4096];
+    uint16_t one_state[4096];
 } FLIF16ChanceTable;
 
 typedef struct FLIF16Log4kTable {
     uint16_t table[4096];
-    int chance;
-} FLIF16Log4kTable
+    int scale;
+} FLIF16Log4kTable;
 
 typedef struct FLIF16RangeCoder {
     uint32_t range;
     uint32_t low;
     uint16_t chance;
+    uint8_t empty;    /// Is bytestream empty
+    uint8_t renorm;   /// Is a renormalisation required 
     FLIF16ChanceTable *ct;
     FLIF16Log4kTable *log4k;
     GetByteContext *gb;
 } FLIF16RangeCoder;
 
 FLIF16RangeCoder *ff_flif16_rac_init(GetByteContext *gb);
-void ff_flif16_chancetable_init(FLIF16RangeCoder *rc);
+void ff_flif16_rac_free(FLIF16RangeCoder *rc);
+void ff_flif16_chancetable_init(FLIF16RangeCoder *rc, int alpha, int cut);
 void ff_flif16_build_log4k_table(FLIF16RangeCoder *rc);
 
 // NearZero Integer Definitions:
@@ -91,43 +102,60 @@ static uint16_t flif16_nz_int_chances[20] = {
 
 // Functions
 
-static inline void ff_flif16_rac_renorm(FLIF16RangeCoder *rc)
+static inline int ff_flif16_rac_renorm(FLIF16RangeCoder *rc)
 {
-    while (rc->range <= FLIF16_RAC_MIN_RANGE) {
+    uint32_t left = bytestream2_get_bytes_left(rc->gb);
+    if (!left)
+        return 0;
+    while (rc->range <= FLIF16_RAC_MIN_RANGE && left) {
         rc->low <<= 8;
         rc->range <<= 8;
         rc->low |= bytestream2_get_byte(rc->gb);
+        --left;
     }
+    rc->renorm = 0;
+    return 1;
 }
 
-static inline uint8_t ff_flif16_rac_get(FLIF16RangeCoder *rc, uint32_t chance)
+static inline uint8_t ff_flif16_rac_get(FLIF16RangeCoder *rc, uint32_t chance,
+                                        uint32_t *target)
 {
     // assert(rc->chance > 0);
     // assert(rc->chance < rc->range);
 
     // printf("[%s] low: %u range: %u chance: %u\n", __func__, rc->low, rc->range, chance);
+    if (rc->renorm)
+        return 0;
+
     if (rc->low >= rc->range - chance) {
         rc->low -= rc->range - chance;
         rc->range = chance;
-        ff_flif16_rac_renorm(rc);
-        return 1;
+        *target = 1;
     } else {
         rc->range -= chance;
-        ff_flif16_rac_renorm(rc);
-        return 0;
+        *target = 0;
     }
+    
+    rc->renorm = 1;
+    
+    return 1;
 }
 
-static inline uint8_t ff_flif16_rac_read_bit(FLIF16RangeCoder *rc)
+static inline uint8_t ff_flif16_rac_read_bit(FLIF16RangeCoder *rc,
+                                             uint32_t *target)
 {
-    return ff_flif16_rac_get(rc, rc->range >> 1);
+    return ff_flif16_rac_get(rc, rc->range >> 1, target);
 }
 
 static inline uint32_t ff_flif16_rac_read_chance(FLIF16RangeCoder *rc,
-                                                 uint16_t b12, uint32_t range)
+                                                 uint16_t b12, uint32_t range,
+                                                 uint32_t *target)
 {
-    // assert((b12 > 0) && (b12 >> 12) == 0);
     uint32_t ret;
+    
+    if(rc->renorm)
+        return 0;
+    // assert((b12 > 0) && (b12 >> 12) == 0);
     // Optimisation based on CPU bus size (32/64 bit)
     if (sizeof(range) > 4) 
         ret = (range * b12 + 0x800) >> 12;
@@ -135,39 +163,42 @@ static inline uint32_t ff_flif16_rac_read_chance(FLIF16RangeCoder *rc,
         ret = ((((range & 0xFFF) * b12 + 0x800) >> 12) + 
               ((range >> 12) * b12));
     
-    return ff_flif16_rac_get(rc, ret);
+    return ff_flif16_rac_get(rc, ret, target);
 }
 
 /**
  * Reads a Uniform Symbol Coded Integer.
  */
 static inline int ff_flif16_rac_read_uni_int(FLIF16RangeCoder *rc, 
-                                             int min, int len)
+                                             uint32_t min, uint32_t len,
+                                             uint32_t *target)
 {
     // assert(len >= 0);
     int med;
     uint8_t bit;
+    if(rc->renorm)
+        return 0;
     
-    while (len > 0) {
-        bit = ff_flif16_rac_read_bit(rc);
+    if (len > 0) {
+        bit = ff_flif16_rac_read_bit(rc, target);
         med = len / 2;
         if (bit) {
             min = min + med + 1;
             len = len - (med + 1);
-        } else {
+        } else
             len = med;
-        }
-       //__PLN__
-    }
-    return min;
+        //__PLN__
+        return 0;
+    } else
+        return 1;
 }
 
 // Overload of above function in original code
 
 static inline int ff_flif16_rac_read_uni_int_bits(FLIF16RangeCoder *rc,
-                                                  int bits)
+                                                  int bits, uint32_t *target)
 {
-    return ff_flif16_rac_read_uni_int(rc, 0, (1 << bits) - 1);
+    return ff_flif16_rac_read_uni_int(rc, 0, (1 << bits) - 1, target);
 }
 
 // Nearzero integer definitions
@@ -181,34 +212,35 @@ void inline ff_flif16_chancetable_put(FLIF16RangeCoder *rc,
 
 /**
  * Reads a near-zero encoded symbol into the RAC probability model/chance table;
- * @param chance The symbolchance specified by the NZ_INT_* macros
+ * @param chance The symbol chance specified by the NZ_INT_* macros
  */
-uint8_t ff_flif16_rac_read_symbol(FLIF16RangeCoder *rc, uint16_t chance)
+ /*
+static inline uint8_t ff_flif16_rac_read_symbol(FLIF16RangeCoder *rc,
+                                                uint16_t chance)
 {
-    uint8_t bit = ff_flif16_rac_read_chance(rc, chance);
+    uint8_t bit;
+    ff_flif16_rac_read_chance(rc, chance, &bit);
     ff_flif16_chancetable_put(rc, bit, chance);
     return bit;
 }
-
+*/
 /**
- * Returns an integer encoded by zear zero integer encoding.
+ * Returns an integer encoded by near zero integer encoding.
  */
+/*
 static inline int ff_flif16_rac_read_nz_int(FLIF16RangeCoder *rc, int min,
                                             int max)
 {
     // assert(min<=max);
-    const int amin = 1;
-    const int amax = (sign ? max : -min);
-    int have, left, minabs1, minabs0;
     uint8_t sign;
-    
-    const int emax = av_log2(amax);
-    int e          = av_log2(amin);
+    const int amin = 1;
+    const int amax;
+    const int emax;
+    int e;
+    int have, left, minabs1, minabs0;
 
     if (min == max)
         return min;
-
-    // assert(min <= 0 && max >= 0); // should always be the case, because guess should always be in valid range
 
     if (ff_flif16_rac_read_symbol(NZ_INT_ZERO))
         return 0;
@@ -220,6 +252,10 @@ static inline int ff_flif16_rac_read_nz_int(FLIF16RangeCoder *rc, int min,
             sign = 0;
     } else
         sign = 1;
+    
+    amax = (sign ? max : -min);
+    emax = av_log2(amax);
+    e    = av_log2(amin);
 
     for (; e < emax; e++) {
         // if exponent >e is impossible, we are done
@@ -230,8 +266,9 @@ static inline int ff_flif16_rac_read_nz_int(FLIF16RangeCoder *rc, int min,
     }
 
     have = (1 << e);
-    left = have-1;
-    for (int pos = e; pos>0;) {
+    left = have - 1;
+
+    for (int pos = e; pos > 0;) {
         left >>= 1;
         pos--;
         minabs1 = have | (1<<pos);
@@ -259,7 +296,56 @@ static inline int ff_flif16_rac_read_gnz_int(FLIF16RangeCoder *rc, int min,
     else 
         return ff_flif16_rac_read_nz_int(min, max);
 }
+*/
+/**
+ * Reads an integer encoded by FLIF's RAC.
+ * @param val1 A generic value, chosen according to the required type
+ * @param val2 Same as val1
+ * @param target The place where the resultant value should be written to
+ * @param type The type of the integer to be decoded specified by FLIF16RACTypes
+ * 
+ * @return -1 on bytestream empty, 0 on successful decoding.
+ */
+static inline int ff_flif16_rac_process(FLIF16RangeCoder *rc, uint32_t val1, 
+                                        uint32_t val2, uint32_t *target, 
+                                        int type)
+{
+    int flag = 1;
+
+    while (flag) {
+        if(rc->renorm) {
+            if(!ff_flif16_rac_renorm(rc))
+                return -1; // EAGAIN condition
+        }
+
+        switch (type) {
+            case FLIF16_RAC_BIT:
+                flag = ff_flif16_rac_read_bit(rc, target);
+                break;
+
+            case FLIF16_RAC_UNI_INT:
+                flag = ff_flif16_rac_read_uni_int(rc, val1, val2, target);
+                break;
+                
+            case FLIF16_RAC_CHANCE:
+                flag = ff_flif16_rac_read_chance(rc, val1, val2, target);
+                break;
+            
+            case FLIF16_RAC_NZ_INT:
+                // handle nz_ints
+                break;
+            
+            case FLIF16_RAC_GNZ_INT:
+                // handle gnz_ints
+                break;
+            
+            default:
+                printf("[%s] unknown rac reader\n", __func__);
+                break;
+        }
+    }
+
+    return 1;
+}
 
 #endif /* FLIF16_RANGECODER_H */
-
-

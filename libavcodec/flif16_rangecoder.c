@@ -29,7 +29,6 @@
 FLIF16RangeCoder *ff_flif16_rac_init(GetByteContext *gb)
 {
     FLIF16RangeCoder *rc = av_mallocz(sizeof(*rc));
-    uint32_t r;
 
     if (!rc)
         return NULL;
@@ -37,11 +36,18 @@ FLIF16RangeCoder *ff_flif16_rac_init(GetByteContext *gb)
     rc->range  = FLIF16_RAC_MAX_RANGE;
     rc->gb     = gb;
 
-    for (uint32_t r = FLIF16_RAC_MAX_RANGE, r > 1, r >>= 8) {
+    for (uint32_t r = FLIF16_RAC_MAX_RANGE; r > 1; r >>= 8) {
         rc->low <<= 8;
         rc->low |= bytestream2_get_byte(rc->gb);
     }
     return rc;
+}
+
+void ff_flif16_rac_free(FLIF16RangeCoder *rc)
+{
+    free(rc->ct);
+    free(rc->log4k);
+    free(rc);
 }
 
 // TODO Maybe restructure rangecoder.c/h to fit a more generic case
@@ -100,15 +106,15 @@ static uint32_t log4kf(int x, uint32_t base)
 void ff_flif16_build_log4k_table(FLIF16RangeCoder *rc)
 {
     rc->log4k->table[0] = 0;
-    for (int i = 1; i <= 4096; i++)
+    for (int i = 1; i < 4096; i++)
         rc->log4k->table[i] = (log4kf(i, (65535UL << 16) / 12) + 
                                (1 << 15)) >> 16;
     rc->log4k->scale = 65535 / 12;
 }
 
-void ff_flif16_chancetable_init(FLIF16RangeCoder *rc) {
+void ff_flif16_chancetable_init(FLIF16RangeCoder *rc, int alpha, int cut) {
     rc->chance = 0x800;
-    rc->ct = av_mallocz(*(rc->ct));
+    rc->ct = av_mallocz(sizeof(*(rc->ct)));
     build_table(rc->ct->zero_state, rc->ct->one_state, 4096, alpha, 4096 - cut);
     ff_flif16_build_log4k_table(rc);
 }
