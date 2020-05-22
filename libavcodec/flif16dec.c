@@ -38,6 +38,9 @@
  * data before it can generate any frames. The decoder has to return
  * AVERROR(EAGAIN) as long as the bitstream is incomplete.
  */
+ 
+ 
+// TODO prefix approprate functions with ff_*
 
 enum FLIF16States {
     FLIF16_HEADER = 1,
@@ -170,6 +173,10 @@ static int fli16_read_second_header(AVCodecContext *avctx)
     uint32_t temp;
     FLIF16DecoderContext *s = avctx->priv_data;
     
+    if(!s->rc)
+        s->rc = ff_flif16_rac_init(&s->gb);
+
+    loop:
     switch (s->segment) {
         default: case 0:
             // In original source this is handled in what seems to be a very bogus 
@@ -181,14 +188,14 @@ static int fli16_read_second_header(AVCodecContext *avctx)
                 }
             }
             s->i = 0;
-            ++s->segment;
+            ++s->segment; __PLN__
             break;
         
         case 1:
             if (s->channels > 3)
                 RAC_GET(s->rc, 0, 1, (uint32_t *) &s->alphazero,
                         FLIF16_RAC_UNI_INT);
-            ++s->segment;
+            ++s->segment; __PLN__
             break;
         
         case 2:
@@ -197,35 +204,37 @@ static int fli16_read_second_header(AVCodecContext *avctx)
                         FLIF16_RAC_UNI_INT);
                 s->framedelay = av_mallocz(sizeof(*(s->framedelay)) * s->frames);
             }
-            ++s->segment;
+            ++s->segment; __PLN__
             break;
         
         case 3:
             if (s->frames > 1) {
-                for (; (s->i) < (s->frames); ++s->i)
-                    RAC_GET(s->rc, 0, 60000, &s->framedelay[s->i], 
+                for (; (s->i) < (s->frames); ++(s->i)) {
+                    RAC_GET(s->rc, 0, 60000, &(s->framedelay[(s->i)]), 
                             FLIF16_RAC_UNI_INT);
+                }
                 s->i = 0;
             }
-            ++s->segment;
+            ++s->segment; __PLN__
             break;
 
         case 4:
             // Has custom alpha flag
             RAC_GET(s->rc, 0, 1, &temp, FLIF16_RAC_UNI_INT);
             printf("[%s] has_custom_cutoff_alpha = %d\n", __func__, temp);
-            break;
+            ++s->segment; __PLN__
+            break; 
         
         case 5:
             if (temp)
                 RAC_GET(s->rc, 1, 128, &s->cutoff, FLIF16_RAC_UNI_INT);
-            ++s->segment;
+            ++s->segment; __PLN__
             break;
 
         case 6:
             if (temp)
                 RAC_GET(s->rc, 2, 128, &s->alphadiv, FLIF16_RAC_UNI_INT);
-            ++s->segment;
+            ++s->segment; __PLN__
             break;
 
         case 7:
@@ -239,6 +248,8 @@ static int fli16_read_second_header(AVCodecContext *avctx)
             break;
     }
     
+    goto loop;
+
     end:
     s->state = FLIF16_TRANSFORM;
     return 0;
@@ -248,7 +259,7 @@ static int fli16_read_second_header(AVCodecContext *avctx)
 }
 
 
-static int flif16_read_transform(AVCodecContext *avctx) {
+static int flif16_read_transforms(AVCodecContext *avctx) {
     
     /*
     while (ff_flif16_rac_read_bit(s->rc)) {
@@ -292,6 +303,10 @@ static int flif16_decode_frame(AVCodecContext *avctx,
             
             case FLIF16_SECONDHEADER:
                 ret = fli16_read_second_header(avctx);
+                break;
+            
+            case FLIF16_TRANSFORM:
+                ret = flif16_read_transforms(avctx);
                 break;
 
             case FLIF16_PIXELDATA:

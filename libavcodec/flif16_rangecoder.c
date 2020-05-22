@@ -28,7 +28,7 @@
 
 FLIF16RangeCoder *ff_flif16_rac_init(GetByteContext *gb)
 {
-    FLIF16RangeCoder *rc = av_mallocz(sizeof(*rc));
+    FLIF16RangeCoder *rc = av_mallocz(sizeof(FLIF16RangeCoder));
 
     if (!rc)
         return NULL;
