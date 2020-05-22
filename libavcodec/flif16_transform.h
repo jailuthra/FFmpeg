@@ -1,36 +1,33 @@
 #include <stdint.h>
 #include "../libavutil/frame.h"
+//#include "flif16dec.h"
 #define MAX_PLANES 5
 
 typedef int16_t ColorVal;
 
 typedef struct{
-   	ColorVal min, max;
+   	ColorVal min[MAX_PLANES], max[MAX_PLANES];
+    int num_planes;
 }ColorRanges;
 
-typedef struct{
-    char* desc;
-    int transform_number;
+char* TransDesc[13] = {"ChannelCompact", "YCoCg", "?", "Permute", "Bounds", "PaletteAlpha", "Palette", "ColorBuckets", "?", "?", "DuplicateFrame", "FrameShape", "FrameLookback"};
+
+typedef struct Transform{
+    char* desc;                     //Description of transform
+    uint8_t transform_number;       
     uint8_t done;
+    FLIF16DecoderContext *s;
+
+    int data_size;
+    void *data;
 }Transform;
 
 typedef struct{
-    int origmax4;
-    ColorRanges *ranges;
-}TransformYCoCg;
-
-typedef struct{
-    uint8_t initialized;
+    uint8_t initialized;            //FLAG : initialized or not.
     int height, width;
-    int num_planes;
     ColorVal *data[MAX_PLANES];
+    ColorRanges ranges;
 }interimPixelData;
-
-typedef struct TransformPermute{
-	uint8_t subtract;
-	uint8_t permutation[MAX_PLANES];
-    ColorRanges *ranges;
-}TransformPermute; 
 
 ColorRanges* getRanges(interimPixelData* pixelData, ColorRanges *ranges);
 
@@ -51,10 +48,12 @@ int get_max_cg(int orgimax4, int yval, int coval);
 int min(int, int);
 int max(int, int, int);
 
-ColorRanges crangesYCoCg(int p, ColorVal* prevPlanes, TransformYCoCg transform);
+//ColorRanges crangesYCoCg(int p, ColorVal* prevPlanes, TransformYCoCg transform);
 
-int process(Transform transform, AVFrame *frame, int p, interimPixelData *pixelData);
-TransformYCoCg initYCoCg(interimPixelData *pixelData);
-int processYCoCg(interimPixelData *pixelData);
-int invProcessYCoCg(AVFrame *frame);
+Transform* process(int t_no, FLIF16DecoderContext *s);
+
+uint8_t transform_read(Transform *transform);
+uint8_t transform_init(Transform *transform, ColorRanges *ranges);
+uint8_t transform_forward(Transform *transform, interimPixelData *pixelData);
+uint8_t transform_reverse(Transform *transform, interimPixelData *pixelData);
 
