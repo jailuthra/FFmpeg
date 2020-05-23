@@ -45,42 +45,6 @@ enum FLIF16States {
     FLIF16_CHECKSUM
 };
 
-typedef struct FLIF16DecoderContext {
-    GetByteContext gb;  ///< Bytestream management context for bytestream2
-    FLIF16RangeCoder *rc;
-    uint8_t *bytestream; 
-    // Transform  *tlist;  ///< Transform list
-    int state;           ///< The section of the file the parser is in currently.
-    unsigned int index;  ///< An index based on the current state. 
-    
-    // Primary Header
-    uint8_t ia;          ///< Is image interlaced or/and animated or not
-    uint8_t bpc;         ///< Bytes per channel
-    uint8_t channels;    ///< Number of channels
-    uint8_t varint;      ///< Number of varints to process in sequence
-    
-    // Secondary Header
-    uint8_t  channelbpc; ///< bpc per channel. Size == 1 if bpc == '0' 
-                         ///  else equal to number of frames
-    
-    // Flags. TODO Merge all these flags
-    uint8_t alphazero;   ///< Alphazero
-    uint8_t custombc;    ///< Custom Bitchance
-
-    uint8_t cutoff; 
-    uint8_t alphadiv;
-
-    uint8_t loops;       ///< Number of times animation loops
-    uint16_t *framedelay;///< Frame delay for each frame
-    
-    // Dimensions and other things.
-    uint32_t width;
-    uint32_t height;
-    uint32_t frames;
-    uint32_t meta;      ///< Size of a meta chunk
-} FLIF16DecoderContext;
-
-
 /*
  * TODO determine the minimum packet size
  */
