@@ -59,10 +59,10 @@ typedef struct FLIF16RACQueue {
 } FLIF16RACQueue;
 
 typedef struct FLIF16DecoderContext {
-    GetByteContext gb;  ///< Bytestream management context for bytestream2
+    GetByteContext gb;
     FLIF16RangeCoder *rc;
-    uint8_t *bytestream; 
-    // Transform  *tlist;  ///< Transform list
+    uint8_t buf[FLIF16_RAC_MAX_RANGE_BYTES]; ///< Storage for initial RAC buffer
+    uint8_t buf_count; ///< Count for initial RAC buffer
     int state;           ///< The section of the file the parser is in currently.
     unsigned int segment;///< The "segment" the code is supposed to jump to
     int i;               ///< A generic iterator used to save states between
@@ -158,14 +158,14 @@ static int flif16_read_header(AVCodecContext *avctx)
         bytestream2_seek(&s->gb, s->meta, SEEK_CUR);
     }
     
+    printf("[%s] left = %d\n", __func__, bytestream2_get_bytes_left(&s->gb));
     s->state = FLIF16_SECONDHEADER;
     return 0;
 }
 
-// TODO write a getnext procedure or soemthing
-
 #define RAC_GET(rc, val1, val2, target, type) \
-    if (!ff_flif16_rac_process((rc), (val1), (val2), (uint32_t *) (target), (type))) \
+    if (!ff_flif16_rac_process((rc), (val1), (val2), \
+        (uint32_t *) (target), (type))) \
         goto need_more_data;
         
 static int fli16_read_second_header(AVCodecContext *avctx)
@@ -173,14 +173,28 @@ static int fli16_read_second_header(AVCodecContext *avctx)
     uint32_t temp;
     FLIF16DecoderContext *s = avctx->priv_data;
     
-    if(!s->rc)
-        s->rc = ff_flif16_rac_init(&s->gb);
+    if (!s->rc) {
+        s->buf_count += bytestream2_get_buffer(&s->gb, s->buf, 
+                                       FFMIN(bytestream2_get_bytes_left(&s->gb),
+                                       (FLIF16_RAC_MAX_RANGE_BYTES -
+                                       s->buf_count)));
+        printf("[%s] %d '", __func__, FLIF16_RAC_MAX_RANGE_BYTES,
+               s->buf_count);
+        for(int i = 0; i < (s->buf_count); ++i)
+            printf("%x ", s->buf[i]);
+        printf("'\n");
+        if (s->buf_count < FLIF16_RAC_MAX_RANGE_BYTES)
+            return AVERROR(EAGAIN);
+
+        s->rc = ff_flif16_rac_init(&s->gb, s->buf, s->buf_count);
+    }
 
     loop:
     switch (s->segment) {
         default: case 0:
-            // In original source this is handled in what seems to be a very bogus 
-            // manner. It takes all the bpps of all channels and then takes the max.
+            // In original source this is handled in what seems to be a very 
+            // bogus manner. It takes all the bpps of all channels and then 
+            // takes the max.
             if (s->bpc == '0') {
                 for (; s->i < s->channels; ++s->i) {
                     RAC_GET(s->rc, 1, 15, &temp, FLIF16_RAC_UNI_INT);
@@ -241,7 +255,8 @@ static int fli16_read_second_header(AVCodecContext *avctx)
             if (temp)
                 RAC_GET(s->rc, 0, 1, &s->cutoff, FLIF16_RAC_UNI_INT);
             if (s->custombc) {
-                av_log(avctx, AV_LOG_ERROR, "custom bitchances not implemented\n");
+                av_log(avctx, AV_LOG_ERROR,
+                       "custom bitchances not implemented\n");
                 return AVERROR_PATCHWELCOME;
             }
             goto end;
@@ -255,6 +270,7 @@ static int fli16_read_second_header(AVCodecContext *avctx)
     return 0;
     
     need_more_data:
+    printf("[%s] Need more data\n", __func__);
     return AVERROR(EAGAIN);
 }
 

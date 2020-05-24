@@ -39,6 +39,7 @@
 #include <assert.h>
 
 #define FLIF16_RAC_MAX_RANGE_BITS 24
+#define FLIF16_RAC_MAX_RANGE_BYTES (FLIF16_RAC_MAX_RANGE_BITS / 8)
 #define FLIF16_RAC_MIN_RANGE_BITS 16
 #define FLIF16_RAC_MAX_RANGE (uint32_t) 1 << FLIF16_RAC_MAX_RANGE_BITS
 #define FLIF16_RAC_MIN_RANGE (uint32_t) 1 << FLIF16_RAC_MIN_RANGE_BITS
@@ -80,7 +81,8 @@ typedef struct FLIF16RangeCoder {
     GetByteContext *gb;
 } FLIF16RangeCoder;
 
-FLIF16RangeCoder *ff_flif16_rac_init(GetByteContext *gb);
+FLIF16RangeCoder *ff_flif16_rac_init(GetByteContext *gb, uint8_t *buf,
+                                     uint8_t buf_size);
 void ff_flif16_rac_free(FLIF16RangeCoder *rc);
 void ff_flif16_chancetable_init(FLIF16RangeCoder *rc, int alpha, int cut);
 void ff_flif16_build_log4k_table(FLIF16RangeCoder *rc);
@@ -112,13 +114,17 @@ static uint16_t flif16_nz_int_chances[20] = {
 static inline int ff_flif16_rac_renorm(FLIF16RangeCoder *rc)
 {
     uint32_t left = bytestream2_get_bytes_left(rc->gb);
+    printf("[%s] left = %d\n", __func__, left);
     if (!left)
         return 0;
-    while ((rc->range <= FLIF16_RAC_MIN_RANGE) && left) {
+    while (rc->range <= FLIF16_RAC_MIN_RANGE) {
         rc->low <<= 8;
         rc->range <<= 8;
         rc->low |= bytestream2_get_byte(rc->gb);
-        --left;
+        if(!left)
+            return 0;
+        else
+            --left;
     }
     rc->renorm = 0;
     return 1;
@@ -131,8 +137,10 @@ static inline uint8_t ff_flif16_rac_get(FLIF16RangeCoder *rc, uint32_t chance,
     // assert(rc->chance < rc->range);
 
     // printf("[%s] low: %u range: %u chance: %u\n", __func__, rc->low, rc->range, chance);
-    if (rc->renorm)
+    if (rc->renorm) {
+        printf("[%s] Triggered\n", __func__);
         return 0;
+    }
 
     if (rc->low >= rc->range - chance) {
         rc->low -= rc->range - chance;
@@ -160,8 +168,10 @@ static inline uint32_t ff_flif16_rac_read_chance(FLIF16RangeCoder *rc,
 {
     uint32_t ret;
     
-    if(rc->renorm)
+    if (rc->renorm) {
+        printf("[%s] Triggered\n", __func__);
         return 0;
+    }
     // assert((b12 > 0) && (b12 >> 12) == 0);
     // Optimisation based on CPU bus size (32/64 bit)
     if (sizeof(range) > 4) 
@@ -184,8 +194,10 @@ static inline int ff_flif16_rac_read_uni_int(FLIF16RangeCoder *rc,
     int med;
     uint8_t bit;
 
-    if (rc->renorm)
+    if (rc->renorm) {
+        printf("[%s] Triggered\n", __func__);
         return 0;
+    }
 
     if (!rc->active) {
         rc->min = min;
@@ -197,8 +209,8 @@ static inline int ff_flif16_rac_read_uni_int(FLIF16RangeCoder *rc,
         ff_flif16_rac_read_bit(rc, &bit);
         med = (rc->len) / 2;
         if (bit) {
-            rc->min = (rc->min) + (med + 1);
-            rc->len = (rc->len) - (med + 1);
+            rc->min += med + 1;
+            rc->len -= med + 1;
         } else {
             rc->len = med;
         }
@@ -333,6 +345,8 @@ static inline int ff_flif16_rac_process(FLIF16RangeCoder *rc, uint32_t val1,
 {
     int flag = 0;
     while (!flag) {
+        printf("[%s] low = %d range = %d renorm = %d\n", __func__, rc->low, 
+               rc->range, rc->renorm);
         if(rc->renorm) {
             if(!ff_flif16_rac_renorm(rc))
                 return 0; // EAGAIN condition
@@ -345,11 +359,11 @@ static inline int ff_flif16_rac_process(FLIF16RangeCoder *rc, uint32_t val1,
 
             case FLIF16_RAC_UNI_INT:
                 flag = ff_flif16_rac_read_uni_int(rc, val1, val2, target);
-                __PLN__
                 break;
                 
             case FLIF16_RAC_CHANCE:
-                flag = ff_flif16_rac_read_chance(rc, val1, val2, (uint8_t *) target);
+                flag = ff_flif16_rac_read_chance(rc, val1, val2, 
+                                                 (uint8_t *) target);
                 break;
             
             case FLIF16_RAC_NZ_INT:

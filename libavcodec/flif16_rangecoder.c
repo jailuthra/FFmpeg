@@ -26,20 +26,34 @@
 
 #include "flif16_rangecoder.h"
 
-FLIF16RangeCoder *ff_flif16_rac_init(GetByteContext *gb)
+// TODO write separate function for RAC decoder
+
+// The coder requires a certain number of bytes for initiialization. buf
+// provides it. gb is used by the coder functions for actual coding.
+
+FLIF16RangeCoder *ff_flif16_rac_init(GetByteContext *gb, 
+                                     uint8_t *buf,
+                                     uint8_t buf_size)
 {
-    FLIF16RangeCoder *rc = av_mallocz(sizeof(FLIF16RangeCoder));
+    FLIF16RangeCoder *rc = av_mallocz(sizeof(*rc));
 
     if (!rc)
         return NULL;
+    
+    if(buf_size < FLIF16_RAC_MAX_RANGE_BYTES)
+        return NULL;
+    
+    GetByteContext gbi;
+    bytestream2_init(&gbi, buf, buf_size);
 
     rc->range  = FLIF16_RAC_MAX_RANGE;
     rc->gb     = gb;
 
     for (uint32_t r = FLIF16_RAC_MAX_RANGE; r > 1; r >>= 8) {
         rc->low <<= 8;
-        rc->low |= bytestream2_get_byte(rc->gb);
+        rc->low |= bytestream2_get_byte(&gbi);
     }
+    printf("[%s] low = %d\n", __func__, rc->low);
     return rc;
 }
 
