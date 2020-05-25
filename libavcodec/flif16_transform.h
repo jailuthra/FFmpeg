@@ -1,6 +1,6 @@
 /*
  * Transforms for FLIF16.
- * Copyright (c) 2020 Kartik K. Khullar <kartikkhullar@gmail.com>
+ * Copyright (c) 2020 Kartik K. Khullar <kartikkhullar840@gmail.com>
  *
  * This file is part of FFmpeg.
  *
@@ -26,8 +26,9 @@
  
 #include <stdint.h>
 
-#include "../libavutil/frame.h"
+#include "avcodec.h"
 #include "flif16.h"
+#include "libavutil/common.h"
 
 #define MAX_PLANES 5
 
@@ -52,32 +53,47 @@ typedef enum FLIF16TransformTypes {
     FLIF16_TRANSFORM_DUPLICATEFRAME,
     FLIF16_TRANSFORM_FRAMESHAPE,
     FLIF16_TRANSFORM_FRAMELOOKBACK,
-}
-
-char* flif16_transform_desc[] = {
-    "ChannelCompact",
-    "YCoCg", 
-    "?",
-    "Permute",
-    "Bounds",
-    "PaletteAlpha",
-    "Palette", 
-    "ColorBuckets", 
-    "?", 
-    "?", 
-    "DuplicateFrame", 
-    "FrameShape", 
-    "FrameLookback"
 };
 
-typedef struct FLIF16Transform {
-    char* desc;                     //Description of FLIF16Transform
-    uint8_t FLIF16Transform_number;       
+typedef struct FLIF16TransformContext{
+    size_t priv_data_size;
     uint8_t done;
-    FLIF16DecoderContext *s;
-    int data_size;
-    void *data;
+    FLIF16DecoderContext *dec_ctx;
+    void *priv_data;
+}FLIF16TransformContext;
+
+typedef struct FLIF16Transform {
+    uint8_t t_no;
+
+    //Functions
+    uint8_t (*init) (FLIF16TransformContext*, FLIF16ColorRanges*);
+    uint8_t (*read) (FLIF16TransformContext*);
+    uint8_t (*forward) (FLIF16TransformContext*, FLIF16InterimPixelData*);
+    uint8_t (*reverse) (FLIF16TransformContext*, FLIF16InterimPixelData*);
+
+    FLIF16TransformContext *transform_ctx;
 } FLIF16Transform;
+
+FLIF16Transform flif16_transform_ycocg = {
+	.t_no    = FLIF16_TRANSFORM_YCOCG,
+	.init    = ff_flif16_transform_ycocg_init,
+	.read    = ff_flif16_transform_ycocg_read,
+	.forward = ff_flif16_transform_ycocg_forward,
+	.reverse = ff_flif16_transform_ycocg_reverse 
+};
+
+FLIF16Transform flif16_transform_permuteplanes = {
+	.t_no    = FLIF16_TRANSFORM_PERMUTEPLANES,
+	.init    = ff_flif16_transform_permuteplanes_init,
+	.read    = ff_flif16_transform_permuteplanes_read,
+	.forward = ff_flif16_transform_permuteplanes_forward,
+	//.reverse = ff_flif16_transform_permuteplanes_reverse 
+};
+
+FLIF16Transform *flif16_transforms[] = {
+    &flif16_transform_ycocg,
+    &flif16_transform_permuteplanes,
+};
 
 typedef struct{
     uint8_t initialized;            //FLAG : initialized or not.
@@ -86,106 +102,137 @@ typedef struct{
     FLIF16ColorRanges ranges;
 } FLIF16InterimPixelData;
 
-FLIF16ColorRanges* getRanges(FLIF16InterimPixelData* pixelData, 
-                             FLIF16ColorRanges *ranges);
+FLIF16ColorRanges* ff_get_ranges_ycocg( FLIF16InterimPixelData *pixelData,
+                                        FLIF16ColorRanges *ranges){
+    int p = pixelData->ranges.num_planes;
+	ranges->num_planes = p;
+    int i, c, r, width, height;
+    FLIF16ColorVal min, max;
+	width = pixelData->width;
+    height = pixelData->height;
+    for(i=0; i<p; i++){
+        min = pixelData->data[p][0];
+        max = pixelData->data[p][0];
+        for(r=0; r<pixelData->height; r++){
+            for(c=0; c<pixelData->width; c++){
+                if(min > pixelData->data[p][r*width + c])
+                    min = pixelData->data[p][r*width + c];
+                if(max < pixelData->data[p][r*width + c])
+                    max = pixelData->data[p][r*width + c];
+            }
+        }
+        ranges->min[p] = min;
+        ranges->max[p] = max;
+    }
+    return ranges;
+}
+/*
+FLIF16ColorRanges ff_get_crange_ycocg(  int p,
+                                FLIF16ColorVal* prevPlanes,
+                                FLIF16Transform transform ){
+	FLIF16ColorRanges crange;
+	switch(p){
+		case 0:
+			crange.min[0] = get_min_y(transform.origmax4);
+			crange.max[0] = get_max_y(transform.origmax4);
+			break;
+		case 1:
+			crange.min[1] = get_min_co(transform.origmax4, prevPlanes[0]);
+			crange.max[1] = get_max_co(transform.origmax4, prevPlanes[0]);
+			break;	
+		case 2:
+			crange.min[2] = get_min_cg(  transform.origmax4,
+			                             prevPlanes[0],
+									     prevPlanes[1]);
 
-int getmax(FLIF16ColorRanges* ranges, int p);
+			crange.max[2] = get_max_cg(  transform.origmax4,
+			                             prevPlanes[0],
+										 prevPlanes[1]);
+			break;
+		default:
+			break; 
+	}
+	return crange;
+}
+*/
 
-// All of these are local functions, which are never used outsider the internal
-// functions of the transforms. Please prefix the function names with ff_*
-// and the return values with static. For example, max_range_YCoCg becomes:
-//      static int ff_max_range_ycocg(int p, int origmax 4.
-// You can also make these functions inline, if the function is small enough
-// which will increase speed.
-// All private functions have the ff_* prefix. Also the names must be kept in
-// lowercase as per convention.
+// Some internal functions for YCoCg Transform.
+static inline int ff_get_min_y(int origmax4){
+	return 0;
+}
 
-// Also, indentation is 4 spaces. Your editor is inserting tabs instead. Please
-// configure your editor to do so. Tabs are not of uniform width across editors.
+static inline int ff_get_max_y(int origmax4){
+	return 4*origmax4-1;
+}
 
-// Please try to keep everything within 80 columns by breaking long statements.
-// Your editor may hae an option to draw a vertical line at 80 columns.
+static inline int ff_get_min_co(int origmax4, int yval){
+	int newmax = 4*origmax4 - 1;
+	if (yval < origmax4-1)
+    	return -3 - 4*yval; 
+	else if (yval >= 3*origmax4)
+      	return 4*(yval - newmax);
+    else
+      	return -newmax;
+}
 
-// This commit will most likely prevent this code from compiling. If you want to
-// revert to the previous version, please use git reset.
+static inline int ff_get_max_co(int origmax4, int yval){
+	int newmax = 4*origmax4 - 1;
+	if (yval < origmax4-1)
+    	return 3 + 4*yval; 
+	else if (yval >= 3*origmax4)
+      	return 4*(newmax - yval);
+    else
+      	return newmax;
+}
 
-// You might have missed my comment on gitbub over here:
-// https://github.com/daujerrine/ffmpeg/commit/341ce0ef2e00ee3f5ae9cc8dfd3b9d21d1686476#commitcomment-39077413
-// You might have to click on "watch" in order to get email notifications for
-// comments.
+static inline int ff_get_min_cg(int origmax4, int yval, int coval){
+	int newmax = 4*origmax4 - 1;
+	if (yval < origmax4-1)
+    	return -2 - 2*yval; 
+	else if (yval >= 3*origmax4)
+      	return -2*(newmax-yval) + 2*((abs(coval)+1)/2);
+    else{
+      	return min(2*yval + 1, 2*newmax - 2*yval - 2*abs(coval)+1)/2;
+	}
+}
 
-// Please remove these comments afterwards.
+static inline int ff_get_max_cg(int origmax4, int yval, int coval){
+	int newmax = 4*origmax4 - 1;
+	if (yval < origmax4-1)
+    	return 1 + 2*yval - 2*(abs(coval)/2); 
+	else if (yval >= 3*origmax4)
+      	return 2 * (newmax-yval);
+    else
+      	return min(2*(yval- newmax), -2*yval - 1 + 2*(abs(coval)/2));
+}
 
-int max_range_YCoCg(int p, int origmax4);
-int min_range_YCoCg(int p, int origmax4);
+static inline int ff_min_range_ycocg(int p, int origmax4){
+	switch(p){
+		case 0:
+			return 0;
+        case 1:
+			return -4*origmax4+1;
+        case 2:
+			return -4*origmax4+1;
+		default:
+			return 0;
+			break;
+	}
+}
 
-int get_min_y(int);
-int get_max_y(int orgimax4);
+static inline int ff_max_range_ycocg(int p, int origmax4){
+	switch(p){
+		case 0:
+			return 4*origmax4-1;
+        case 1:
+			return 4*origmax4-1;
+        case 2:
+			return 4*origmax4-1;
+		default:
+			return 0;
+			break;
+	}
+}
 
-int get_min_co(int orgimax4, int yval);
-int get_max_co(int orgimax4, int yval);
-
-int get_min_cg(int orgimax4, int yval, int coval);
-int get_max_cg(int orgimax4, int yval, int coval);
-
-int min(int, int);  //* Replace by FF_MIN
-int max(int, int, int); //* Replace by FF_MAX3 https://ffmpeg.org/doxygen/trunk/common_8h.html
-
-//FLIF16ColorRanges crangesYCoCg(int p, FLIF16ColorVal* prevPlanes, FLIF16TransformYCoCg FLIF16Transform);
 
 FLIF16Transform* ff_flif16_transform_process(int t_no, FLIF16DecoderContext *s);
-
-uint8_t ff_flif16_transform_read(FLIF16Transform *transform);
-uint8_t ff_flif16_transform_init(FLIF16Transform *transform,
-                                 FLIF16ColorRanges *ranges);
-uint8_t ff_flif16_transform_forward(FLIF16Transform *transform, 
-                                    FLIF16InterimPixelData *pixelData);
-uint8_t ff_flif16_transform_reverse(FLIF16Transform *transform, 
-                                    FLIF16InterimPixelData *pixelData);
-
-
-/*
-Maybe write it like this:
-
-typedef struct FLIF16TransformContext {
-    uint8_t done;
-    FLIF16DecoderContext *s;
-    void *priv_data;
-}
-
-typedef struct FLIF16Transform {
-    char desc[15];
-    // These are functions
-    uint8_t (*init) (FLIF16TransformContext *);
-    uint8_t (*read) (FLIF16TransformContext *);
-    uint8_t (*forward) (FLIF16TransformContext *);
-    uint8_t (*reverse) (FLIF16TransformContext *);
-    size_t priv_data_size;
-} FLIF16Transform;
-
-FLIF16Transform *flif16_transforms[] {
-    ...
-    &flif16_transform_ycocg,
-    &flif16_transform_permuteplanes,
-    ...
-}
-
-int ff_flif16_transform_process(unsigned int t_no, int direction, 
-                                FLIF16DecoderContext *s)
-{
-    FLIF16Transform *t = flif16_transforms[t_no];
-    FLIF16TransformContext ctx = {
-        .priv_data = av_mallocz(t->priv_data_size);
-        .s = s; // Maybe use a more elaborate name
-    }
-
-    // Perform error handling as required over here by returning an integer
-    t->init(&ctx);
-    t->read(&ctx);
-    t->forward(&ctx);
-    t->reverse(&ctx);
-    
-    return 1;
-}
- 
-*/
