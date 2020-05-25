@@ -35,7 +35,7 @@
 typedef int16_t FLIF16ColorVal;
 
 typedef struct {
-   	FLIF16ColorVal min[MAX_PLANES], max[MAX_PLANES];
+       FLIF16ColorVal min[MAX_PLANES], max[MAX_PLANES];
     int num_planes;
 } FLIF16ColorRanges;
 
@@ -75,19 +75,19 @@ typedef struct FLIF16Transform {
 } FLIF16Transform;
 
 FLIF16Transform flif16_transform_ycocg = {
-	.t_no    = FLIF16_TRANSFORM_YCOCG,
-	.init    = ff_flif16_transform_ycocg_init,
-	.read    = ff_flif16_transform_ycocg_read,
-	.forward = ff_flif16_transform_ycocg_forward,
-	.reverse = ff_flif16_transform_ycocg_reverse 
+    .t_no    = FLIF16_TRANSFORM_YCOCG,
+    .init    = ff_flif16_transform_ycocg_init,
+    .read    = ff_flif16_transform_ycocg_read,
+    .forward = ff_flif16_transform_ycocg_forward,
+    .reverse = ff_flif16_transform_ycocg_reverse 
 };
 
 FLIF16Transform flif16_transform_permuteplanes = {
-	.t_no    = FLIF16_TRANSFORM_PERMUTEPLANES,
-	.init    = ff_flif16_transform_permuteplanes_init,
-	.read    = ff_flif16_transform_permuteplanes_read,
-	.forward = ff_flif16_transform_permuteplanes_forward,
-	//.reverse = ff_flif16_transform_permuteplanes_reverse 
+    .t_no    = FLIF16_TRANSFORM_PERMUTEPLANES,
+    .init    = ff_flif16_transform_permuteplanes_init,
+    .read    = ff_flif16_transform_permuteplanes_read,
+    .forward = ff_flif16_transform_permuteplanes_forward,
+    //.reverse = ff_flif16_transform_permuteplanes_reverse 
 };
 
 FLIF16Transform *flif16_transforms[] = {
@@ -105,10 +105,10 @@ typedef struct{
 FLIF16ColorRanges* ff_get_ranges_ycocg( FLIF16InterimPixelData *pixelData,
                                         FLIF16ColorRanges *ranges){
     int p = pixelData->ranges.num_planes;
-	ranges->num_planes = p;
+    ranges->num_planes = p;
     int i, c, r, width, height;
     FLIF16ColorVal min, max;
-	width = pixelData->width;
+    width = pixelData->width;
     height = pixelData->height;
     for(i=0; i<p; i++){
         min = pixelData->data[p][0];
@@ -130,108 +130,108 @@ FLIF16ColorRanges* ff_get_ranges_ycocg( FLIF16InterimPixelData *pixelData,
 FLIF16ColorRanges ff_get_crange_ycocg(  int p,
                                 FLIF16ColorVal* prevPlanes,
                                 FLIF16Transform transform ){
-	FLIF16ColorRanges crange;
-	switch(p){
-		case 0:
-			crange.min[0] = get_min_y(transform.origmax4);
-			crange.max[0] = get_max_y(transform.origmax4);
-			break;
-		case 1:
-			crange.min[1] = get_min_co(transform.origmax4, prevPlanes[0]);
-			crange.max[1] = get_max_co(transform.origmax4, prevPlanes[0]);
-			break;	
-		case 2:
-			crange.min[2] = get_min_cg(  transform.origmax4,
-			                             prevPlanes[0],
-									     prevPlanes[1]);
+    FLIF16ColorRanges crange;
+    switch(p){
+        case 0:
+            crange.min[0] = get_min_y(transform.origmax4);
+            crange.max[0] = get_max_y(transform.origmax4);
+            break;
+        case 1:
+            crange.min[1] = get_min_co(transform.origmax4, prevPlanes[0]);
+            crange.max[1] = get_max_co(transform.origmax4, prevPlanes[0]);
+            break;    
+        case 2:
+            crange.min[2] = get_min_cg(  transform.origmax4,
+                                         prevPlanes[0],
+                                         prevPlanes[1]);
 
-			crange.max[2] = get_max_cg(  transform.origmax4,
-			                             prevPlanes[0],
-										 prevPlanes[1]);
-			break;
-		default:
-			break; 
-	}
-	return crange;
+            crange.max[2] = get_max_cg(  transform.origmax4,
+                                         prevPlanes[0],
+                                         prevPlanes[1]);
+            break;
+        default:
+            break; 
+    }
+    return crange;
 }
 */
 
 // Some internal functions for YCoCg Transform.
 static inline int ff_get_min_y(int origmax4){
-	return 0;
+    return 0;
 }
 
 static inline int ff_get_max_y(int origmax4){
-	return 4*origmax4-1;
+    return 4*origmax4-1;
 }
 
 static inline int ff_get_min_co(int origmax4, int yval){
-	int newmax = 4*origmax4 - 1;
-	if (yval < origmax4-1)
-    	return -3 - 4*yval; 
-	else if (yval >= 3*origmax4)
-      	return 4*(yval - newmax);
+    int newmax = 4*origmax4 - 1;
+    if (yval < origmax4-1)
+        return -3 - 4*yval; 
+    else if (yval >= 3*origmax4)
+        return 4*(yval - newmax);
     else
-      	return -newmax;
+        return -newmax;
 }
 
 static inline int ff_get_max_co(int origmax4, int yval){
-	int newmax = 4*origmax4 - 1;
-	if (yval < origmax4-1)
-    	return 3 + 4*yval; 
-	else if (yval >= 3*origmax4)
-      	return 4*(newmax - yval);
+    int newmax = 4*origmax4 - 1;
+    if (yval < origmax4-1)
+        return 3 + 4*yval; 
+    else if (yval >= 3*origmax4)
+        return 4*(newmax - yval);
     else
-      	return newmax;
+        return newmax;
 }
 
 static inline int ff_get_min_cg(int origmax4, int yval, int coval){
-	int newmax = 4*origmax4 - 1;
-	if (yval < origmax4-1)
-    	return -2 - 2*yval; 
-	else if (yval >= 3*origmax4)
-      	return -2*(newmax-yval) + 2*((abs(coval)+1)/2);
+    int newmax = 4*origmax4 - 1;
+    if (yval < origmax4-1)
+        return -2 - 2*yval; 
+    else if (yval >= 3*origmax4)
+        return -2*(newmax-yval) + 2*((abs(coval)+1)/2);
     else{
-      	return min(2*yval + 1, 2*newmax - 2*yval - 2*abs(coval)+1)/2;
-	}
+        return min(2*yval + 1, 2*newmax - 2*yval - 2*abs(coval)+1)/2;
+    }
 }
 
 static inline int ff_get_max_cg(int origmax4, int yval, int coval){
-	int newmax = 4*origmax4 - 1;
-	if (yval < origmax4-1)
-    	return 1 + 2*yval - 2*(abs(coval)/2); 
-	else if (yval >= 3*origmax4)
-      	return 2 * (newmax-yval);
+    int newmax = 4*origmax4 - 1;
+    if (yval < origmax4-1)
+        return 1 + 2*yval - 2*(abs(coval)/2); 
+    else if (yval >= 3*origmax4)
+        return 2 * (newmax-yval);
     else
-      	return min(2*(yval- newmax), -2*yval - 1 + 2*(abs(coval)/2));
+        return min(2*(yval- newmax), -2*yval - 1 + 2*(abs(coval)/2));
 }
 
 static inline int ff_min_range_ycocg(int p, int origmax4){
-	switch(p){
-		case 0:
-			return 0;
+    switch(p){
+        case 0:
+            return 0;
         case 1:
-			return -4*origmax4+1;
+            return -4*origmax4+1;
         case 2:
-			return -4*origmax4+1;
-		default:
-			return 0;
-			break;
-	}
+            return -4*origmax4+1;
+        default:
+            return 0;
+            break;
+    }
 }
 
 static inline int ff_max_range_ycocg(int p, int origmax4){
-	switch(p){
-		case 0:
-			return 4*origmax4-1;
+    switch(p){
+        case 0:
+            return 4*origmax4-1;
         case 1:
-			return 4*origmax4-1;
+            return 4*origmax4-1;
         case 2:
-			return 4*origmax4-1;
-		default:
-			return 0;
-			break;
-	}
+            return 4*origmax4-1;
+        default:
+            return 0;
+            break;
+    }
 }
 
 
