@@ -46,6 +46,8 @@ typedef struct{
     FLIF16ColorRanges ranges;
 } FLIF16InterimPixelData;
 
+
+// This may be useless
 typedef enum FLIF16TransformTypes {
     FLIF16_TRANSFORM_CHANNELCOMPACT = 0,
     FLIF16_TRANSFORM_YCOCG,
@@ -59,7 +61,7 @@ typedef enum FLIF16TransformTypes {
     FLIF16_TRANSFORM_RESERVED3,
     FLIF16_TRANSFORM_DUPLICATEFRAME,
     FLIF16_TRANSFORM_FRAMESHAPE,
-    FLIF16_TRANSFORM_FRAMELOOKBACK,
+    FLIF16_TRANSFORM_FRAMELOOKBACK
 };
 
 typedef struct FLIF16TransformContext{

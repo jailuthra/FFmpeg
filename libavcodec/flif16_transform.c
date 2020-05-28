@@ -145,27 +145,26 @@ uint8_t ff_flif16_transform_ycocg_reverse(FLIF16TransformContext *ctx,
 uint8_t ff_flif16_transform_permuteplanes_read(FLIF16TransformContext * ctx){
     //It needs to store uint8_t subtract flag, uint8_t permutation[5] and
     //FLIF16ColorRanges ranges. 
-    ctx->priv_data_size = 6*sizeof(uint8_t) + sizeof(FLIF16ColorRanges);
+    ctx->priv_data_size = 6 * sizeof(uint8_t) + sizeof(FLIF16ColorRanges);
     ctx->priv_data = av_mallocz(ctx->priv_data_size);
-    uint8_t *subtract = (uint8_t *)ctx->priv_data;
-    uint8_t *permutation = (uint8_t *)(ctx->priv_data + sizeof(uint8_t));
-    FLIF16ColorRanges *ranges = (FLIF16ColorRanges *)(ctx->priv_data 
-                                                    + 6*sizeof(uint8_t));
+    uint8_t *subtract = (uint8_t *) ctx->priv_data;
+    uint8_t *permutation = (uint8_t *) (ctx->priv_data + sizeof(uint8_t));
+    FLIF16ColorRanges *ranges = (FLIF16ColorRanges *) (ctx->priv_data +
+                                                       6 * sizeof(uint8_t));
     ranges->num_planes = ctx->dec_ctx->channels;
     FLIF16RangeCoder* rac = ctx->dec_ctx->rc;
     *subtract = ff_flif16_rac_read_nz_int(rac, 0, 1);
     uint8_t from[4] = {0, 0, 0, 0}, to[4] = {0, 0, 0, 0};
     int p;
     int planes = ranges->num_planes;
-    for(p = 0; p < planes; p++){
-    permutation[p] = ff_flif16_rac_read_nz_int(rac, 0, planes-1);
-    from[p] = 1;
+    for (p = 0; p < planes; p++) {
+        permutation[p] = ff_flif16_rac_read_nz_int(rac, 0, planes-1);
+        from[p] = 1;
         to[p] = 1;
     }
-    for(p = 0; p < planes; p++){
-        if(!from[p] || !to[p]){
+    for (p = 0; p < planes; p++) {
+        if(!from[p] || !to[p])
             return 0;
-    }
     }
     return 1;
 }
@@ -271,27 +270,44 @@ uint8_t ff_flif16_transform_permuteplanes_reverse(
 
 FLIF16Transform flif16_transform_ycocg = {
     .t_no    = FLIF16_TRANSFORM_YCOCG,
-    .init    = ff_flif16_transform_ycocg_init,
-    .read    = ff_flif16_transform_ycocg_read,
-    .forward = ff_flif16_transform_ycocg_forward,
-    .reverse = ff_flif16_transform_ycocg_reverse 
+    .init    = &ff_flif16_transform_ycocg_init,
+    .read    = &ff_flif16_transform_ycocg_read,
+    .forward = &ff_flif16_transform_ycocg_forward,
+    .reverse = &ff_flif16_transform_ycocg_reverse 
 };
 
 FLIF16Transform flif16_transform_permuteplanes = {
     .t_no    = FLIF16_TRANSFORM_PERMUTEPLANES,
-    .init    = ff_flif16_transform_permuteplanes_init,
-    .read    = ff_flif16_transform_permuteplanes_read,
-    .forward = ff_flif16_transform_permuteplanes_forward,
-    .reverse = ff_flif16_transform_permuteplanes_reverse 
+    .init    = &ff_flif16_transform_permuteplanes_init,
+    .read    = &ff_flif16_transform_permuteplanes_read,
+    .forward = &ff_flif16_transform_permuteplanes_forward,
+    .reverse = &ff_flif16_transform_permuteplanes_reverse 
 };
 
-FLIF16Transform *flif16_transforms[] = {
+
+// The indices in the array map to the respective transform number.
+FLIF16Transform *flif16_transforms[13] = {
+    NULL, // FLIF16_TRANSFORM_CHANNELCOMPACT = 0,
     &flif16_transform_ycocg,
+    NULL, // FLIF16_TRANSFORM_RESERVED1,
     &flif16_transform_permuteplanes,
+    NULL, // FLIF16_TRANSFORM_BOUNDS,
+    NULL, // FLIF16_TRANSFORM_PALETTEALPHA,
+    NULL, // FLIF16_TRANSFORM_PALETTE,
+    NULL, // FLIF16_TRANSFORM_COLORBUCKETS,
+    NULL, // FLIF16_TRANSFORM_RESERVED2,
+    NULL, // FLIF16_TRANSFORM_RESERVED3,
+    NULL, // FLIF16_TRANSFORM_DUPLICATEFRAME,
+    NULL, // FLIF16_TRANSFORM_FRAMESHAPE,
+    NULL  // FLIF16_TRANSFORM_FRAMELOOKBACK
+    
+    
 };
 
 FLIF16Transform* process(int t_no, FLIF16DecoderContext *s){
     FLIF16Transform *t = flif16_transforms[t_no];
+    // Unlike C++, pointers in C returned by malloc are always cast to (void *)
+    // so the casting below is unnecessary syntax.
     t->transform_ctx = (FLIF16TransformContext*)
                         av_mallocz(sizeof(FLIF16TransformContext));
     t->transform_ctx->dec_ctx = s;

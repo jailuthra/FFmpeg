@@ -71,7 +71,4 @@ typedef struct FLIF16DecoderContext {
     uint32_t meta;      ///< Size of a meta chunk
 } FLIF16DecoderContext;
 
-void ff_flif16_build_log4k_table(FLIF16RangeCoder *ct);
-int ff_flif16_ilog2(uint32_t l);
-
 #endif /* AVCODEC_FLIF16_H */
