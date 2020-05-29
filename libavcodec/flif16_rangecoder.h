@@ -64,8 +64,8 @@ typedef struct FLIF16Log4kTable {
 } FLIF16Log4kTable;
 
 typedef struct FLIF16RangeCoder {
-    uint32_t range;
-    uint32_t low;
+    unsigned int range;
+    unsigned int low;
     uint16_t chance;
     uint8_t empty;    ///< Is bytestream empty
     uint8_t renorm;   ///< Is a renormalisation required 
@@ -163,8 +163,7 @@ static inline uint8_t ff_flif16_rac_read_bit(FLIF16RangeCoder *rc,
 }
 
 static inline uint32_t ff_flif16_rac_read_chance(FLIF16RangeCoder *rc,
-                                                 uint16_t b12, uint32_t range,
-                                                 uint8_t *target)
+                                                 uint16_t b12, uint8_t *target)
 {
     uint32_t ret;
     
@@ -174,11 +173,11 @@ static inline uint32_t ff_flif16_rac_read_chance(FLIF16RangeCoder *rc,
     }
     // assert((b12 > 0) && (b12 >> 12) == 0);
     // Optimisation based on CPU bus size (32/64 bit)
-    if (sizeof(range) > 4) 
-        ret = (range * b12 + 0x800) >> 12;
+    if (sizeof(rc->range) > 4) 
+        ret = ((rc->range) * b12 + 0x800) >> 12;
     else 
-        ret = ((((range & 0xFFF) * b12 + 0x800) >> 12) + 
-              ((range >> 12) * b12));
+        ret = (((((rc->range) & 0xFFF) * b12 + 0x800) >> 12) + 
+              (((rc->range) >> 12) * b12));
     
     return ff_flif16_rac_get(rc, ret, target);
 }
@@ -246,7 +245,7 @@ void inline ff_flif16_chancetable_put(FLIF16RangeCoder *rc,
  * Reads a near-zero encoded symbol into the RAC probability model/chance table;
  * @param chance The symbol chance specified by the NZ_INT_* macros
  */
- /*
+/*
 static inline uint8_t ff_flif16_rac_read_symbol(FLIF16RangeCoder *rc,
                                                 uint16_t chance)
 {
@@ -261,72 +260,83 @@ static inline uint8_t ff_flif16_rac_read_symbol(FLIF16RangeCoder *rc,
  */
 /*
 static inline int ff_flif16_rac_read_nz_int(FLIF16RangeCoder *rc, int min,
-                                            int max)
+                                            int max, uint32_t *target)
 {
-    // assert(min<=max);
     uint8_t sign;
+    uint32_t temp;
     const int amin = 1;
-    const int amax;
-    const int emax;
-    int e;
-    int have, left, minabs1, minabs0;
+    const int amax = (sign ? max : -min);
+    
+    const int emax = ff_log2(amax);
+    int e          = ff_log2(amin);
+    int have, left, minabs1, maxabs0;
 
     if (min == max)
         return min;
-
-    if (ff_flif16_rac_read_symbol(NZ_INT_ZERO))
-        return 0;
-
-    if (min < 0) {
-        if (max > 0)
-            sign = ff_flif16_rac_read_symbol(NZ_INT_SIGN);
-        else
-            sign = 0;
-    } else
-        sign = 1;
     
-    amax = (sign ? max : -min);
-    emax = av_log2(amax);
-    e    = av_log2(amin);
+    switch (rc->segment) {
+        case 0:
+            ff_flif16_rac_read_symbol(rc, NZ_INT_ZERO, &temp);
 
-    for (; e < emax; e++) {
-        // if exponent >e is impossible, we are done
-        // actually that cannot happen
-        //if ((1 << (e+1)) > amax) break;
-        if (ff_flif16_rac_read_symbol(NZ_INT_EXP((e << 1) + sign)))
+            if (temp) {
+                *target = 0;
+                return 1;
+            }
+            break;
+        
+        case 1:
+            if (min < 0) {
+                if (max > 0)
+                    sign = ff_flif16_rac_read_symbol(rc, NZ_INT_SIGN);
+                else
+                    sign = 0;
+            } else
+                sign = 1;
+            break;
+
+        case 2:
+            for (; e < emax; e++) {
+                ff_flif16_rac_read_symbol(rc, NZ_INT_EXP((e << 1) + sign),
+                                          target);
+                if (*target)
+                    break;
+            }
+            have = (1 << e);
+            left = have - 1;
+            break;
+
+        case 3:
+            for (int pos = e; pos > 0;) {
+                left >>= 1;
+                pos--;
+                minabs1 = have | (1 << pos);
+                maxabs0 = have | left;
+                if (minabs1 > amax) {
+                    continue;
+                } else if (maxabs0 >= amin) {
+                    if (ff_flif16_rac_read_symbol(rc, NZ_INT_MANT(pos)))
+                        have = minabs1;
+                } 
+                else
+                    have = minabs1;
+            }
+            
+            *target = (sign ? have : -have);
             break;
     }
 
-    have = (1 << e);
-    left = have - 1;
-
-    for (int pos = e; pos > 0;) {
-        left >>= 1;
-        pos--;
-        minabs1 = have | (1<<pos);
-        maxabs0 = have | left;
-        if (minabs1 > amax) {
-            continue;
-        } else if (maxabs0 >= amin) { // 0-bit and 1-bit are both possible
-            if (ff_flif16_rac_read_symbol(NZ_INT_MANT(pos)))
-                have = minabs1;
-        } 
-        else
-            have = minabs1;
-    }
-
-    return (sign ? have : -have);
+    return 1;
 }
 
 static inline int ff_flif16_rac_read_gnz_int(FLIF16RangeCoder *rc, int min,
                                              int max)
 {
     if (min > 0) 
-        return ff_flif16_rac_read_nz_int(0, max - min) + min;
+        return ff_flif16_rac_read_nz_int(rc, 0, max - min) + min;
     else if (max < 0) 
-        return ff_flif16_rac_read_nz_int(min - max, 0) + max;
+        return ff_flif16_rac_read_nz_int(rc, min - max, 0) + max;
     else 
-        return ff_flif16_rac_read_nz_int(min, max);
+        return ff_flif16_rac_read_nz_int(rc, min, max);
 }
 */
 
@@ -362,8 +372,7 @@ static inline int ff_flif16_rac_process(FLIF16RangeCoder *rc, uint32_t val1,
                 break;
                 
             case FLIF16_RAC_CHANCE:
-                flag = ff_flif16_rac_read_chance(rc, val1, val2, 
-                                                 (uint8_t *) target);
+                flag = ff_flif16_rac_read_chance(rc, val1, (uint8_t *) target);
                 break;
             
             case FLIF16_RAC_NZ_INT:

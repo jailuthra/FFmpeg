@@ -178,11 +178,6 @@ static int fli16_read_second_header(AVCodecContext *avctx)
                                        FFMIN(bytestream2_get_bytes_left(&s->gb),
                                        (FLIF16_RAC_MAX_RANGE_BYTES -
                                        s->buf_count)));
-        printf("[%s] %d '", __func__, FLIF16_RAC_MAX_RANGE_BYTES,
-               s->buf_count);
-        for(int i = 0; i < (s->buf_count); ++i)
-            printf("%x ", s->buf[i]);
-        printf("'\n");
         if (s->buf_count < FLIF16_RAC_MAX_RANGE_BYTES)
             return AVERROR(EAGAIN);
 
@@ -229,26 +224,26 @@ static int fli16_read_second_header(AVCodecContext *avctx)
                 }
                 s->i = 0;
             }
-            ++s->segment; __PLN__
+            ++s->segment;
             break;
 
         case 4:
             // Has custom alpha flag
             RAC_GET(s->rc, 0, 1, &temp, FLIF16_RAC_UNI_INT);
             printf("[%s] has_custom_cutoff_alpha = %d\n", __func__, temp);
-            ++s->segment; __PLN__
+            ++s->segment;
             break; 
         
         case 5:
             if (temp)
                 RAC_GET(s->rc, 1, 128, &s->cutoff, FLIF16_RAC_UNI_INT);
-            ++s->segment; __PLN__
+            ++s->segment;
             break;
 
         case 6:
             if (temp)
                 RAC_GET(s->rc, 2, 128, &s->alphadiv, FLIF16_RAC_UNI_INT);
-            ++s->segment; __PLN__
+            ++s->segment;
             break;
 
         case 7:

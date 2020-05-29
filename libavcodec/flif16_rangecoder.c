@@ -36,6 +36,7 @@ FLIF16RangeCoder *ff_flif16_rac_init(GetByteContext *gb,
                                      uint8_t buf_size)
 {
     FLIF16RangeCoder *rc = av_mallocz(sizeof(*rc));
+    GetByteContext gbi;
 
     if (!rc)
         return NULL;
@@ -43,7 +44,6 @@ FLIF16RangeCoder *ff_flif16_rac_init(GetByteContext *gb,
     if(buf_size < FLIF16_RAC_MAX_RANGE_BYTES)
         return NULL;
     
-    GetByteContext gbi;
     bytestream2_init(&gbi, buf, buf_size);
 
     rc->range  = FLIF16_RAC_MAX_RANGE;
