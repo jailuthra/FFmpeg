@@ -65,6 +65,9 @@ typedef enum FLIF16TransformTypes {
 };
 
 typedef struct FLIF16TransformContext{
+    // We should likely have a t_no or transform number entry over here.
+    // then we can access the transform functions by simply using an
+    // array access in our generic transform init, read etc. functions
     size_t priv_data_size;
     uint8_t done;
     FLIF16DecoderContext *dec_ctx;
@@ -72,20 +75,20 @@ typedef struct FLIF16TransformContext{
 }FLIF16TransformContext;
 
 typedef struct FLIF16Transform {
-    uint8_t t_no;
+    uint8_t t_no; // Likely useless. Most likely useful in the transform
+                  // context instead
 
     //Functions
     uint8_t (*init) (FLIF16TransformContext*, FLIF16ColorRanges*);
     uint8_t (*read) (FLIF16TransformContext*);
     uint8_t (*forward) (FLIF16TransformContext*, FLIF16InterimPixelData*);
-    uint8_t (*reverse) (FLIF16TransformContext*, 
-                        FLIF16InterimPixelData*, 
-                        uint32_t,
-                        uint32_t);
+    uint8_t (*reverse) (FLIF16TransformContext*, FLIF16InterimPixelData*, 
+                        uint32_t, uint32_t);
 
     FLIF16TransformContext *transform_ctx;
 } FLIF16Transform;
 
+// Either make below function inline or move it to flif16_transform.c
 FLIF16ColorRanges* ff_get_ranges_ycocg( FLIF16InterimPixelData *pixelData,
                                         FLIF16ColorRanges *ranges){
     int p = pixelData->ranges.num_planes;
@@ -94,12 +97,12 @@ FLIF16ColorRanges* ff_get_ranges_ycocg( FLIF16InterimPixelData *pixelData,
     FLIF16ColorVal min, max;
     width = pixelData->width;
     height = pixelData->height;
-    for(i=0; i<p; i++){
+    for (i=0; i<p; i++) {
         min = pixelData->data[p][0];
         max = pixelData->data[p][0];
-        for(r=0; r<pixelData->height; r++){
-            for(c=0; c<pixelData->width; c++){
-                if(min > pixelData->data[p][r*width + c])
+        for (r=0; r<pixelData->height; r++) {
+            for(c=0; c<pixelData->width; c++) {
+                if (min > pixelData->data[p][r*width + c])
                     min = pixelData->data[p][r*width + c];
                 if(max < pixelData->data[p][r*width + c])
                     max = pixelData->data[p][r*width + c];
@@ -141,80 +144,86 @@ FLIF16ColorRanges ff_get_crange_ycocg(  int p,
 */
 
 // Some internal functions for YCoCg Transform.
-static inline int ff_get_min_y(int origmax4){
+static inline int ff_get_min_y(int origmax4)
+{
     return 0;
 }
 
-static inline int ff_get_max_y(int origmax4){
-    return 4*origmax4-1;
+static inline int ff_get_max_y(int origmax4)
+{
+    return 4 * origmax4-1;
 }
 
-static inline int ff_get_min_co(int origmax4, int yval){
-    int newmax = 4*origmax4 - 1;
-    if (yval < origmax4-1)
-        return -3 - 4*yval; 
-    else if (yval >= 3*origmax4)
-        return 4*(yval - newmax);
+static inline int ff_get_min_co(int origmax4, int yval)
+{
+    int newmax = 4 * origmax4 - 1;
+    if (yval < origmax4 - 1)
+        return -3 - 4 * yval; 
+    else if (yval >= 3 * origmax4)
+        return 4 * (yval - newmax);
     else
         return -newmax;
 }
 
-static inline int ff_get_max_co(int origmax4, int yval){
-    int newmax = 4*origmax4 - 1;
+static inline int ff_get_max_co(int origmax4, int yval)
+{
+    int newmax = 4 * origmax4 - 1;
     if (yval < origmax4-1)
-        return 3 + 4*yval; 
-    else if (yval >= 3*origmax4)
-        return 4*(newmax - yval);
+        return 3 + 4 * yval; 
+    else if (yval >= 3 * origmax4)
+        return 4 * (newmax - yval);
     else
         return newmax;
 }
 
-static inline int ff_get_min_cg(int origmax4, int yval, int coval){
-    int newmax = 4*origmax4 - 1;
-    if (yval < origmax4-1)
-        return -2 - 2*yval; 
-    else if (yval >= 3*origmax4)
-        return -2*(newmax-yval) + 2*((abs(coval)+1)/2);
+static inline int ff_get_min_cg(int origmax4, int yval, int coval)
+{
+    int newmax = 4 * origmax4 - 1;
+    if (yval < origmax4 - 1)
+        return -2 - 2 * yval; 
+    else if (yval >= 3 * origmax4)
+        return -2 * (newmax - yval) + 2 * ((abs(coval) + 1) / 2);
     else{
-        return FFMIN(2*yval + 1, 2*newmax - 2*yval - 2*abs(coval)+1)/2;
+        return FFMIN(2 * yval + 1, 2 * newmax - 2 * yval - 2 * abs(coval) + 1) \
+               / 2;
     }
 }
 
 static inline int ff_get_max_cg(int origmax4, int yval, int coval){
-    int newmax = 4*origmax4 - 1;
-    if (yval < origmax4-1)
-        return 1 + 2*yval - 2*(abs(coval)/2); 
-    else if (yval >= 3*origmax4)
-        return 2 * (newmax-yval);
+    int newmax = 4 * origmax4 - 1;
+    if (yval < origmax4 - 1)
+        return 1 + 2 * yval - 2 * (abs(coval) / 2); 
+    else if (yval >= 3 * origmax4)
+        return 2 * (newmax - yval);
     else
-        return FFMIN(2*(yval- newmax), -2*yval - 1 + 2*(abs(coval)/2));
+        return FFMIN(2 * (yval- newmax), -2 * yval - 1 + 2 * (abs(coval) / 2));
 }
 
-static inline int ff_min_range_ycocg(int p, int origmax4){
-    switch(p){
+static inline int ff_min_range_ycocg(int p, int origmax4)
+{
+    switch(p) {
         case 0:
             return 0;
         case 1:
-            return -4*origmax4+1;
+            return -4 * origmax4 + 1;
         case 2:
-            return -4*origmax4+1;
+            return -4 * origmax4 + 1;
         default:
             return 0;
-            break;
     }
 }
 
-static inline int ff_max_range_ycocg(int p, int origmax4){
-    switch(p){
+static inline int ff_max_range_ycocg(int p, int origmax4)
+{
+    switch(p) {
         case 0:
-            return 4*origmax4-1;
+            return 4 * origmax4 - 1;
         case 1:
-            return 4*origmax4-1;
+            return 4 * origmax4 - 1;
         case 2:
-            return 4*origmax4-1;
+            return 4 * origmax4 - 1;
         default:
             return 0;
-            break;
     }
 }
 
