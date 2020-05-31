@@ -62,7 +62,7 @@ typedef struct FLIF16DecoderContext {
     GetByteContext gb;
     FLIF16RangeCoder *rc;
     uint8_t buf[FLIF16_RAC_MAX_RANGE_BYTES]; ///< Storage for initial RAC buffer
-    uint8_t buf_count; ///< Count for initial RAC buffer
+    uint8_t buf_count;   ///< Count for initial RAC buffer
     int state;           ///< The section of the file the parser is in currently.
     unsigned int segment;///< The "segment" the code is supposed to jump to
     int i;               ///< A generic iterator used to save states between
@@ -95,7 +95,7 @@ typedef struct FLIF16DecoderContext {
 } FLIF16DecoderContext;
 
 
-static int flif16_read_header(AVCodecContext *avctx)
+static int ff_flif16_read_header(AVCodecContext *avctx)
 {
     uint8_t temp, count = 3;
     FLIF16DecoderContext *s = avctx->priv_data;
@@ -165,10 +165,10 @@ static int flif16_read_header(AVCodecContext *avctx)
 
 #define RAC_GET(rc, val1, val2, target, type) \
     if (!ff_flif16_rac_process((rc), (val1), (val2), \
-        (uint32_t *) (target), (type))) \
+        (void *) (target), (type))) \
         goto need_more_data;
         
-static int fli16_read_second_header(AVCodecContext *avctx)
+static int ff_flif16_read_second_header(AVCodecContext *avctx)
 {
     uint32_t temp;
     FLIF16DecoderContext *s = avctx->priv_data;
@@ -184,6 +184,8 @@ static int fli16_read_second_header(AVCodecContext *avctx)
         s->rc = ff_flif16_rac_init(&s->gb, s->buf, s->buf_count);
     }
 
+    // The breaks and loop in this switch statement are most likely useless
+    // Remove them
     loop:
     switch (s->segment) {
         default: case 0:
@@ -198,14 +200,12 @@ static int fli16_read_second_header(AVCodecContext *avctx)
             }
             s->i = 0;
             ++s->segment; __PLN__
-            break;
         
         case 1:
             if (s->channels > 3)
                 RAC_GET(s->rc, 0, 1, (uint32_t *) &s->alphazero,
                         FLIF16_RAC_UNI_INT);
             ++s->segment; __PLN__
-            break;
         
         case 2:
             if (s->frames > 1) {
@@ -214,7 +214,6 @@ static int fli16_read_second_header(AVCodecContext *avctx)
                 s->framedelay = av_mallocz(sizeof(*(s->framedelay)) * s->frames);
             }
             ++s->segment; __PLN__
-            break;
         
         case 3:
             if (s->frames > 1) {
@@ -225,14 +224,12 @@ static int fli16_read_second_header(AVCodecContext *avctx)
                 s->i = 0;
             }
             ++s->segment;
-            break;
 
         case 4:
             // Has custom alpha flag
             RAC_GET(s->rc, 0, 1, &temp, FLIF16_RAC_UNI_INT);
             printf("[%s] has_custom_cutoff_alpha = %d\n", __func__, temp);
             ++s->segment;
-            break; 
         
         case 5:
             if (temp)
@@ -244,7 +241,6 @@ static int fli16_read_second_header(AVCodecContext *avctx)
             if (temp)
                 RAC_GET(s->rc, 2, 128, &s->alphadiv, FLIF16_RAC_UNI_INT);
             ++s->segment;
-            break;
 
         case 7:
             if (temp)
@@ -255,9 +251,7 @@ static int fli16_read_second_header(AVCodecContext *avctx)
                 return AVERROR_PATCHWELCOME;
             }
             goto end;
-            break;
     }
-    
     goto loop;
 
     end:
@@ -270,7 +264,7 @@ static int fli16_read_second_header(AVCodecContext *avctx)
 }
 
 
-static int flif16_read_transforms(AVCodecContext *avctx) {
+static int ff_flif16_read_transforms(AVCodecContext *avctx) {
     
     /*
     while (ff_flif16_rac_read_bit(s->rc)) {
@@ -282,12 +276,12 @@ static int flif16_read_transforms(AVCodecContext *avctx) {
     return AVERROR_EOF;
 }
 
-static int flif16_read_pixeldata(AVCodecContext *avctx, AVFrame *p)
+static int ff_flif16_read_pixeldata(AVCodecContext *avctx, AVFrame *p)
 {
     return AVERROR_EOF;
 }
 
-static int flif16_read_checksum(AVCodecContext *avctx)
+static int ff_flif16_read_checksum(AVCodecContext *avctx)
 {
     return AVERROR_EOF;
 }
@@ -309,24 +303,24 @@ static int flif16_decode_frame(AVCodecContext *avctx,
     do {
         switch(s->state) {
             case 0: case FLIF16_HEADER:
-                ret = flif16_read_header(avctx);
+                ret = ff_flif16_read_header(avctx);
                 break;
             
             case FLIF16_SECONDHEADER:
-                ret = fli16_read_second_header(avctx);
+                ret = ff_flif16_read_second_header(avctx);
                 break;
             
             case FLIF16_TRANSFORM:
-                ret = flif16_read_transforms(avctx);
+                ret = ff_flif16_read_transforms(avctx);
                 break;
 
             case FLIF16_PIXELDATA:
                 __PLN__
-                ret = flif16_read_pixeldata(avctx, p);
+                ret = ff_flif16_read_pixeldata(avctx, p);
                 break;
 
             case FLIF16_CHECKSUM:
-                ret = flif16_read_checksum(avctx);
+                ret = ff_flif16_read_checksum(avctx);
                 break;
         }
     } while (!ret);
