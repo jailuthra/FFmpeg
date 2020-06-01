@@ -180,8 +180,8 @@ uint8_t ff_flif16_transform_permuteplanes_init(FLIF16TransformContext *ctx,
                                                      + sizeof(int));
     int p;
     for(p = 0; p < ranges->num_planes; p++){
-    ranges->max[p] = srcRanges->max[p];
-    ranges->min[p] = srcRanges->min[p];
+        ranges->max[p] = srcRanges->max[p];
+        ranges->min[p] = srcRanges->min[p];
     }
     return 1;
 }
@@ -261,7 +261,9 @@ uint8_t ff_flif16_transform_permuteplanes_reverse(
             else{
                 for(p=1; p<3 && p<ranges->num_planes; p++)
                     pixelData->data[permutation[p]][r*width + c] = 
-                    clip(pixel[p] + pixel[0], ranges->min[permutation[p]], ranges->max[permutation[p]]);
+                    clip(pixel[p] + pixel[0],
+                         ranges->min[permutation[p]],
+                         ranges->max[permutation[p]]);
                 for(p=3; p<ranges->num_planes; p++)
                     pixelData->data[permutation[p]][r*width + c] = pixel[p];
             }
