@@ -368,6 +368,7 @@ static inline int ff_flif16_rac_read_nz_int(FLIF16RangeCoder *rc, int min,
             } 
             else
                 rc->have = rc->minabs1;
+            --rc->segment;
             goto loop;
     }
 
