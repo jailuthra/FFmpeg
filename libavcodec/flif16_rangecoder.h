@@ -28,9 +28,9 @@
 #define FLIF16_RANGECODER_H
 
 #include "rangecoder.h"
-#include "flif16.h"
 
 #include "libavutil/mem.h"
+#include "libavutil/intmath.h"
 #include "bytestream.h"
 
 #include <stdio.h> // Remove
@@ -44,14 +44,14 @@
 
 
 typedef struct FLIF16ChanceTable {
-    uint8_t zero_state[4096];
-    uint8_t one_state[4096];
+    uint16_t zero_state[4096];
+    uint16_t one_state[4096];
 } FLIF16ChanceTable;
 
 typedef struct FLIF16Log4kTable {
     uint16_t table[4096];
-    int chance;
-} FLIF16Log4kTable
+    int scale;
+} FLIF16Log4kTable;
 
 typedef struct FLIF16RangeCoder {
     uint32_t range;
@@ -63,6 +63,8 @@ typedef struct FLIF16RangeCoder {
 } FLIF16RangeCoder;
 
 FLIF16RangeCoder *ff_flif16_rac_init(GetByteContext *gb);
+void ff_flif16_chancetable_init(FLIF16RangeCoder *rc, int alpha, int cut);
+void ff_flif16_build_log4k_table(FLIF16RangeCoder *rc);
 
 // NearZero Integer Definitions:
 // Maybe pad with extra 2048s for faster access like in original code.
@@ -79,8 +81,8 @@ static uint16_t flif16_nz_int_chances[20] = {
     2048 // <- mant > 7
 };
 
-#define NZ_INT_ZERO (flif16_nz_int_chances[0])
-#define NZ_INT_SIGN (flif16_nz_int_chances[1])
+#define NZ_INT_ZERO  (flif16_nz_int_chances[0])
+#define NZ_INT_SIGN  (flif16_nz_int_chances[1])
 #define NZ_INT_EXP(k) ((k < 9) ? flif16_nz_int_chances[2 + (k)] : \
                                  flif16_nz_int_chances[11])
 #define NZ_INT_MANT(k) ((k < 8) ? flif16_nz_int_chances[12 + (k)] : \
@@ -121,16 +123,16 @@ static inline uint8_t ff_flif16_rac_read_bit(FLIF16RangeCoder *rc)
 }
 
 static inline uint32_t ff_flif16_rac_read_chance(FLIF16RangeCoder *rc,
-                                                 uint16_t b12, uint32_t range)
+                                                 uint16_t b12)
 {
     // assert((b12 > 0) && (b12 >> 12) == 0);
     uint32_t ret;
     // Optimisation based on CPU bus size (32/64 bit)
-    if (sizeof(range) > 4) 
-        ret = (range * b12 + 0x800) >> 12;
+    if (sizeof(rc->range) > 4) 
+        ret = ((rc->range) * b12 + 0x800) >> 12;
     else 
-        ret = ((((range & 0xFFF) * b12 + 0x800) >> 12) + 
-              ((range >> 12) * b12));
+        ret = ((((rc->range) & 0xFFF) * b12 + 0x800) >> 12) + 
+              (((rc->range) >> 12) * b12);
     
     return ff_flif16_rac_get(rc, ret);
 }
@@ -180,7 +182,8 @@ void inline ff_flif16_chancetable_put(FLIF16RangeCoder *rc,
  * Reads a near-zero encoded symbol into the RAC probability model/chance table;
  * @param chance The symbolchance specified by the NZ_INT_* macros
  */
-uint8_t ff_flif16_rac_read_symbol(FLIF16RangeCoder *rc, uint16_t chance)
+static inline uint8_t ff_flif16_rac_read_symbol(FLIF16RangeCoder *rc,
+                                                uint16_t chance)
 {
     uint8_t bit = ff_flif16_rac_read_chance(rc, chance);
     ff_flif16_chancetable_put(rc, bit, chance);
@@ -194,25 +197,25 @@ static inline int ff_flif16_rac_read_nz_int(FLIF16RangeCoder *rc, int min,
                                             int max)
 {
     // assert(min<=max);
+    uint8_t sign;
     const int amin = 1;
     const int amax = (sign ? max : -min);
-    uint8_t sign;
     
-    const int emax = ff_flif16_ilog2(amax);
-    int e          = ff_flif16_ilog2(amin);
-    int have, left, minabs1, minabs0;
+    const int emax = ff_log2(amax);
+    int e          = ff_log2(amin);
+    int have, left, minabs1, maxabs0;
 
     if (min == max)
         return min;
 
     // assert(min <= 0 && max >= 0); // should always be the case, because guess should always be in valid range
 
-    if (ff_flif16_rac_read_symbol(NZ_INT_ZERO))
+    if (ff_flif16_rac_read_symbol(rc, NZ_INT_ZERO))
         return 0;
 
     if (min < 0) {
         if (max > 0)
-            sign = ff_flif16_rac_read_symbol(NZ_INT_SIGN);
+            sign = ff_flif16_rac_read_symbol(rc, NZ_INT_SIGN);
         else
             sign = 0;
     } else
@@ -222,7 +225,7 @@ static inline int ff_flif16_rac_read_nz_int(FLIF16RangeCoder *rc, int min,
         // if exponent >e is impossible, we are done
         // actually that cannot happen
         //if ((1 << (e+1)) > amax) break;
-        if (ff_flif16_rac_read_symbol(NZ_INT_EXP((e << 1) + sign)))
+        if (ff_flif16_rac_read_symbol(rc, NZ_INT_EXP((e << 1) + sign)))
             break;
     }
 
@@ -236,7 +239,7 @@ static inline int ff_flif16_rac_read_nz_int(FLIF16RangeCoder *rc, int min,
         if (minabs1 > amax) {
             continue;
         } else if (maxabs0 >= amin) { // 0-bit and 1-bit are both possible
-            if (ff_flif16_rac_read_symbol(NZ_INT_MANT(pos)))
+            if (ff_flif16_rac_read_symbol(rc, NZ_INT_MANT(pos)))
                 have = minabs1;
         } 
         else
@@ -250,11 +253,11 @@ static inline int ff_flif16_rac_read_gnz_int(FLIF16RangeCoder *rc, int min,
                                              int max)
 {
     if (min > 0) 
-        return ff_flif16_rac_read_nz_int(0, max - min) + min;
+        return ff_flif16_rac_read_nz_int(rc, 0, max - min) + min;
     else if (max < 0) 
-        return ff_flif16_rac_read_nz_int(min - max, 0) + max;
+        return ff_flif16_rac_read_nz_int(rc, min - max, 0) + max;
     else 
-        return ff_flif16_rac_read_nz_int(min, max);
+        return ff_flif16_rac_read_nz_int(rc, min, max);
 }
 
 #endif /* FLIF16_RANGECODER_H */

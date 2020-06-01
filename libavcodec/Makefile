@@ -76,7 +76,6 @@ OBJS-$(CONFIG_EXIF)                    += exif.o tiff_common.o
 OBJS-$(CONFIG_FAANDCT)                 += faandct.o
 OBJS-$(CONFIG_FAANIDCT)                += faanidct.o
 OBJS-$(CONFIG_FDCTDSP)                 += fdctdsp.o jfdctfst.o jfdctint.o
-OBJS-$(CONFIG_FLIF16_RANGECODER)       += flif16_rangecoder.o
 FFT-OBJS-$(CONFIG_HARDCODED_TABLES)    += cos_tables.o cos_fixed_tables.o
 OBJS-$(CONFIG_FFT)                     += avfft.o fft_fixed.o fft_float.o \
                                           fft_fixed_32.o fft_init_table.o \

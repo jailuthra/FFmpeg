@@ -41,6 +41,7 @@
 enum FLIF16States {
     FLIF16_HEADER = 1,
     FLIF16_SECONDHEADER,
+    FLIF16_TRANSFORM,
     FLIF16_PIXELDATA,
     FLIF16_CHECKSUM
 };
@@ -48,7 +49,7 @@ enum FLIF16States {
 /*
  * TODO determine the minimum packet size
  */
-static int flif16_read_header(AVCodecContext *avctx)
+static int ff_flif16_read_header(AVCodecContext *avctx)
 {
     uint8_t temp, count = 3;
     FLIF16DecoderContext *s = avctx->priv_data;
@@ -115,9 +116,10 @@ static int flif16_read_header(AVCodecContext *avctx)
     return 0;
 }
 
-static int fli16_read_second_header(AVCodecContext *avctx)
+static int ff_fli16_read_second_header(AVCodecContext *avctx)
 {
     uint8_t temp;
+    int prev = -1;
     FLIF16DecoderContext *s = avctx->priv_data;
     s->rc = ff_flif16_rac_init(&s->gb);
     __PLN__
@@ -125,9 +127,10 @@ static int fli16_read_second_header(AVCodecContext *avctx)
     // manner. It takes all the bpps of all channels and then takes the max.
     if (s->bpc == '0')
         for(uint8_t i = 0; i < s->channels; ++i) 
-            s->channelbpc = ((s->channelbpc > 
-                            (temp = (1 << ff_flif16_rac_read_uni_int(s->rc, 1, 15)) - 1)) ?
-                            s->channelbpc : temp);
+            s->channelbpc = ((s->channelbpc >
+                            (temp = (1 <<
+                               ff_flif16_rac_read_uni_int(s->rc, 1, 15)) - 1)) ?
+                             s->channelbpc : temp);
     
     if (s->channels > 3)
         s->alphazero = ff_flif16_rac_read_uni_int(s->rc, 0, 1);
@@ -155,21 +158,39 @@ static int fli16_read_second_header(AVCodecContext *avctx)
     __PLN__
     return AVERROR_EOF; // We are testing upto this point
     
-    // Transformations
+    s->state = FLIF16_PIXELDATA;
+    return 0;
+}
+
+static int ff_flif16_read_transforms(AVCodecContext *avctx) {
+    // Please look at FLIF/src/flif-dec.cpp around line 1440 for details
+    // regarding this
+    FLIF16DecoderContext *s = avctx->priv_data;
+    int temp, prev = -1;
     while (ff_flif16_rac_read_bit(s->rc)) {
         temp = ff_flif16_rac_read_uni_int(s->rc, 0, 13); // Transform number
-        // ff_flif16_transform_process(temp, tlist, rc);
+        // Apparently transforms are supposed to be in prescribed order.
+        if (temp < prev) {
+            av_log(avctx, AV_LOG_ERROR, "transform is invalid\n");
+            return AVERROR(EINVAL);
+        }
+        
+        // Make a pointer array. Do something like:
+        // s->tlist[++s->tlist_top] = ff_flif16_transform_init(temp, ...)
+        // ff_flif16_transform_read(s->tlist[s->tlist_top], ...)
+        // tlist is an array of pointers of FLIF16TransformContexts
+        prev = temp;
     }
     s->state = FLIF16_PIXELDATA;
     return 0;
 }
 
-static int flif16_read_pixeldata(AVCodecContext *avctx, AVFrame *p)
+static int ff_flif16_read_pixeldata(AVCodecContext *avctx, AVFrame *p)
 {
     return AVERROR_EOF;
 }
 
-static int flif16_read_checksum(AVCodecContext *avctx)
+static int ff_flif16_read_checksum(AVCodecContext *avctx)
 {
     return AVERROR_EOF;
 }
@@ -191,30 +212,33 @@ static int flif16_decode_frame(AVCodecContext *avctx,
     do {
         switch(s->state) {
             case 0: case FLIF16_HEADER:
-                ret = flif16_read_header(avctx);
+                ret = ff_flif16_read_header(avctx);
                 break;
             
             case FLIF16_SECONDHEADER:
-                ret = fli16_read_second_header(avctx);
+                ret = ff_fli16_read_second_header(avctx);
+                break;
+            
+            case FLIF16_TRANSFORM:
+                ret = ff_flif16_read_transforms(avctx);
                 break;
 
             case FLIF16_PIXELDATA:
-                __PLN__
-                ret = flif16_read_pixeldata(avctx, p);
+                ret = ff_flif16_read_pixeldata(avctx, p);
                 break;
 
             case FLIF16_CHECKSUM:
-                ret = flif16_read_checksum(avctx);
+                ret = ff_flif16_read_checksum(avctx);
                 break;
         }
     } while (!ret);
 
-    printf("[Decode Result]\n"                \
+    printf("[Decode Result]\n"                  \
            "Width: %u, Height: %u, Frames: %u\n"\
-           "ia: %x bpc: %c channels: %u\n"    \
-           "channelbpc: %u\n"                 \
-           "alphazero: %u custombc: %u\n"     \
-           "cutoff: %u alphadiv: %u \n"       \
+           "ia: %x bpc: %c channels: %u\n"      \
+           "channelbpc: %u\n"                   \
+           "alphazero: %u custombc: %u\n"       \
+           "cutoff: %u alphadiv: %u \n"         \
            "loops: %u\n", s->width, s->height, s->frames, s->ia, s->bpc, 
            s->channels, s->channelbpc, s->alphazero, s->custombc, s->cutoff,
            s->alphadiv, s->loops);
