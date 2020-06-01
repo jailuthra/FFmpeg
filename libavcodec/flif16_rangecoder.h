@@ -267,6 +267,7 @@ static inline int ff_flif16_rac_nz_read_internal(FLIF16RangeCoder *rc,
                                                  int chance, uint8_t *target)
 {
     int flag = 0;
+    // Maybe remove the while loop
     while (!flag) {
         printf("[%s] low = %d range = %d renorm = %d\n", __func__, rc->low, 
                rc->range, rc->renorm);
@@ -297,15 +298,12 @@ static inline int ff_flif16_rac_read_nz_int(FLIF16RangeCoder *rc, int min,
         goto end;
     }
 
-    // Maybe useless
     if (!rc->active) {
-        rc->amin = 1;
-        rc->active = 1;
+        rc->segment = 0;
+        rc->amin    = 1;
+        rc->active  = 1;
     }
-    
-    // The breaks in this switch statement are most likely useless.
-    // Remove them.
-    main_loop:
+
     switch (rc->segment) {
         case 0:
             // ff_flif16_rac_read_symbol(rc, NZ_INT_ZERO, &temp);
@@ -372,8 +370,6 @@ static inline int ff_flif16_rac_read_nz_int(FLIF16RangeCoder *rc, int min,
                 rc->have = rc->minabs1;
             goto loop;
     }
-    
-    goto main_loop;
 
     end:
     *target = ((rc->sign) ? (rc->have) : -(rc->have));
@@ -414,8 +410,8 @@ static inline int ff_flif16_rac_read_gnz_int(FLIF16RangeCoder *rc, int min,
  * 
  * @return 0 on bytestream empty, 1 on successful decoding.
  */
-static inline int ff_flif16_rac_process(FLIF16RangeCoder *rc, uint32_t val1, 
-                                        uint32_t val2, void *target, 
+static inline int ff_flif16_rac_process(FLIF16RangeCoder *rc, int val1, 
+                                        int val2, void *target, 
                                         int type)
 {
     int flag = 0;
@@ -433,7 +429,8 @@ static inline int ff_flif16_rac_process(FLIF16RangeCoder *rc, uint32_t val1,
                 break;
 
             case FLIF16_RAC_UNI_INT:
-                flag = ff_flif16_rac_read_uni_int(rc, val1, val2, (uint32_t *) target);
+                flag = ff_flif16_rac_read_uni_int(rc, val1, val2, 
+                                                  (uint32_t *) target);
                 break;
                 
             case FLIF16_RAC_CHANCE:

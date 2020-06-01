@@ -50,14 +50,6 @@ enum FLIF16States {
     FLIF16_CHECKSUM
 };
 
-typedef struct FLIF16RACQueue {
-    uint32_t val1;
-    uint32_t val2;
-    uint32_t *target;
-    int done;
-    int type;
-} FLIF16RACQueue;
-
 typedef struct FLIF16DecoderContext {
     GetByteContext gb;
     FLIF16RangeCoder *rc;
@@ -184,9 +176,6 @@ static int ff_flif16_read_second_header(AVCodecContext *avctx)
         s->rc = ff_flif16_rac_init(&s->gb, s->buf, s->buf_count);
     }
 
-    // The breaks and loop in this switch statement are most likely useless
-    // Remove them
-    loop:
     switch (s->segment) {
         default: case 0:
             // In original source this is handled in what seems to be a very 
@@ -235,7 +224,6 @@ static int ff_flif16_read_second_header(AVCodecContext *avctx)
             if (temp)
                 RAC_GET(s->rc, 1, 128, &s->cutoff, FLIF16_RAC_UNI_INT);
             ++s->segment;
-            break;
 
         case 6:
             if (temp)
@@ -252,10 +240,10 @@ static int ff_flif16_read_second_header(AVCodecContext *avctx)
             }
             goto end;
     }
-    goto loop;
 
     end:
-    s->state = FLIF16_TRANSFORM;
+    s->state   = FLIF16_TRANSFORM;
+    s->segment = 0;
     return 0;
     
     need_more_data:
