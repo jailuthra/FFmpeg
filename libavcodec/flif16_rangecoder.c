@@ -28,9 +28,22 @@
 
 // TODO write separate function for RAC decoder
 
+// Maybe pad with extra 2048s for faster access like in original code.
+uint16_t flif16_nz_int_chances[20] = {
+    1000, // Zero
+    2048, // Sign
+    
+    // Exponents
+    1000, 1200, 1500, 1750, 2000, 2300, 2800, 2400, 2300, 
+    2048, // <- exp >= 9
+    
+    // Mantisaa
+    1900, 1850, 1800, 1750, 1650, 1600, 1600, 
+    2048 // <- mant > 7
+};
+
 // The coder requires a certain number of bytes for initiialization. buf
 // provides it. gb is used by the coder functions for actual coding.
-
 FLIF16RangeCoder *ff_flif16_rac_init(GetByteContext *gb, 
                                      uint8_t *buf,
                                      uint8_t buf_size)
@@ -126,9 +139,23 @@ void ff_flif16_build_log4k_table(FLIF16RangeCoder *rc)
     rc->log4k->scale = 65535 / 12;
 }
 
-void ff_flif16_chancetable_init(FLIF16RangeCoder *rc, int alpha, int cut) {
+void ff_flif16_chancetable_init(FLIF16RangeCoder *rc, int alpha, int cut)
+{
     rc->chance = 0x800;
     rc->ct = av_mallocz(sizeof(*(rc->ct)));
+    if(!rc->ct)
+        return;
     build_table(rc->ct->zero_state, rc->ct->one_state, 4096, alpha, 4096 - cut);
     ff_flif16_build_log4k_table(rc);
 }
+
+FLIF16ChanceContext *ff_flif16_chancecontext_init(void)
+{
+    FLIF16ChanceContext *ctx = av_malloc(sizeof(flif16_nz_int_chances));
+    if(!ctx)
+        return NULL;
+    memcpy(ctx, flif16_nz_int_chances, sizeof(flif16_nz_int_chances));
+    return ctx;
+}
+    
+    

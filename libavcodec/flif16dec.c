@@ -155,8 +155,8 @@ static int ff_flif16_read_header(AVCodecContext *avctx)
     return 0;
 }
 
-#define RAC_GET(rc, val1, val2, target, type) \
-    if (!ff_flif16_rac_process((rc), (val1), (val2), \
+#define RAC_GET(rc, ctx, val1, val2, target, type) \
+    if (!ff_flif16_rac_process((rc), (ctx), (val1), (val2), \
         (void *) (target), (type))) \
         goto need_more_data;
         
@@ -183,7 +183,7 @@ static int ff_flif16_read_second_header(AVCodecContext *avctx)
             // takes the max.
             if (s->bpc == '0') {
                 for (; s->i < s->channels; ++s->i) {
-                    RAC_GET(s->rc, 1, 15, &temp, FLIF16_RAC_UNI_INT);
+                    RAC_GET(s->rc, NULL, 1, 15, &temp, FLIF16_RAC_UNI_INT);
                     s->channelbpc = FFMAX(s->channelbpc, (1 << temp) - 1);
                 }
             }
@@ -192,13 +192,13 @@ static int ff_flif16_read_second_header(AVCodecContext *avctx)
         
         case 1:
             if (s->channels > 3)
-                RAC_GET(s->rc, 0, 1, (uint32_t *) &s->alphazero,
+                RAC_GET(s->rc, NULL, 0, 1, (uint32_t *) &s->alphazero,
                         FLIF16_RAC_UNI_INT);
             ++s->segment; __PLN__
         
         case 2:
             if (s->frames > 1) {
-                RAC_GET(s->rc, 0, 100, (uint32_t *) &s->loops, 
+                RAC_GET(s->rc, NULL, 0, 100, (uint32_t *) &s->loops, 
                         FLIF16_RAC_UNI_INT);
                 s->framedelay = av_mallocz(sizeof(*(s->framedelay)) * s->frames);
             }
@@ -207,7 +207,7 @@ static int ff_flif16_read_second_header(AVCodecContext *avctx)
         case 3:
             if (s->frames > 1) {
                 for (; (s->i) < (s->frames); ++(s->i)) {
-                    RAC_GET(s->rc, 0, 60000, &(s->framedelay[(s->i)]), 
+                    RAC_GET(s->rc, NULL, 0, 60000, &(s->framedelay[(s->i)]), 
                             FLIF16_RAC_UNI_INT);
                 }
                 s->i = 0;
@@ -216,23 +216,23 @@ static int ff_flif16_read_second_header(AVCodecContext *avctx)
 
         case 4:
             // Has custom alpha flag
-            RAC_GET(s->rc, 0, 1, &temp, FLIF16_RAC_UNI_INT);
+            RAC_GET(s->rc, NULL, 0, 1, &temp, FLIF16_RAC_UNI_INT);
             printf("[%s] has_custom_cutoff_alpha = %d\n", __func__, temp);
             ++s->segment;
         
         case 5:
             if (temp)
-                RAC_GET(s->rc, 1, 128, &s->cutoff, FLIF16_RAC_UNI_INT);
+                RAC_GET(s->rc, NULL, 1, 128, &s->cutoff, FLIF16_RAC_UNI_INT);
             ++s->segment;
 
         case 6:
             if (temp)
-                RAC_GET(s->rc, 2, 128, &s->alphadiv, FLIF16_RAC_UNI_INT);
+                RAC_GET(s->rc, NULL, 2, 128, &s->alphadiv, FLIF16_RAC_UNI_INT);
             ++s->segment;
 
         case 7:
             if (temp)
-                RAC_GET(s->rc, 0, 1, &s->cutoff, FLIF16_RAC_UNI_INT);
+                RAC_GET(s->rc, NULL, 0, 1, &s->cutoff, FLIF16_RAC_UNI_INT);
             if (s->custombc) {
                 av_log(avctx, AV_LOG_ERROR,
                        "custom bitchances not implemented\n");
