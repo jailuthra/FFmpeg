@@ -243,8 +243,8 @@ static inline void ff_flif16_chancetable_put(FLIF16RangeCoder *rc,
 }
 
 /**
- * Reads a near-zero encoded symbol into the RAC probability model/chance table;
- * @param chance The symbol chance specified by the NZ_INT_* macros
+ * Reads a near-zero encoded symbol into the RAC probability model/chance table
+ * @param type The symbol chance specified by the NZ_INT_* macros
  */
 
 static inline uint8_t ff_flif16_rac_read_symbol(FLIF16RangeCoder *rc,
@@ -298,7 +298,8 @@ static inline int ff_flif16_rac_nz_read_internal(FLIF16RangeCoder *rc,
 }
 
 #define RAC_NZ_GET(rc, ctx, chance, target) \
-    if (!ff_flif16_rac_nz_read_internal((rc), (ctx), (chance), (uint8_t *) (target))) {\
+    if (!ff_flif16_rac_nz_read_internal((rc), (ctx), (chance), \
+                                        (uint8_t *) (target))) {\
         goto need_more_data; \
     }
 
@@ -351,7 +352,8 @@ static inline int ff_flif16_rac_read_nz_int(FLIF16RangeCoder *rc,
             for (; (rc->e) < (rc->emax); (rc->e++)) {
                 /*ff_flif16_rac_read_symbol(rc, NZ_INT_EXP((rc->e << 1) + rc->sign),
                                             &temp);*/
-                RAC_NZ_GET(rc, ctx, NZ_INT_EXP(((rc->e) << 1) + rc->sign), &(temp));
+                RAC_NZ_GET(rc, ctx, NZ_INT_EXP(((rc->e) << 1) + rc->sign), \
+                           &(temp));
                 if (temp)
                     break;
             }
@@ -460,12 +462,14 @@ static inline int ff_flif16_rac_process(FLIF16RangeCoder *rc,
             
             case FLIF16_RAC_NZ_INT:
                 // handle nz_ints
-                flag = ff_flif16_rac_read_nz_int(rc, ctx, val1, val2, (int *) target);
+                flag = ff_flif16_rac_read_nz_int(rc, ctx, val1, val2, 
+                                                 (int *) target);
                 break;
             
             case FLIF16_RAC_GNZ_INT:
                 // handle gnz_ints
-                flag = ff_flif16_rac_read_gnz_int(rc, ctx, val1, val2, (int *) target);
+                flag = ff_flif16_rac_read_gnz_int(rc, ctx, val1, val2, 
+                                                  (int *) target);
                 break;
             
             default:
