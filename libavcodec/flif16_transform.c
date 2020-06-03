@@ -29,7 +29,32 @@
 #include "libavutil/common.h"
 
 // Replace by av_clip functions
-#define CLIP(x,l,u) ((x) > (u) ? (u) : ((x) < (l) ? (l) : (x))
+#define CLIP(x,l,u) (x) > (u) ? (u) : ((x) < (l) ? (l) : (x))
+
+FLIF16ColorRanges* ff_get_ranges_ycocg( FLIF16InterimPixelData *pixelData,
+                                        FLIF16ColorRanges *ranges){
+    int p = pixelData->ranges.num_planes;
+    ranges->num_planes = p;
+    int i, c, r, width, height;
+    FLIF16ColorVal min, max;
+    width = pixelData->width;
+    height = pixelData->height;
+    for (i=0; i<p; i++) {
+        min = pixelData->data[p][0];
+        max = pixelData->data[p][0];
+        for (r=0; r<pixelData->height; r++) {
+            for(c=0; c<pixelData->width; c++) {
+                if (min > pixelData->data[p][r*width + c])
+                    min = pixelData->data[p][r*width + c];
+                if(max < pixelData->data[p][r*width + c])
+                    max = pixelData->data[p][r*width + c];
+            }
+        }
+        ranges->min[p] = min;
+        ranges->max[p] = max;
+    }
+    return ranges;
+}
  
 uint8_t ff_flif16_transform_ycocg_read(FLIF16TransformContext *ctx)
 {
@@ -185,11 +210,7 @@ uint8_t ff_flif16_transform_permuteplanes_init(FLIF16TransformContext *ctx,
     FLIF16ColorRanges *ranges = (FLIF16ColorRanges *) (ctx->priv_data 
                                                      + sizeof(int));
     int p;
-<<<<<<< HEAD
-    for(p = 0; p < ranges->num_planes; p++){
-=======
     for (p = 0; p < ranges->num_planes; p++) {
->>>>>>> 9194dba269ca249010b09aec3d67a8f33e52c989
         ranges->max[p] = srcRanges->max[p];
         ranges->min[p] = srcRanges->min[p];
     }
@@ -268,27 +289,17 @@ uint8_t ff_flif16_transform_permuteplanes_reverse(
             if (!(*subtract)) {
                 for (p=1; p<ranges->num_planes; p++)
                     pixelData->data[permutation[p]][r*width + c] = pixel[p];
-<<<<<<< HEAD
-            }
-            else{
-                for(p=1; p<3 && p<ranges->num_planes; p++)
-                    pixelData->data[permutation[p]][r*width + c] = 
-                    clip(pixel[p] + pixel[0],
-                         ranges->min[permutation[p]],
-                         ranges->max[permutation[p]]);
-                for(p=3; p<ranges->num_planes; p++)
-=======
             } else {
                 for (p=1; p<3 && p<ranges->num_planes; p++)
                     pixelData->data[permutation[p]][r*width + c] =         \
                     CLIP(pixel[p] + pixel[0], ranges->min[permutation[p]], \
                          ranges->max[permutation[p]]);
                 for (p=3; p<ranges->num_planes; p++)
->>>>>>> 9194dba269ca249010b09aec3d67a8f33e52c989
                     pixelData->data[permutation[p]][r*width + c] = pixel[p];
             }
         }
     }
+    return 1;
 }
 
 // t_no is likely useless
@@ -328,14 +339,10 @@ FLIF16Transform *flif16_transforms[13] = {
     
 };
 
-FLIF16Transform* process(int t_no, FLIF16DecoderContext *s)
+FLIF16Transform* ff_flif16_transform_process(int t_no, FLIF16DecoderContext *s)
 {
     FLIF16Transform *t = flif16_transforms[t_no];
-    // Unlike C++, the void pointer returned by malloc is automatically
-    // converted to the desired type of LHS (since all pointer types are
-    // ultimately void). C++ however requires you to cast your pointers.
-    t->transform_ctx = (FLIF16TransformContext*)
-                       av_mallocz(sizeof(FLIF16TransformContext));
+    t->transform_ctx = av_mallocz(sizeof(FLIF16TransformContext));
     t->transform_ctx->dec_ctx = s;
     t->read(t->transform_ctx);
     return t;

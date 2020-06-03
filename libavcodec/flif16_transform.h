@@ -90,29 +90,8 @@ typedef struct FLIF16Transform {
 
 // Either make below function inline or move it to flif16_transform.c
 FLIF16ColorRanges* ff_get_ranges_ycocg( FLIF16InterimPixelData *pixelData,
-                                        FLIF16ColorRanges *ranges){
-    int p = pixelData->ranges.num_planes;
-    ranges->num_planes = p;
-    int i, c, r, width, height;
-    FLIF16ColorVal min, max;
-    width = pixelData->width;
-    height = pixelData->height;
-    for (i=0; i<p; i++) {
-        min = pixelData->data[p][0];
-        max = pixelData->data[p][0];
-        for (r=0; r<pixelData->height; r++) {
-            for(c=0; c<pixelData->width; c++) {
-                if (min > pixelData->data[p][r*width + c])
-                    min = pixelData->data[p][r*width + c];
-                if(max < pixelData->data[p][r*width + c])
-                    max = pixelData->data[p][r*width + c];
-            }
-        }
-        ranges->min[p] = min;
-        ranges->max[p] = max;
-    }
-    return ranges;
-}
+                                        FLIF16ColorRanges *ranges);
+                                        
 /*
 FLIF16ColorRanges ff_get_crange_ycocg(  int p,
                                 FLIF16ColorVal* prevPlanes,
@@ -226,5 +205,27 @@ static inline int ff_max_range_ycocg(int p, int origmax4)
             return 0;
     }
 }
+
+uint8_t ff_flif16_transform_ycocg_read(FLIF16TransformContext *ctx);
+uint8_t ff_flif16_transform_ycocg_init(FLIF16TransformContext *ctx, 
+                                       FLIF16ColorRanges *srcRanges);
+uint8_t ff_flif16_transform_ycocg_forward(FLIF16TransformContext *ctx,
+                                          FLIF16InterimPixelData * pixelData);
+uint8_t ff_flif16_transform_ycocg_reverse(FLIF16TransformContext *ctx,
+                                          FLIF16InterimPixelData * pixelData,
+                                          uint32_t strideRow,
+                                          uint32_t strideCol);
+
+uint8_t ff_flif16_transform_permuteplanes_read(FLIF16TransformContext * ctx);
+uint8_t ff_flif16_transform_permuteplanes_init(FLIF16TransformContext *ctx, 
+                                               FLIF16ColorRanges *srcRanges);
+uint8_t ff_flif16_transform_permuteplanes_forward(
+                                            FLIF16TransformContext *ctx,
+                                            FLIF16InterimPixelData * pixelData);
+uint8_t ff_flif16_transform_permuteplanes_reverse(
+                                        FLIF16TransformContext *ctx,
+                                        FLIF16InterimPixelData * pixelData,
+                                        uint32_t strideRow,
+                                        uint32_t strideCol);
 
 FLIF16Transform* ff_flif16_transform_process(int t_no, FLIF16DecoderContext *s);
