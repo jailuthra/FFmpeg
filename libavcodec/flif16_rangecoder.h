@@ -288,7 +288,7 @@ static inline int ff_flif16_rac_nz_read_internal(FLIF16RangeCoder *rc,
     while (!flag) {
         printf("[%s] low = %d range = %d renorm = %d\n", __func__, rc->low, 
                rc->range, rc->renorm);
-        if(rc->renorm) {
+        if (rc->renorm) {
             if(!ff_flif16_rac_renorm(rc))
                 return 0; // EAGAIN condition
         }
@@ -476,5 +476,10 @@ static inline int ff_flif16_rac_process(FLIF16RangeCoder *rc,
 
     return 1;
 }
+
+#define RAC_GET(rc, ctx, val1, val2, target, type) \
+    if (!ff_flif16_rac_process((rc), (ctx), (val1), (val2), \
+        (void *) (target), (type))) \
+        goto need_more_data;
 
 #endif /* FLIF16_RANGECODER_H */

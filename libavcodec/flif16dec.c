@@ -155,11 +155,6 @@ static int ff_flif16_read_header(AVCodecContext *avctx)
     return 0;
 }
 
-#define RAC_GET(rc, ctx, val1, val2, target, type) \
-    if (!ff_flif16_rac_process((rc), (ctx), (val1), (val2), \
-        (void *) (target), (type))) \
-        goto need_more_data;
-        
 static int ff_flif16_read_second_header(AVCodecContext *avctx)
 {
     uint32_t temp;
