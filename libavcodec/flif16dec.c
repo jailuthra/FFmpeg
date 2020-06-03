@@ -50,43 +50,6 @@ enum FLIF16States {
     FLIF16_CHECKSUM
 };
 
-typedef struct FLIF16DecoderContext {
-    GetByteContext gb;
-    FLIF16RangeCoder *rc;
-    uint8_t buf[FLIF16_RAC_MAX_RANGE_BYTES]; ///< Storage for initial RAC buffer
-    uint8_t buf_count;   ///< Count for initial RAC buffer
-    int state;           ///< The section of the file the parser is in currently.
-    unsigned int segment;///< The "segment" the code is supposed to jump to
-    int i;               ///< A generic iterator used to save states between
-                         ///  for loops.
-    // Primary Header
-    uint8_t ia;          ///< Is image interlaced or/and animated or not
-    uint8_t bpc;         ///< Bytes per channel
-    uint8_t channels;    ///< Number of channels
-    uint8_t varint;      ///< Number of varints to process in sequence
-    
-    // Secondary Header
-    uint8_t  channelbpc; ///< bpc per channel. Size == 1 if bpc == '0' 
-                         ///  else equal to number of frames
-    
-    // Flags. TODO Merge all these flags
-    uint8_t alphazero;   ///< Alphazero
-    uint8_t custombc;    ///< Custom Bitchance
-
-    uint8_t cutoff; 
-    uint8_t alphadiv;
-
-    uint8_t loops;       ///< Number of times animation loops
-    uint16_t *framedelay;///< Frame delay for each frame
-    
-    // Dimensions and other things.
-    uint32_t width;
-    uint32_t height;
-    uint32_t frames;
-    uint32_t meta;      ///< Size of a meta chunk
-} FLIF16DecoderContext;
-
-
 static int ff_flif16_read_header(AVCodecContext *avctx)
 {
     uint8_t temp, count = 3;
@@ -172,7 +135,7 @@ static int ff_flif16_read_second_header(AVCodecContext *avctx)
     }
 
     switch (s->segment) {
-        default: case 0:
+        case 0:
             // In original source this is handled in what seems to be a very 
             // bogus manner. It takes all the bpps of all channels and then 
             // takes the max.
@@ -239,6 +202,7 @@ static int ff_flif16_read_second_header(AVCodecContext *avctx)
     end:
     s->state   = FLIF16_TRANSFORM;
     s->segment = 0;
+    return AVERROR_EOF; // Remove this when testing out transforms.
     return 0;
     
     need_more_data:
@@ -247,26 +211,35 @@ static int ff_flif16_read_second_header(AVCodecContext *avctx)
 }
 
 
-static int ff_flif16_read_transforms(AVCodecContext *avctx) {
-    
-    /*
-    while (ff_flif16_rac_read_bit(s->rc)) {
-        temp = ff_flif16_rac_read_uni_int(s->rc, 0, 13); // Transform number
-        // Apparently transforms are supposed to be in prescribed order.
-        if (temp < prev) {
-            av_log(avctx, AV_LOG_ERROR, "transform is invalid\n");
-            return AVERROR(EINVAL);
-        }
+static int ff_flif16_read_transforms(AVCodecContext *avctx)
+{
+    // Note the comment on line 205
+    FLIF16DecoderContext *s = avctx->priv_data;
+    uint32_t temp;
+
+    start:
+    switch (s->segment) {
+        case 0:
+            RAC_GET(s->rc, NULL, 0, 0, &temp, FLIF16_RAC_BIT);
+            if(!temp)
+                goto end;
+            // Make a pointer array. Do something like:
+            // s->tlist[++s->tlist_top] = ff_flif16_transform_init(temp, ...)
+            // tlist is an array of pointers of FLIF16TransformContexts
+            ++s->segment;
         
-        // Make a pointer array. Do something like:
-        // s->tlist[++s->tlist_top] = ff_flif16_transform_init(temp, ...)
-        // ff_flif16_transform_read(s->tlist[s->tlist_top], ...)
-        // tlist is an array of pointers of FLIF16TransformContexts
-        prev = temp;
+        case 2:
+            // ff_flif16_transform_read(s->tlist[s->tlist_top], ...)
+            s->segment = 0;
+            goto start;
+        
     }
-    */
     
-    return AVERROR_EOF;
+    end:
+    return 0;
+
+    need_more_data:
+    return AVERROR(EAGAIN);
 }
 
 static int ff_flif16_read_pixeldata(AVCodecContext *avctx, AVFrame *p)
