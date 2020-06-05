@@ -43,12 +43,14 @@ void ff_flif16_maniac_ni_prop_ranges_init(uint32_t *prop_ranges[2],
 
     if (property < 3) {
         for (int i = 0; i < property; i++)
-            prop_ranges[top++] = {RANGE_MIN(ranges, pp), RANGE_MAX(ranges, pp)};  // pixels on previous planes
+            RANGE_SET(prop_ranges[top++], RANGE_MIN(ranges, pp), 
+                      RANGE_MAX(ranges, pp));  // pixels on previous planes
         if (channels > 3) 
-            prop_ranges[top++] = {RANGE_MIN(ranges, 3), RANGE_MAX(ranges, 3)};  // pixel on alpha plane
+            RANGE_SET(prop_ranges[top++], RANGE_MIN(ranges, 3),
+                      RANGE_MAX(ranges, 3));  // pixel on alpha plane
     }
-    prop_ranges[top++] = {min, max};  // guess (median of 3)
-    prop_ranges[top++] = {0, 2};      // which predictor was it
+    RANGE_SET(prop_ranges[top++], min, max);  // guess (median of 3)
+    RANGE_SET(prop_ranges[top++], 0, 2);      // which predictor was it
     for (int i = 0; i < 5; ++i)
-        prop_ranges[top + i] = {mind, maxd};
+        RANGE_SET(prop_ranges[top + i], mind, maxd);
 }
