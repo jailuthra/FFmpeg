@@ -30,6 +30,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include "flif16_rangecoder.h"
+#include "flif16_transform.h"
 // Remove this
 #define __PLN__ printf("At: [%s] %s, %d\n", __func__, __FILE__, __LINE__);
 #define FF_FLIF16_VARINT_APPEND(a,x) a = (a << 7) | (uint64_t) (x & 127)
@@ -70,6 +71,8 @@ typedef struct FLIF16DecoderContext {
     uint32_t height;
     uint32_t frames;
     uint32_t meta;      ///< Size of a meta chunk
+    //TODO Allocate memory equal to number of channels and initialize them.
+    FLIF16ColorRanges *srcRanges;
 } FLIF16DecoderContext;
 
 #endif /* AVCODEC_FLIF16_H */
