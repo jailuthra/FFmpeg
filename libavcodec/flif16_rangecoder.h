@@ -62,6 +62,23 @@ typedef struct FLIF16Log4kTable {
     int scale;
 } FLIF16Log4kTable;
 
+
+typedef struct FLIF16MANIACNode {
+    int8_t property;         
+    int16_t count;
+    // typedef int32_t ColorVal; 
+    int32_t split_val;
+    uint32_t child_id;
+    uint32_t leaf_id;
+    uint8_t p;
+    int32_t range[2];
+    // probably safe to use only uint16
+    //uint16_t childID;
+    //uint16_t leafID;
+    // PropertyDecisionNode(int p=-1, int s=0, int c=0) : property(p), count(0), splitval(s), childID(c), leafID(0) {}
+} FLIF16MANIACNode;
+
+
 // rc->renorm may be useless. Check.
 
 typedef struct FLIF16RangeCoder {
@@ -79,15 +96,31 @@ typedef struct FLIF16RangeCoder {
     
     // nz_int state management
     uint8_t segment; ///< The "segment" the function currently is in
-    uint8_t  sign;
+    uint8_t sign;
     int amin, amax, emax, e, have, left, minabs1, maxabs0, pos;
+    
+    // maniac tree state management
+    size_t top;
+    size_t size;
 
-    // There needs to be a chance context.
-    // nz_int uses different individual chances for each 0, sign, exp and mant
     FLIF16ChanceTable *ct;
     FLIF16Log4kTable *log4k;
     GetByteContext *gb;
 } FLIF16RangeCoder;
+
+// Maybe pad with extra 2048s for faster access like in original code.
+static uint16_t flif16_nz_int_chances[20] = {
+    1000, // Zero
+    2048, // Sign
+    
+    // Exponents
+    1000, 1200, 1500, 1750, 2000, 2300, 2800, 2400, 2300, 
+    2048, // <- exp >= 9
+    
+    // Mantisaa
+    1900, 1850, 1800, 1750, 1650, 1600, 1600, 
+    2048 // <- mant > 7
+};
 
 // NearZero Integer Definitions:
 extern uint16_t flif16_nz_int_chances[20];
@@ -132,10 +165,6 @@ static inline int ff_flif16_rac_renorm(FLIF16RangeCoder *rc)
 static inline uint8_t ff_flif16_rac_get(FLIF16RangeCoder *rc, uint32_t chance,
                                         uint8_t *target)
 {
-    // assert(rc->chance > 0);
-    // assert(rc->chance < rc->range);
-
-    // printf("[%s] low: %u range: %u chance: %u\n", __func__, rc->low, rc->range, chance);
     if (rc->renorm) {
         printf("[%s] Triggered\n", __func__);
         return 0;
@@ -170,8 +199,7 @@ static inline uint32_t ff_flif16_rac_read_chance(FLIF16RangeCoder *rc,
         printf("[%s] Triggered\n", __func__);
         return 0;
     }
-    // assert((b12 > 0) && (b12 >> 12) == 0);
-    // Optimisation based on CPU bus size (32/64 bit)
+
     if (sizeof(rc->range) > 4) 
         ret = ((rc->range) * b12 + 0x800) >> 12;
     else 
@@ -188,7 +216,6 @@ static inline int ff_flif16_rac_read_uni_int(FLIF16RangeCoder *rc,
                                              uint32_t min, uint32_t len,
                                              uint32_t *target)
 {
-    // assert(len >= 0);
     int med;
     uint8_t bit;
 
@@ -212,7 +239,6 @@ static inline int ff_flif16_rac_read_uni_int(FLIF16RangeCoder *rc,
         } else {
             rc->len = med;
         }
-        //__PLN__
         printf("[%s] min = %d , len = %d\n", __func__, rc->min, rc->len);
         return 0;
     } else {
@@ -255,28 +281,6 @@ static inline uint8_t ff_flif16_rac_read_symbol(FLIF16RangeCoder *rc,
     ff_flif16_chancetable_put(rc, ctx, type, *target);
     return 1;
 }
-
-/*
-    bool read(SymbolChanceBitType typ, int i = 0)
-    {
-        BitChance& bch = ctx.bit(typ, i);
-        bool bit = rac.read_12bit_chance(bch.get_12bit());
-        bch.put(bit, table);
-        return bit;
-    }
-    uint16_t inline get_12bit() const
-    {
-        return chance;
-    }
-    void set_12bit(uint16_t chance)
-    {
-        this->chance = chance;
-    }
-    void inline put(bool bit, const Table &table)
-    {
-        chance = table.next[bit][chance];
-    }
- */
 
 static inline int ff_flif16_rac_nz_read_internal(FLIF16RangeCoder *rc,
                                                  FLIF16ChanceContext *ctx,
@@ -324,7 +328,6 @@ static inline int ff_flif16_rac_read_nz_int(FLIF16RangeCoder *rc,
 
     switch (rc->segment) {
         case 0:
-            // ff_flif16_rac_read_symbol(rc, NZ_INT_ZERO, &temp);
             RAC_NZ_GET(rc, ctx, NZ_INT_SIGN, &(temp));
             if (temp) {
                 *target = 0;
@@ -335,7 +338,6 @@ static inline int ff_flif16_rac_read_nz_int(FLIF16RangeCoder *rc,
         case 1:
             if (min < 0) {
                 if (max > 0) {
-                    // ff_flif16_rac_read_symbol(rc, NZ_INT_SIGN, &(rc->sign));
                     RAC_NZ_GET(rc, ctx, NZ_INT_SIGN, &(rc->sign));
                 } else
                     rc->sign = 0;
@@ -349,8 +351,6 @@ static inline int ff_flif16_rac_read_nz_int(FLIF16RangeCoder *rc,
 
         case 2:
             for (; (rc->e) < (rc->emax); (rc->e++)) {
-                /*ff_flif16_rac_read_symbol(rc, NZ_INT_EXP((rc->e << 1) + rc->sign),
-                                            &temp);*/
                 RAC_NZ_GET(rc, ctx, NZ_INT_EXP(((rc->e) << 1) + rc->sign), \
                            &(temp));
                 if (temp)
@@ -367,7 +367,7 @@ static inline int ff_flif16_rac_read_nz_int(FLIF16RangeCoder *rc,
          * for(pos = e; pos > 0; --pos) ...
          */ 
         case 3:
-            loop:
+            loop: // start for
             if ((rc->pos) <= 0)
                 goto end;
             --(rc->pos);
@@ -378,7 +378,7 @@ static inline int ff_flif16_rac_read_nz_int(FLIF16RangeCoder *rc,
         
         case 4:
             if ((rc->minabs1) > (rc->amax)) {
-                goto loop;
+                goto loop; // continue;
             } else if ((rc->maxabs0) >= (rc->amin)) {
                 // ff_flif16_rac_read_symbol(rc, NZ_INT_MANT(rc->pos), &temp);
                 RAC_NZ_GET(rc, ctx, NZ_INT_MANT(rc->pos), &temp)
@@ -388,7 +388,7 @@ static inline int ff_flif16_rac_read_nz_int(FLIF16RangeCoder *rc,
             else
                 rc->have = rc->minabs1;
             --rc->segment;
-            goto loop;
+            goto loop; // end for
     }
 
     end:
@@ -422,13 +422,87 @@ static inline int ff_flif16_rac_read_gnz_int(FLIF16RangeCoder *rc,
     return ret;
 }
 
+// We have ended up with a pretty bad recurrence relation over here.
+
+/*
+static inline int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
+                                             uint32_t *ranges[2],
+                                             FLIF16MANIACNode *tree)
+{
+    FLIF16MANIACNode *temp;
+    int p;
+
+    if (!rc->active) {
+        rc->segment = 0;
+        rc->active  = 1;
+        rc->size = TREE_BASE_SIZE;
+        tree = av_malloc(sizeof(*tree) * TREE_BASE_SIZE);
+    }
+
+    switch (rc->segment) {
+        case 0:
+            temp = tree[stack[top]];
+            ++rc->segment;
+
+        case 1:
+            start;
+            if(stack empty)
+                goto end;
+            
+            // int p = tree[stack[top]].property = coder[0].read_int2(0,nb_properties) - 1;
+            RAC_GET(rc, rc->ctx[0], 0, nb_properties, &tree[stack[top]].property
+                    FLIF16_RAC_GNZ_INT)
+            p = tree[stack[top]].property;
+            
+            if (p == -1) {
+                stack[top--];
+                goto start;
+            }
+            
+            oldmin = subrange[p].first;
+            oldmax = subrange[p].second;
+            if (oldmin >= oldmax) {
+                goto end; // error
+            }
+            ++rc->segment;
+        
+        case 2:
+            //tree[stack[top]].count = coder[1].read_int2(CONTEXT_TREE_MIN_COUNT, 
+            //                                            CONTEXT_TREE_MAX_COUNT);
+            RAC_GET(rc, rc->ctx[1], 0, nb_properties, &tree[stack[top]].count
+                    FLIF16_RAC_GNZ_INT)
+            ++rc->segment;
+        
+        case 3:
+            // int splitval = n.splitval = coder[2].read_int2(oldmin, oldmax-1);
+            RAC_GET(rc, rc->ctx[2], 0, nb_properties, &tree[stack[top]].property
+                    FLIF16_RAC_GNZ_INT)
+            ++rc->segment;
+        
+        case 4:
+            if((top + 3) > size)
+                // realloc
+            int childID = n.childID = top + 1
+            // > splitval
+            
+            goto start;
+    }
+    
+    end:
+    return 1;
+    
+    need_more_data:
+    return 0;
+}
+*/
+
 /**
  * Reads an integer encoded by FLIF's RAC.
- * @param val1 A generic value, chosen according to the required type
- * @param val2 Same as val1
- * @param target The place where the resultant value should be written to
- * @param type The type of the integer to be decoded specified by FLIF16RACTypes
- * 
+ * @param[in]  val1 A generic value, chosen according to the required type
+ * @param[in]  val2 Same as val1
+ * @param[out] target The place where the resultant value should be written to
+ * @param[in]  type The type of the integer to be decoded specified by 
+ *             FLIF16RACTypes
  * @return 0 on bytestream empty, 1 on successful decoding.
  */
 static inline int ff_flif16_rac_process(FLIF16RangeCoder *rc,

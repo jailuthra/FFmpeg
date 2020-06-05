@@ -56,29 +56,25 @@ static int ff_flif16_read_header(AVCodecContext *avctx)
     FLIF16DecoderContext *s = avctx->priv_data;
     // TODO Make do without this array
     uint32_t *vlist[] = { &s->width, &s->height, &s->frames };
-    // Minimum size has empirically found to be 14 bytes.
-    __PLN__
-    /*
-    if (bytestream2_size(&s->gb) < 14) {
+    // Minimum size has empirically found to be 8 bytes.
+
+    if (bytestream2_size(&s->gb) < 8) {
         av_log(avctx, AV_LOG_ERROR, "buf size too small (%d)\n", 
                bytestream2_size(&s->gb));
         return AVERROR(EINVAL);
-    }*/
-    __PLN__
+    }
+
     if (bytestream2_get_le32(&s->gb) != (*((uint32_t *) flif16_header))) {
         av_log(avctx, AV_LOG_ERROR, "bad magic number\n");
         return AVERROR(EINVAL);
     }
-    __PLN__
+
     s->state = FLIF16_HEADER;
 
     temp = bytestream2_get_byte(&s->gb);
     s->ia       = temp >> 4;
     s->channels = (0x0F & temp);
     s->bpc      = bytestream2_get_byte(&s->gb);
-    __PLN__
-    // Will be later updated by the secondary header step, if bpc = 3
-    s->channelbpc = (s->bpc == '1') ? 8 : 16;
     
     // Handle dimensions and frames
     for(int i = 0; i < 2 + ((s->ia > 4) ? 1 : 0); ++i) {
@@ -144,7 +140,14 @@ static int ff_flif16_read_second_header(AVCodecContext *avctx)
                     RAC_GET(s->rc, NULL, 1, 15, &temp, FLIF16_RAC_UNI_INT);
                     s->channelbpc = FFMAX(s->channelbpc, (1 << temp) - 1);
                 }
-            }
+            } else
+                s->bpc = (s->bpc == '1') ? 255 : 65535;
+            s->i = 0;
+            
+            s->ranges = av_malloc(s->channels * sizeof(*(s->channel_value_ranges)));
+            for (; s->i < s->channels; ++s->i)
+                RANGE_SET(s->ranges[i], 0, s->bpc);
+
             s->i = 0;
             ++s->segment; __PLN__
         
@@ -228,7 +231,7 @@ static int ff_flif16_read_transforms(AVCodecContext *avctx)
             // tlist is an array of pointers of FLIF16TransformContexts
             ++s->segment;
         
-        case 2:
+        case 1:
             // ff_flif16_transform_read(s->tlist[s->tlist_top], ...)
             s->segment = 0;
             goto start;

@@ -28,20 +28,6 @@
 
 // TODO write separate function for RAC decoder
 
-// Maybe pad with extra 2048s for faster access like in original code.
-uint16_t flif16_nz_int_chances[20] = {
-    1000, // Zero
-    2048, // Sign
-    
-    // Exponents
-    1000, 1200, 1500, 1750, 2000, 2300, 2800, 2400, 2300, 
-    2048, // <- exp >= 9
-    
-    // Mantisaa
-    1900, 1850, 1800, 1750, 1650, 1600, 1600, 
-    2048 // <- mant > 7
-};
-
 // The coder requires a certain number of bytes for initiialization. buf
 // provides it. gb is used by the coder functions for actual coding.
 FLIF16RangeCoder *ff_flif16_rac_init(GetByteContext *gb, 
