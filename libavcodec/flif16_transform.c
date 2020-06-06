@@ -28,9 +28,6 @@
 #include "flif16_rangecoder.h"
 #include "libavutil/common.h"
 
-// Replace by av_clip functions
-#define CLIP(x,l,u) (x) > (u) ? (u) : ((x) < (l) ? (l) : (x))
-
 FLIF16ColorRanges* ff_get_ranges( FLIF16InterimPixelData *pixel_data,
                                         FLIF16ColorRanges *ranges){
     int p = pixel_data->ranges.num_planes;
@@ -464,7 +461,7 @@ int ff_flif16_transform_read(FLIF16TransformContext *c, FLIF16DecoderContext *s)
         return 0;
     FLIF16Transform *t = flif16_transforms[c->t_no];
     if(t->read)
-        return t->read(c, s)
+        return t->read(c, s);
     else
         return 1;
 }
