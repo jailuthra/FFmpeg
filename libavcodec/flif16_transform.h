@@ -40,19 +40,6 @@
 
 typedef int16_t FLIF16ColorVal;
 
-typedef struct {
-    FLIF16ColorVal min[MAX_PLANES], max[MAX_PLANES];
-    int num_planes;
-} FLIF16ColorRanges;
-
-typedef struct{
-    uint8_t initialized;            //FLAG : initialized or not.
-    int height, width;
-    FLIF16ColorVal *data[MAX_PLANES];
-    FLIF16ColorRanges ranges;
-} FLIF16InterimPixelData;
-
-
 // This may be useless
 typedef enum FLIF16TransformTypes {
     FLIF16_TRANSFORM_CHANNELCOMPACT = 0,
@@ -275,6 +262,6 @@ uint8_t ff_flif16_transform_channelcompact_reverse(
 int ff_flif16_transform_read(FLIF16TransformContext *c, 
                              FLIF16DecoderContext *s);
 FLIF16TransformContext *ff_flif16_transform_init(int t_no, 
-                                                 FLIF16DecoderContext *s)
+                                                 FLIF16DecoderContext *s);
 
 #endif
