@@ -30,23 +30,6 @@
 #include "flif16.h"
 #include "libavutil/common.h"
 
-#define MAX_PLANES 5
-
-typedef int16_t FLIF16ColorVal;
-
-typedef struct {
-    FLIF16ColorVal min[MAX_PLANES], max[MAX_PLANES];
-    int num_planes;
-} FLIF16ColorRanges;
-
-typedef struct{
-    uint8_t initialized;            //FLAG : initialized or not.
-    int height, width;
-    FLIF16ColorVal *data[MAX_PLANES];
-    FLIF16ColorRanges ranges;
-} FLIF16InterimPixelData;
-
-
 // This may be useless
 typedef enum FLIF16TransformTypes {
     FLIF16_TRANSFORM_CHANNELCOMPACT = 0,
@@ -77,10 +60,10 @@ typedef struct FLIF16Transform {
     uint8_t priv_data_size;
     //Functions
     uint8_t (*init) (FLIF16TransformContext*, FLIF16DecoderContext*);
-    uint8_t (*read) (FLIF16TransformContext*, FLIF16DecoderContext);
-    uint8_t (*forward) (FLIF16TransformContext*, FLIF16DecoderContext, 
+    uint8_t (*read) (FLIF16TransformContext*, FLIF16DecoderContext*);
+    uint8_t (*forward) (FLIF16TransformContext*, FLIF16DecoderContext *, 
                         FLIF16InterimPixelData*);
-    uint8_t (*reverse) (FLIF16TransformContext*, FLIF16DecoderContext, 
+    uint8_t (*reverse) (FLIF16TransformContext*, FLIF16DecoderContext *, 
                         FLIF16InterimPixelData*, 
                         uint32_t, uint32_t);
 } FLIF16Transform;
@@ -108,7 +91,7 @@ typedef struct transform_priv_channelcompact{
     FLIF16ChanceContext ctx_a;
 }transform_priv_channelcompact;
 
-FLIF16ColorRanges* ff_get_ranges( FLIF16InterimPixelData *pixelData,
+FLIF16ColorRanges* ff_get_ranges( FLIF16InterimPixelData *pixel_data,
                                   FLIF16ColorRanges *ranges);
 
 /*
@@ -229,12 +212,12 @@ uint8_t ff_flif16_transform_ycocg_init(FLIF16TransformContext *ctx,
                                        FLIF16DecoderContext *dec_ctx);
 uint8_t ff_flif16_transform_ycocg_forward(FLIF16TransformContext *ctx,
                                           FLIF16DecoderContext *dec_ctx,
-                                          FLIF16InterimPixelData * pixelData);
+                                          FLIF16InterimPixelData * pixel_data);
 uint8_t ff_flif16_transform_ycocg_reverse(FLIF16TransformContext *ctx,
                                           FLIF16DecoderContext *dec_ctx,
-                                          FLIF16InterimPixelData * pixelData,
-                                          uint32_t strideRow,
-                                          uint32_t strideCol);
+                                          FLIF16InterimPixelData * pixel_data,
+                                          uint32_t stride_row,
+                                          uint32_t stride_col);
 
 uint8_t ff_flif16_transform_permuteplanes_read(FLIF16TransformContext * ctx,
                                                FLIF16DecoderContext *dec_ctx);
@@ -243,13 +226,13 @@ uint8_t ff_flif16_transform_permuteplanes_init(FLIF16TransformContext *ctx,
 uint8_t ff_flif16_transform_permuteplanes_forward(
                                             FLIF16TransformContext *ctx,
                                             FLIF16DecoderContext *dec_ctx,
-                                            FLIF16InterimPixelData * pixelData);
+                                            FLIF16InterimPixelData * pixel_data);
 uint8_t ff_flif16_transform_permuteplanes_reverse(
                                         FLIF16TransformContext *ctx,
                                         FLIF16DecoderContext *dec_ctx,
-                                        FLIF16InterimPixelData * pixelData,
-                                        uint32_t strideRow,
-                                        uint32_t strideCol);
+                                        FLIF16InterimPixelData * pixel_data,
+                                        uint32_t stride_row,
+                                        uint32_t stride_col);
 
 uint8_t ff_flif16_transform_channelcompact_read(FLIF16TransformContext * ctx,
                                                FLIF16DecoderContext *dec_ctx);
@@ -258,15 +241,15 @@ uint8_t ff_flif16_transform_channelcompact_init(FLIF16TransformContext *ctx,
 //uint8_t ff_flif16_transform_channelcompact_forward(
 //                                            FLIF16TransformContext *ctx,
 //                                            FLIF16DecoderContext *dec_ctx,
-//                                            FLIF16InterimPixelData * pixelData);
+//                                            FLIF16InterimPixelData * pixel_data);
 uint8_t ff_flif16_transform_channelcompact_reverse(
                                         FLIF16TransformContext *ctx,
                                         FLIF16DecoderContext *dec_ctx,
-                                        FLIF16InterimPixelData * pixelData,
-                                        uint32_t strideRow,
-                                        uint32_t strideCol);
+                                        FLIF16InterimPixelData * pixel_data,
+                                        uint32_t stride_row,
+                                        uint32_t stride_col);
 
-FLIF16TransformContext* ff_flif16_transform_read(FLIF16TransformContext *c, 
+int ff_flif16_transform_read(FLIF16TransformContext *c, 
+                             FLIF16DecoderContext *s);
+FLIF16TransformContext* ff_flif16_transform_init(int t_no, 
                                                  FLIF16DecoderContext *s);
-FLIF16TransformContext *ff_flif16_transform_init(int t_no, 
-                                                 FLIF16DecoderContext *s)

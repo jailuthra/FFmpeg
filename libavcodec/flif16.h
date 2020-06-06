@@ -32,15 +32,28 @@
 
 #include "avcodec.h"
 #include "flif16_rangecoder.h"
-#include "flif16_transform.h"
 // Remove this
 #define __PLN__ printf("At: [%s] %s, %d\n", __func__, __FILE__, __LINE__);
 #define FF_FLIF16_VARINT_APPEND(a,x) a = (a << 7) | (uint64_t) (x & 127)
 #define RANGE_MIN(ranges, channels, p) (((p) > (channels)) ? 0 : (ranges)[p][0])
 #define RANGE_MAX(ranges, channels, p) (((p) > (channels)) ? 0 : (ranges)[p][1])
 #define RANGE_SET(range, l, h) (range[0] = l, range[1] = h)
-
+#define MAX_PLANES 5
 static const uint8_t flif16_header[4] = "FLIF";
+
+typedef int16_t FLIF16ColorVal;
+
+typedef struct {
+    FLIF16ColorVal min[MAX_PLANES], max[MAX_PLANES];
+    int num_planes;
+} FLIF16ColorRanges;
+
+typedef struct{
+    uint8_t initialized;            //FLAG : initialized or not.
+    int height, width;
+    FLIF16ColorVal *data[MAX_PLANES];
+    FLIF16ColorRanges ranges;
+} FLIF16InterimPixelData;
 
 typedef struct FLIF16DecoderContext {
     GetByteContext gb;
@@ -77,10 +90,11 @@ typedef struct FLIF16DecoderContext {
     // Dimensions and other things.
     uint32_t width;
     uint32_t height;
-    uint32_t frames;
+    //Renamed it because frames is already defined above.
+    //Change it to whatever you like.
+    uint32_t no_frames;
     uint32_t meta;      ///< Size of a meta chunk
-    //TODO Allocate memory equal to number of channels and initialize them.
-    FLIF16ColorRanges *srcRanges;
+    FLIF16ColorRanges src_ranges;
 } FLIF16DecoderContext;
 
 
