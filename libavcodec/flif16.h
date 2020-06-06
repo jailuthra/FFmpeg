@@ -40,6 +40,8 @@
 #define RANGE_MAX(ranges, channels, p) (((p) > (channels)) ? 0 : (ranges)[p][1])
 #define RANGE_SET(range, l, h) (range[0] = l, range[1] = h)
 
+#define MAX_PLANES 5
+
 static const uint8_t flif16_header[4] = "FLIF";
 
 typedef int16_t FLIF16ColorVal;
@@ -92,7 +94,7 @@ typedef struct FLIF16DecoderContext {
     uint32_t height;
     //Renamed it because frames is already defined above.
     //Change it to whatever you like.
-    uint32_t no_frames;
+    uint32_t frames;
     uint32_t meta;      ///< Size of a meta chunk
     FLIF16ColorRanges src_ranges;
 } FLIF16DecoderContext;
