@@ -463,10 +463,8 @@ int ff_flif16_transform_read(FLIF16TransformContext *c, FLIF16DecoderContext *s)
     if(!c)
         return 0;
     FLIF16Transform *t = flif16_transforms[c->t_no];
-    if(t->read){
-        if(!t->read(c, s))
-            return 0;
-    }
-
-    return 1;
+    if(t->read)
+        return t->read(c, s)
+    else
+        return 1;
 }

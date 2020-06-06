@@ -136,19 +136,20 @@ static int ff_flif16_read_second_header(AVCodecContext *avctx)
             // bogus manner. It takes all the bpps of all channels and then 
             // takes the max.
             if (s->bpc == '0') {
+                s->bpc = 0;
                 for (; s->i < s->channels; ++s->i) {
                     RAC_GET(s->rc, NULL, 1, 15, &temp, FLIF16_RAC_UNI_INT);
-                    s->channelbpc = FFMAX(s->channelbpc, (1 << temp) - 1);
+                    s->bpc = FFMAX(s->bpc, (1 << temp) - 1);
                 }
             } else
                 s->bpc = (s->bpc == '1') ? 255 : 65535;
             s->i = 0;
-            
-            s->ranges = av_malloc(s->channels * sizeof(*(s->channel_value_ranges)));
-            for (; s->i < s->channels; ++s->i)
-                RANGE_SET(s->ranges[i], 0, s->bpc);
 
-            s->i = 0;
+            s->ranges =  av_malloc(2 * s->channels * sizeof(**(s->ranges)));
+            for (int i = 0; i < s->channels; ++i)
+                RANGE_SET(s->ranges[i], 0, s->bpc);
+            // for(int i = 0; i < s->channels; ++i)
+            //     s->src_ranges->max[i] = s->bpc;
             ++s->segment; __PLN__
         
         case 1:
@@ -296,12 +297,11 @@ static int flif16_decode_frame(AVCodecContext *avctx,
 
     printf("[Decode Result]\n"                  \
            "Width: %u, Height: %u, Frames: %u\n"\
-           "ia: %x bpc: %c channels: %u\n"      \
-           "channelbpc: %u\n"                   \
+           "ia: %x bpc: %u channels: %u\n"      \
            "alphazero: %u custombc: %u\n"       \
            "cutoff: %u alphadiv: %u \n"         \
            "loops: %u\n", s->width, s->height, s->frames, s->ia, s->bpc, 
-           s->channels, s->channelbpc, s->alphazero, s->custombc, s->cutoff,
+           s->channels, s->alphazero, s->custombc, s->cutoff,
            s->alphadiv, s->loops);
     if (s->framedelay) {
         printf("Framedelays:\n");

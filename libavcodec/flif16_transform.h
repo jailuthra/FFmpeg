@@ -24,6 +24,9 @@
  * Transforms for FLIF16.
  */
  
+#ifndef FLIF16_TRANSFORM_H
+#define FLIF16_TRANSFORM_H
+
 #include <stdint.h>
 
 #include "avcodec.h"
@@ -62,7 +65,7 @@ typedef enum FLIF16TransformTypes {
     FLIF16_TRANSFORM_DUPLICATEFRAME,
     FLIF16_TRANSFORM_FRAMESHAPE,
     FLIF16_TRANSFORM_FRAMELOOKBACK
-};
+} FLIF16TransformTypes;
 
 typedef struct FLIF16TransformContext{
     uint8_t t_no;
@@ -270,3 +273,5 @@ FLIF16TransformContext* ff_flif16_transform_read(FLIF16TransformContext *c,
                                                  FLIF16DecoderContext *s);
 FLIF16TransformContext *ff_flif16_transform_init(int t_no, 
                                                  FLIF16DecoderContext *s)
+
+#endif

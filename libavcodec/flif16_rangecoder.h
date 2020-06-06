@@ -122,8 +122,6 @@ static uint16_t flif16_nz_int_chances[20] = {
     2048 // <- mant > 7
 };
 
-// NearZero Integer Definitions:
-extern uint16_t flif16_nz_int_chances[20];
 
 #define NZ_INT_ZERO (0)
 #define NZ_INT_SIGN (1)
@@ -423,13 +421,13 @@ static inline int ff_flif16_rac_read_gnz_int(FLIF16RangeCoder *rc,
 }
 
 // We have ended up with a pretty bad recurrence relation over here.
-
 /*
-static inline int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
-                                             uint32_t *ranges[2],
+static inline int ff_flif16_read_maniac_tree(FLIF16DecoderContext *s,
+                                             FLIF16MANIACContext *m,
                                              FLIF16MANIACNode *tree)
 {
     FLIF16MANIACNode *temp;
+    FLIF16RangeCoder = s->rc;
     int p;
 
     if (!rc->active) {
