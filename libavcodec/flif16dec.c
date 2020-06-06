@@ -145,11 +145,11 @@ static int ff_flif16_read_second_header(AVCodecContext *avctx)
                 s->bpc = (s->bpc == '1') ? 255 : 65535;
             s->i = 0;
 
-            s->ranges =  av_malloc(2 * s->channels * sizeof(**(s->ranges)));
+            s->ranges = av_malloc(s->channels * sizeof(*(s->ranges)));
             for (int i = 0; i < s->channels; ++i)
                 RANGE_SET(s->ranges[i], 0, s->bpc);
-            // for(int i = 0; i < s->channels; ++i)
-            //     s->src_ranges->max[i] = s->bpc;
+            //for(int i = 0; i < s->channels; ++i)
+            //    s->src_ranges->max[i] = s->bpc;
             ++s->segment; __PLN__
         
         case 1:
