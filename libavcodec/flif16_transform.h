@@ -65,7 +65,7 @@ typedef enum FLIF16TransformTypes {
     FLIF16_TRANSFORM_DUPLICATEFRAME,
     FLIF16_TRANSFORM_FRAMESHAPE,
     FLIF16_TRANSFORM_FRAMELOOKBACK
-} FLIF16TransformTypes;
+};
 
 typedef struct FLIF16TransformContext{
     uint8_t t_no;

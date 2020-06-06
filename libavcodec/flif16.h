@@ -42,6 +42,20 @@
 
 static const uint8_t flif16_header[4] = "FLIF";
 
+typedef int16_t FLIF16ColorVal;
+
+typedef struct {
+    FLIF16ColorVal min[MAX_PLANES], max[MAX_PLANES];
+    int num_planes;
+} FLIF16ColorRanges;
+
+typedef struct{
+    uint8_t initialized;            //FLAG : initialized or not.
+    int height, width;
+    FLIF16ColorVal *data[MAX_PLANES];
+    FLIF16ColorRanges ranges;
+} FLIF16InterimPixelData;
+
 typedef struct FLIF16DecoderContext {
     GetByteContext gb;
     FLIF16RangeCoder *rc;
@@ -76,11 +90,11 @@ typedef struct FLIF16DecoderContext {
     // Dimensions and other things.
     uint32_t width;
     uint32_t height;
-    uint32_t frames;
+    //Renamed it because frames is already defined above.
+    //Change it to whatever you like.
+    uint32_t no_frames;
     uint32_t meta;      ///< Size of a meta chunk
-    
-    //TODO Allocate memory equal to number of channels and initialize them.
-    // FLIF16ColorRanges src_ranges;
+    FLIF16ColorRanges src_ranges;
 } FLIF16DecoderContext;
 
 typedef struct FLIF16MANICContext {
