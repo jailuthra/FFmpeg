@@ -61,8 +61,8 @@ typedef enum FLIF16TransformTypes {
 
 typedef struct FLIF16TransformContext{
     uint8_t t_no;
-    unsigned int segment;
-    int i;
+    unsigned int segment;     //segment the code is executing in.
+    int i;                    //variable to store iteration number.
     size_t priv_data_size;
     uint8_t done;
     void *priv_data;
