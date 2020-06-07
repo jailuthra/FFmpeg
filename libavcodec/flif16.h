@@ -32,7 +32,6 @@
 
 #include "avcodec.h"
 #include "flif16_rangecoder.h"
-// #include "flif16_transform.h"
 
 // Remove this
 #define __PLN__ printf("At: [%s] %s, %d\n", __func__, __FILE__, __LINE__);
@@ -44,6 +43,7 @@
 #define RANGE_MIN(ranges, channels, p) (((p) > (channels)) ? 0 : (ranges)[p][0])
 #define RANGE_MAX(ranges, channels, p) (((p) > (channels)) ? 0 : (ranges)[p][1])
 #define RANGE_SET(range, l, h) (range[0] = l, range[1] = h)
+
 #define MAX_PLANES 5
 
 static const uint8_t flif16_header[4] = "FLIF";
@@ -99,10 +99,10 @@ typedef struct FLIF16DecoderContext {
     FLIF16RangeCoder *rc;
     uint8_t buf[FLIF16_RAC_MAX_RANGE_BYTES]; ///< Storage for initial RAC buffer
     uint8_t buf_count;    ///< Count for initial RAC buffer
-    int state;            ///< The section of the file the parser is in currently
+    int state;            ///< The section of the file the parser is in currently.
     unsigned int segment; ///< The "segment" the code is supposed to jump to
     int i;                ///< A generic iterator used to save states between
-                          ///  for loops
+                          ///  for loops.
     // Primary Header     
     uint8_t ia;           ///< Is image interlaced or/and animated or not
     uint32_t bpc;         ///< Bytes per channel
@@ -133,5 +133,10 @@ typedef struct FLIF16DecoderContext {
     uint32_t meta;      ///< Size of a meta chunk
     FLIF16ColorRanges src_ranges;
 } FLIF16DecoderContext;
+
+typedef struct FLIF16MANICContext {
+    
+    
+} FLIF16MANIAContext;
 
 #endif /* AVCODEC_FLIF16_H */

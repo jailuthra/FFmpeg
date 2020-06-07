@@ -35,20 +35,10 @@
 
 #define MAX_PLANES 5
 
+// Replace by av_clip functions
+#define CLIP(x,l,u) (x) > (u) ? (u) : ((x) < (l) ? (l) : (x))
+
 typedef int16_t FLIF16ColorVal;
-
-typedef struct {
-    FLIF16ColorVal min[MAX_PLANES], max[MAX_PLANES];
-    int num_planes;
-} FLIF16ColorRanges;
-
-typedef struct{
-    uint8_t initialized;            //FLAG : initialized or not.
-    int height, width;
-    FLIF16ColorVal *data[MAX_PLANES];
-    FLIF16ColorRanges ranges;
-} FLIF16InterimPixelData;
-
 
 // This may be useless
 typedef enum FLIF16TransformTypes {
@@ -80,10 +70,10 @@ typedef struct FLIF16Transform {
     uint8_t priv_data_size;
     //Functions
     uint8_t (*init) (FLIF16TransformContext*, FLIF16DecoderContext*);
-    uint8_t (*read) (FLIF16TransformContext*, FLIF16DecoderContext);
-    uint8_t (*forward) (FLIF16TransformContext*, FLIF16DecoderContext, 
+    uint8_t (*read) (FLIF16TransformContext*, FLIF16DecoderContext*);
+    uint8_t (*forward) (FLIF16TransformContext*, FLIF16DecoderContext*, 
                         FLIF16InterimPixelData*);
-    uint8_t (*reverse) (FLIF16TransformContext*, FLIF16DecoderContext, 
+    uint8_t (*reverse) (FLIF16TransformContext*, FLIF16DecoderContext*, 
                         FLIF16InterimPixelData*, 
                         uint32_t, uint32_t);
 } FLIF16Transform;
@@ -269,9 +259,9 @@ uint8_t ff_flif16_transform_channelcompact_reverse(
                                         uint32_t strideRow,
                                         uint32_t strideCol);
 
-FLIF16TransformContext* ff_flif16_transform_read(FLIF16TransformContext *c, 
-                                                 FLIF16DecoderContext *s);
+int ff_flif16_transform_read(FLIF16TransformContext *c, 
+                             FLIF16DecoderContext *s);
 FLIF16TransformContext *ff_flif16_transform_init(int t_no, 
-                                                 FLIF16DecoderContext *s)
+                                                 FLIF16DecoderContext *s);
 
 #endif
