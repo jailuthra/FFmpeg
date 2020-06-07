@@ -64,10 +64,12 @@ typedef struct FLIF16InterimPixelData {
 
 typedef struct FLIF16MANIACStack {
     unsigned int id;
+    int p;
     int min;
     int max;
     int max2;
-    int mode;
+    uint8_t mode;
+    uint8_t visited;
 } FLIF16MANIACStack;
 
 typedef struct FLIF16MANIACNode {
