@@ -313,7 +313,12 @@ uint8_t ff_flif16_transform_channelcompact_read(FLIF16TransformContext * ctx,
         data->ctx_a = ff_flif16_chancecontext_init();
     }
 
+    FLIF16ColorRanges srcRanges = s->src_ranges;
+
     unsigned int nb;
+    int remaining;
+
+    start:
     switch (ctx->segment) {
         case 0:
             if(!ctx->i){
@@ -322,30 +327,39 @@ uint8_t ff_flif16_transform_channelcompact_read(FLIF16TransformContext * ctx,
                     data->CPalette[p]       = 0;
                     data->CPalette_size[p]  = 0;
                 }
-                data->min = 0;
             }
-            for (; ctx->i < s->channels; ++ctx->i) {
-                RAC_GET(s->rc, data->ctx_a, 0, 255, &nb, FLIF16_RAC_NZ_INT);
+            if(ctx->i < s->channels) {
+                RAC_GET(s->rc, data->ctx_a,
+                        0, srcRanges.max(ctx->i) - srcRanges.min(ctx->i),
+                        &nb, FLIF16_RAC_NZ_INT);
                 nb += 1;
+                data->min = srcRanges.min(ctx->i);
                 data->CPalette[ctx->i] = av_mallocz(nb*sizeof(FLIF16ColorVal));
                 data->CPalette_size[ctx->i] = nb;
-                
-                int remaining = nb-1;
-                for (; data->i < nb; ++data->i) {
-                    RAC_GET(s->rc, data->ctx_a, 0, 255-data->min-remaining,
-                            &data->CPalette[ctx->i][data->i], 
-                            FLIF16_RAC_NZ_INT);
-                    data->CPalette[ctx->i][data->i] += data->min;
-                    //Basically I want to perform this operation :
-                    //CPalette[p][i] = min + read_nz_int(0, 255-min-remaining);
-                    data->min = data->CPalette[ctx->i][data->i]+1;
-                    remaining--;
-                }
-                data->min = 0;   //Might have to change 0 and 255 later.
+                remaining = nb-1;
+                ++ctx->segment;
+                goto next_case;
             }
-            ctx->i = 0;    
-            ++ctx->segment;
+            ctx->i = 0;
             goto end;
+        
+        next_case:
+        case 1:
+            for (; data->i < nb; ++data->i) {
+                RAC_GET(s->rc, data->ctx_a,
+                        0, srcRanges.max(ctx->i)-data->min-remaining,
+                        &data->CPalette[ctx->i][data->i], 
+                        FLIF16_RAC_NZ_INT);
+                data->CPalette[ctx->i][data->i] += data->min;
+                //Basically I want to perform this operation :
+                //CPalette[p][i] = min + read_nz_int(0, 255-min-remaining);
+                data->min = data->CPalette[ctx->i][data->i]+1;
+                remaining--;
+            }
+            data->i = 0;
+            ctx->segment--;
+            ctx->i++;
+            goto start;
     }
     
     end:
@@ -391,6 +405,14 @@ uint8_t ff_flif16_transform_channelcompact_reverse(
     return 1;
 }
 
+FLIF16Transform flif16_transform_channelcompact = {
+    .priv_data_size = sizeof(transform_priv_channelcompact),
+    .init           = &ff_flif16_transform_channelcompact_init,
+    .read           = &ff_flif16_transform_channelcompact_read,
+    //.forward        = &ff_flif16_transform_channelcompact_forward,
+    .reverse        = &ff_flif16_transform_channelcompact_reverse 
+};
+
 FLIF16Transform flif16_transform_ycocg = {
     .priv_data_size = sizeof(transform_priv_ycocg),
     .init           = &ff_flif16_transform_ycocg_init,
@@ -407,13 +429,6 @@ FLIF16Transform flif16_transform_permuteplanes = {
     .reverse        = &ff_flif16_transform_permuteplanes_reverse 
 };
 
-FLIF16Transform flif16_transform_channelcompact = {
-    .priv_data_size = sizeof(transform_priv_channelcompact),
-    .init           = &ff_flif16_transform_channelcompact_init,
-    .read           = &ff_flif16_transform_channelcompact_read,
-    //.forward        = &ff_flif16_transform_channelcompact_forward,
-    .reverse        = &ff_flif16_transform_channelcompact_reverse 
-};
 
 FLIF16Transform *flif16_transforms[13] = {
     &flif16_transform_channelcompact,
@@ -430,7 +445,6 @@ FLIF16Transform *flif16_transforms[13] = {
     NULL, // FLIF16_TRANSFORM_FRAMESHAPE,
     NULL  // FLIF16_TRANSFORM_FRAMELOOKBACK
 };
-
 
 FLIF16TransformContext* ff_flif16_transform_init(int t_no, 
                                                  FLIF16DecoderContext *s)
