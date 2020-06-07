@@ -134,9 +134,4 @@ typedef struct FLIF16DecoderContext {
     FLIF16ColorRanges src_ranges;
 } FLIF16DecoderContext;
 
-typedef struct FLIF16MANICContext {
-    
-    
-} FLIF16MANIAContext;
-
 #endif /* AVCODEC_FLIF16_H */
