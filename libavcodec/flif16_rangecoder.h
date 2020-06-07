@@ -62,21 +62,31 @@ typedef struct FLIF16Log4kTable {
     int scale;
 } FLIF16Log4kTable;
 
+// Maybe pad with extra 2048s for faster access like in original code.
+static uint16_t flif16_nz_int_chances[20] = {
+    1000, // Zero
+    2048, // Sign
+    
+    // Exponents
+    1000, 1200, 1500, 1750, 2000, 2300, 2800, 2400, 2300, 
+    2048, // <- exp >= 9
+    
+    // Mantisaa
+    1900, 1850, 1800, 1750, 1650, 1600, 1600, 
+    2048 // <- mant > 7
+};
 
-typedef struct FLIF16MANIACNode {
-    int8_t property;         
-    int16_t count;
-    // typedef int32_t ColorVal; 
-    int32_t split_val;
-    uint32_t child_id;
-    uint32_t leaf_id;
-    uint8_t p;
-    int32_t range[2];
-    // probably safe to use only uint16
-    //uint16_t childID;
-    //uint16_t leafID;
-    // PropertyDecisionNode(int p=-1, int s=0, int c=0) : property(p), count(0), splitval(s), childID(c), leafID(0) {}
-} FLIF16MANIACNode;
+
+#define NZ_INT_ZERO (0)
+#define NZ_INT_SIGN (1)
+#define NZ_INT_EXP(k) (((k) < 9) ? (2 + (k)) : 11)
+#define NZ_INT_MANT(k) (((k) < 8) ? (12 + (k)) : 19)
+
+
+// Maybe rename to symbol context
+typedef struct FLIF16ChanceContext {
+    uint16_t data[sizeof(flif16_nz_int_chances)];
+} FLIF16ChanceContext;
 
 
 // rc->renorm may be useless. Check.
@@ -107,30 +117,6 @@ typedef struct FLIF16RangeCoder {
     FLIF16Log4kTable *log4k;
     GetByteContext *gb;
 } FLIF16RangeCoder;
-
-// Maybe pad with extra 2048s for faster access like in original code.
-static uint16_t flif16_nz_int_chances[20] = {
-    1000, // Zero
-    2048, // Sign
-    
-    // Exponents
-    1000, 1200, 1500, 1750, 2000, 2300, 2800, 2400, 2300, 
-    2048, // <- exp >= 9
-    
-    // Mantisaa
-    1900, 1850, 1800, 1750, 1650, 1600, 1600, 
-    2048 // <- mant > 7
-};
-
-
-#define NZ_INT_ZERO (0)
-#define NZ_INT_SIGN (1)
-#define NZ_INT_EXP(k) ((k < 9) ? (2 + (k)) : 11)
-#define NZ_INT_MANT(k) ((k < 8) ? (12 + (k)) : 19)
-
-
-// Maybe rename to symbol context
-typedef uint16_t FLIF16ChanceContext;
 
 FLIF16RangeCoder *ff_flif16_rac_init(GetByteContext *gb, uint8_t *buf,
                                      uint8_t buf_size);
@@ -261,8 +247,8 @@ static inline void ff_flif16_chancetable_put(FLIF16RangeCoder *rc,
                                              FLIF16ChanceContext *ctx,
                                              uint16_t type, uint8_t bit)
 {
-    ctx[type] = (!bit) ? rc->ct->zero_state[ctx[type]]
-                       : rc->ct->one_state[ctx[type]];
+    ctx->data[type] = (!bit) ? rc->ct->zero_state[ctx->data[type]]
+                             : rc->ct->one_state[ctx->data[type]];
 }
 
 /**
@@ -275,7 +261,7 @@ static inline uint8_t ff_flif16_rac_read_symbol(FLIF16RangeCoder *rc,
                                                 uint16_t type, 
                                                 uint8_t *target)
 {
-    ff_flif16_rac_read_chance(rc, ctx[type], target);
+    ff_flif16_rac_read_chance(rc, ctx->data[type], target);
     ff_flif16_chancetable_put(rc, ctx, type, *target);
     return 1;
 }
@@ -420,79 +406,6 @@ static inline int ff_flif16_rac_read_gnz_int(FLIF16RangeCoder *rc,
     return ret;
 }
 
-// We have ended up with a pretty bad recurrence relation over here.
-/*
-static inline int ff_flif16_read_maniac_tree(FLIF16DecoderContext *s,
-                                             FLIF16MANIACContext *m,
-                                             FLIF16MANIACNode *tree)
-{
-    FLIF16MANIACNode *temp;
-    FLIF16RangeCoder = s->rc;
-    int p;
-
-    if (!rc->active) {
-        rc->segment = 0;
-        rc->active  = 1;
-        rc->size = TREE_BASE_SIZE;
-        tree = av_malloc(sizeof(*tree) * TREE_BASE_SIZE);
-    }
-
-    switch (rc->segment) {
-        case 0:
-            temp = tree[stack[top]];
-            ++rc->segment;
-
-        case 1:
-            start;
-            if(stack empty)
-                goto end;
-            
-            // int p = tree[stack[top]].property = coder[0].read_int2(0,nb_properties) - 1;
-            RAC_GET(rc, rc->ctx[0], 0, nb_properties, &tree[stack[top]].property
-                    FLIF16_RAC_GNZ_INT)
-            p = tree[stack[top]].property;
-            
-            if (p == -1) {
-                stack[top--];
-                goto start;
-            }
-            
-            oldmin = subrange[p].first;
-            oldmax = subrange[p].second;
-            if (oldmin >= oldmax) {
-                goto end; // error
-            }
-            ++rc->segment;
-        
-        case 2:
-            //tree[stack[top]].count = coder[1].read_int2(CONTEXT_TREE_MIN_COUNT, 
-            //                                            CONTEXT_TREE_MAX_COUNT);
-            RAC_GET(rc, rc->ctx[1], 0, nb_properties, &tree[stack[top]].count
-                    FLIF16_RAC_GNZ_INT)
-            ++rc->segment;
-        
-        case 3:
-            // int splitval = n.splitval = coder[2].read_int2(oldmin, oldmax-1);
-            RAC_GET(rc, rc->ctx[2], 0, nb_properties, &tree[stack[top]].property
-                    FLIF16_RAC_GNZ_INT)
-            ++rc->segment;
-        
-        case 4:
-            if((top + 3) > size)
-                // realloc
-            int childID = n.childID = top + 1
-            // > splitval
-            
-            goto start;
-    }
-    
-    end:
-    return 1;
-    
-    need_more_data:
-    return 0;
-}
-*/
 
 /**
  * Reads an integer encoded by FLIF's RAC.

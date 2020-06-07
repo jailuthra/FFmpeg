@@ -33,13 +33,17 @@
 #include "avcodec.h"
 #include "flif16_rangecoder.h"
 // #include "flif16_transform.h"
+
 // Remove this
 #define __PLN__ printf("At: [%s] %s, %d\n", __func__, __FILE__, __LINE__);
+
+#define MANIAC_TREE_BASE_SIZE 16
+#define MANIAC_TREE_MIN_COUNT 1
+#define MANIAC_TREE_MAX_COUNT 512
 #define FF_FLIF16_VARINT_APPEND(a,x) a = (a << 7) | (uint64_t) (x & 127)
 #define RANGE_MIN(ranges, channels, p) (((p) > (channels)) ? 0 : (ranges)[p][0])
 #define RANGE_MAX(ranges, channels, p) (((p) > (channels)) ? 0 : (ranges)[p][1])
 #define RANGE_SET(range, l, h) (range[0] = l, range[1] = h)
-
 #define MAX_PLANES 5
 
 static const uint8_t flif16_header[4] = "FLIF";
@@ -58,15 +62,47 @@ typedef struct FLIF16InterimPixelData {
     FLIF16ColorRanges ranges;
 } FLIF16InterimPixelData;
 
+typedef struct FLIF16MANIACStack {
+    unsigned int id;
+    int min;
+    int max;
+    int max2;
+    int mode;
+} FLIF16MANIACStack;
+
+typedef struct FLIF16MANIACNode {
+    int8_t property;         
+    int16_t count;
+    // typedef int32_t ColorVal; 
+    int32_t split_val;
+    uint32_t child_id;
+    uint32_t leaf_id;
+    // probably safe to use only uint16
+    //uint16_t childID;
+    //uint16_t leafID;
+    // PropertyDecisionNode(int p=-1, int s=0, int c=0) : property(p), count(0), splitval(s), childID(c), leafID(0) {}
+} FLIF16MANIACNode;
+
+typedef struct FLIF16MANIACContext {
+    FLIF16MANIACNode *tree;
+    FLIF16MANIACStack *stack;
+    FLIF16ChanceContext *ctx[3];
+    unsigned int tree_top;
+    unsigned int tree_size;
+    unsigned int stack_top;
+    unsigned int stack_size;
+} FLIF16MANIACContext;
+
 typedef struct FLIF16DecoderContext {
     GetByteContext gb;
+    FLIF16MANIACContext maniac_ctx;
     FLIF16RangeCoder *rc;
     uint8_t buf[FLIF16_RAC_MAX_RANGE_BYTES]; ///< Storage for initial RAC buffer
     uint8_t buf_count;    ///< Count for initial RAC buffer
-    int state;            ///< The section of the file the parser is in currently.
+    int state;            ///< The section of the file the parser is in currently
     unsigned int segment; ///< The "segment" the code is supposed to jump to
     int i;                ///< A generic iterator used to save states between
-                          ///  for loops.
+                          ///  for loops
     // Primary Header     
     uint8_t ia;           ///< Is image interlaced or/and animated or not
     uint32_t bpc;         ///< Bytes per channel
@@ -84,10 +120,11 @@ typedef struct FLIF16DecoderContext {
 
     uint8_t loops;        ///< Number of times animation loops
     uint16_t *framedelay; ///< Frame delay for each frame
-    uint32_t (*ranges)[2];///< The minimum and maximum values a
+    int32_t (*ranges)[2]; ///< The minimum and maximum values a
                           ///  channel's pixels can take. Changes
                           ///  depending on transformations applied
-    uint32_t (*ranges_prev)[2];
+    int32_t (*prop_ranges)[2];
+    uint32_t prop_ranges_size;
     
     // Dimensions and other things.
     uint32_t width;
@@ -96,10 +133,5 @@ typedef struct FLIF16DecoderContext {
     uint32_t meta;      ///< Size of a meta chunk
     FLIF16ColorRanges src_ranges;
 } FLIF16DecoderContext;
-
-typedef struct FLIF16MANICContext {
-    
-    
-} FLIF16MANIAContext;
 
 #endif /* AVCODEC_FLIF16_H */

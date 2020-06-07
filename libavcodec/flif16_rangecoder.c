@@ -140,7 +140,7 @@ FLIF16ChanceContext *ff_flif16_chancecontext_init(void)
     FLIF16ChanceContext *ctx = av_malloc(sizeof(flif16_nz_int_chances));
     if(!ctx)
         return NULL;
-    memcpy(ctx, flif16_nz_int_chances, sizeof(flif16_nz_int_chances));
+    memcpy(ctx, &flif16_nz_int_chances, sizeof(flif16_nz_int_chances));
     return ctx;
 }
     
