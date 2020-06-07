@@ -207,7 +207,7 @@ static int ff_flif16_read_second_header(AVCodecContext *avctx)
     end:
     s->state   = FLIF16_TRANSFORM;
     s->segment = 0;
-    return AVERROR_EOF; // Remove this when testing out transforms.
+    // return AVERROR_EOF; // Remove this when testing out transforms.
     return 0;
 
     need_more_data:
@@ -219,14 +219,17 @@ static int ff_flif16_read_second_header(AVCodecContext *avctx)
 static int ff_flif16_read_transforms(AVCodecContext *avctx)
 {
     FLIF16DecoderContext *s = avctx->priv_data;
-    uint32_t temp;
+    uint8_t temp;
 
     start:
     switch (s->segment) {
         case 0:
             RAC_GET(s->rc, NULL, 0, 0, &temp, FLIF16_RAC_BIT);
+            printf("[%s] 0x%x\n", __func__, temp);
             if(!temp)
                 goto end;
+            av_log(avctx, AV_LOG_ERROR, "transforms not implemented\n");
+            return AVERROR_PATCHWELCOME;
             // Make a pointer array. Do something like:
             // s->tlist[++s->tlist_top] = ff_flif16_transform_init(temp, ...)
             // tlist is an array of pointers of FLIF16TransformContexts
@@ -239,6 +242,7 @@ static int ff_flif16_read_transforms(AVCodecContext *avctx)
     }
 
     end:
+    s->state = FLIF16_MANIAC;
     return 0;
 
     need_more_data:
@@ -247,11 +251,11 @@ static int ff_flif16_read_transforms(AVCodecContext *avctx)
 
 static int ff_flif16_read_maniac_tree(AVCodecContext *avctx)
 {
-    FLIF16DecoderContext *s = avctx->priv_data;
-    FLIF16MANIACNode *curr_node;
-    FLIF16MANIACStack *curr_stack;
-    FLIF16RangeCoder *rc = s->rc;
-    FLIF16MANIACContext *m = &s->maniac_ctx;
+    FLIF16DecoderContext *s  = avctx->priv_data;
+    FLIF16RangeCoder     *rc = s->rc;
+    FLIF16MANIACContext  *m  = &s->maniac_ctx;
+    FLIF16MANIACNode     *curr_node;
+    FLIF16MANIACStack    *curr_stack;
     int p, oldmin, oldmax, split_val;
 
     if (!m->tree_size) {
@@ -306,6 +310,7 @@ static int ff_flif16_read_maniac_tree(AVCodecContext *avctx)
                 --m->stack_top;
                 goto start;
             }
+            curr_node->child_id = m->tree_top;
 
             oldmin = s->prop_ranges[p][0];
             oldmax = s->prop_ranges[p][1];
@@ -341,7 +346,7 @@ static int ff_flif16_read_maniac_tree(AVCodecContext *avctx)
                     return AVERROR(ENOMEM);
             }
             m->stack_size *= 2;
-
+            
             // WHEN GOING BACK UP THE TREE
             curr_stack->max2 = oldmax;
 
@@ -380,7 +385,8 @@ static int ff_flif16_read_maniac_tree(AVCodecContext *avctx)
     av_free(m->stack);
     for(int i = 0; i < 3; ++i)
         av_free(m->ctx[i]);
-    return 1;
+    // return 0;
+    return AVERROR_EOF;
 
     need_more_data:
     return AVERROR(EAGAIN);
@@ -453,6 +459,10 @@ static int flif16_decode_frame(AVCodecContext *avctx,
         for(uint32_t i = 0; i < s->frames; ++i)
             printf("%u, ", s->framedelay[i]);
         printf("\n");
+    }
+    if(s->maniac_ctx.tree) {
+        printf("MANIAC Tree first node:\n" \
+               "property value: %d\n", s->maniac_ctx.tree[0].property);
     }
     return ret;
 }
