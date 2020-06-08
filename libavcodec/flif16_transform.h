@@ -36,11 +36,12 @@
 #define MAX_PLANES 5
 
 // Replace by av_clip functions
-#define CLIP(x,l,u) (x) > (u) ? (u) : ((x) < (l) ? (l) : (x))
+#define CLIP(x,l,u) ((x) > (u)) ? (u) : ((x) < (l) ? (l) : (x))
 
 typedef int16_t FLIF16ColorVal;
 
 // This may be useless
+/*
 typedef enum FLIF16TransformTypes {
     FLIF16_TRANSFORM_CHANNELCOMPACT = 0,
     FLIF16_TRANSFORM_YCOCG,
@@ -56,11 +57,12 @@ typedef enum FLIF16TransformTypes {
     FLIF16_TRANSFORM_FRAMESHAPE,
     FLIF16_TRANSFORM_FRAMELOOKBACK
 };
+*/
 
 typedef struct FLIF16TransformContext{
     uint8_t t_no;
-    unsigned int segment;
-    int i;
+    unsigned int segment;     //segment the code is executing in.
+    int i;                    //variable to store iteration number.
     size_t priv_data_size;
     uint8_t done;
     void *priv_data;
@@ -88,7 +90,7 @@ typedef struct transform_priv_permuteplanes{
     uint8_t permutation[5];
     FLIF16ColorRanges ranges;
     uint8_t from[4], to[4];
-    FLIF16ChanceContext ctx_a;
+    FLIF16ChanceContext *ctx_a;
 }transform_priv_permuteplanes;
 
 typedef struct transform_priv_channelcompact{
@@ -98,8 +100,14 @@ typedef struct transform_priv_channelcompact{
     unsigned int CPalette_inv_size[4];
     FLIF16ColorVal min;
     unsigned int i;                   //Iterator for nested loop.
-    FLIF16ChanceContext ctx_a;
+    FLIF16ChanceContext *ctx_a;
 }transform_priv_channelcompact;
+
+typedef struct transform_priv_bounds{
+    FLIF16ColorVal *bounds[2];
+    FLIF16ColorVal min;
+    FLIF16ChanceContext *ctx_a;
+}transform_priv_bounds;
 
 FLIF16ColorRanges* ff_get_ranges( FLIF16InterimPixelData *pixelData,
                                   FLIF16ColorRanges *ranges);
@@ -258,6 +266,11 @@ uint8_t ff_flif16_transform_channelcompact_reverse(
                                         FLIF16InterimPixelData * pixelData,
                                         uint32_t strideRow,
                                         uint32_t strideCol);
+
+uint8_t ff_flif16_transform_bounds_read(FLIF16TransformContext * ctx,
+                                               FLIF16DecoderContext *dec_ctx);
+uint8_t ff_flif16_transform_bounds_init(FLIF16TransformContext *ctx,
+                                               FLIF16DecoderContext *dec_ctx);
 
 int ff_flif16_transform_read(FLIF16TransformContext *c, 
                              FLIF16DecoderContext *s);
