@@ -59,27 +59,6 @@ typedef enum FLIF16TransformTypes {
 };
 */
 
-typedef struct FLIF16TransformContext{
-    uint8_t t_no;
-    unsigned int segment;     //segment the code is executing in.
-    int i;                    //variable to store iteration number.
-    size_t priv_data_size;
-    uint8_t done;
-    void *priv_data;
-}FLIF16TransformContext;
-
-typedef struct FLIF16Transform {
-    uint8_t priv_data_size;
-    //Functions
-    uint8_t (*init) (FLIF16TransformContext*, FLIF16DecoderContext*);
-    uint8_t (*read) (FLIF16TransformContext*, FLIF16DecoderContext*);
-    uint8_t (*forward) (FLIF16TransformContext*, FLIF16DecoderContext*, 
-                        FLIF16InterimPixelData*);
-    uint8_t (*reverse) (FLIF16TransformContext*, FLIF16DecoderContext*, 
-                        FLIF16InterimPixelData*, 
-                        uint32_t, uint32_t);
-} FLIF16Transform;
-
 typedef struct transform_priv_ycocg{
     int origmax4;
     FLIF16ColorRanges ranges;
@@ -268,13 +247,13 @@ uint8_t ff_flif16_transform_channelcompact_reverse(
                                         uint32_t strideCol);
 
 uint8_t ff_flif16_transform_bounds_read(FLIF16TransformContext * ctx,
-                                               FLIF16DecoderContext *dec_ctx);
+                                        FLIF16DecoderContext *dec_ctx);
 uint8_t ff_flif16_transform_bounds_init(FLIF16TransformContext *ctx,
-                                               FLIF16DecoderContext *dec_ctx);
+                                        FLIF16DecoderContext *dec_ctx);
 
 int ff_flif16_transform_read(FLIF16TransformContext *c, 
                              FLIF16DecoderContext *s);
 FLIF16TransformContext *ff_flif16_transform_init(int t_no, 
                                                  FLIF16DecoderContext *s);
 
-#endif
+#endif /* FLIF16_TRANSFORM_H */

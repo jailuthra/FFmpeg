@@ -33,6 +33,7 @@
  * @param[in]  channels number of channels
  */
 void ff_flif16_maniac_ni_prop_ranges_init(int32_t (*prop_ranges)[2],
+                                          unsigned int *prop_ranges_size,
                                           int32_t (*ranges)[2],
                                           uint8_t property,
                                           uint8_t channels)
@@ -41,9 +42,10 @@ void ff_flif16_maniac_ni_prop_ranges_init(int32_t (*prop_ranges)[2],
     int max = RANGE_MAX(ranges, channels, property);
     int mind = min - max, maxd = max - min;
     unsigned int top = 0;
+    unsigned int size = (((property < 3) ? 3 : 0) + 2 + 5);
+    *prop_ranges_size = size;
     if (!prop_ranges)
-        prop_ranges = av_mallocz(sizeof(*prop_ranges) *
-                                 (((property < 3) ? 3 : 0) + 2 + 5));
+        prop_ranges = av_mallocz(sizeof(*prop_ranges) * size);
     if (property < 3) {
         for (int i = 0; i < property; i++)
             RANGE_SET(prop_ranges[top++], RANGE_MIN(ranges, channels, i), 

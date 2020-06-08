@@ -27,11 +27,10 @@
 #ifndef FLIF16_RANGECODER_H
 #define FLIF16_RANGECODER_H
 
-#include "rangecoder.h"
-
 #include "libavutil/mem.h"
 #include "libavutil/intmath.h"
 #include "bytestream.h"
+#include "rangecoder.h"
 
 #include <stdio.h> // Remove
 #include <stdint.h>
@@ -43,6 +42,9 @@
 #define FLIF16_RAC_MAX_RANGE (uint32_t) 1 << FLIF16_RAC_MAX_RANGE_BITS
 #define FLIF16_RAC_MIN_RANGE (uint32_t) 1 << FLIF16_RAC_MIN_RANGE_BITS
 
+#define MANIAC_TREE_BASE_SIZE 16
+#define MANIAC_TREE_MIN_COUNT 1
+#define MANIAC_TREE_MAX_COUNT 512
 
 typedef enum FLIF16RACTypes {
     FLIF16_RAC_BIT = 0,
@@ -108,22 +110,65 @@ typedef struct FLIF16RangeCoder {
     uint8_t segment; ///< The "segment" the function currently is in
     uint8_t sign;
     int amin, amax, emax, e, have, left, minabs1, maxabs0, pos;
-    
-    // maniac tree state management
-    size_t top;
-    size_t size;
 
     FLIF16ChanceTable *ct;
     FLIF16Log4kTable *log4k;
     GetByteContext *gb;
 } FLIF16RangeCoder;
 
+typedef struct FLIF16MANIACStack {
+    unsigned int id;
+    int p;
+    int min;
+    int max;
+    int max2;
+    uint8_t mode;
+    uint8_t visited;
+} FLIF16MANIACStack;
+
+typedef struct FLIF16MANIACNode {
+    int8_t property;         
+    int16_t count;
+    // typedef int32_t ColorVal; 
+    int32_t split_val;
+    uint32_t child_id;
+    uint32_t leaf_id;
+    // probably safe to use only uint16
+    //uint16_t childID;
+    //uint16_t leafID;
+    // PropertyDecisionNode(int p=-1, int s=0, int c=0) : property(p), count(0), splitval(s), childID(c), leafID(0) {}
+} FLIF16MANIACNode;
+
+typedef struct FLIF16MANIACTree {
+    FLIF16MANIACNode *data;
+    unsigned int size;
+} FLIF16MANIACTree;
+
+typedef struct FLIF16MANIACContext {
+    FLIF16MANIACTree **forest;
+    FLIF16MANIACStack *stack;
+    FLIF16ChanceContext *ctx[3];
+    unsigned int tree_top;
+    unsigned int stack_top;
+    unsigned int stack_size;
+} FLIF16MANIACContext;
+
 FLIF16RangeCoder *ff_flif16_rac_init(GetByteContext *gb, uint8_t *buf,
                                      uint8_t buf_size);
+
 void ff_flif16_rac_free(FLIF16RangeCoder *rc);
+
 void ff_flif16_chancetable_init(FLIF16RangeCoder *rc, int alpha, int cut);
+
 void ff_flif16_build_log4k_table(FLIF16RangeCoder *rc);
+
 FLIF16ChanceContext *ff_flif16_chancecontext_init(void);
+
+int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
+                               FLIF16MANIACContext *m,
+                               int32_t (*prop_ranges)[2],
+                               unsigned int prop_ranges_size,
+                               unsigned int channel);
 
 // Functions
 

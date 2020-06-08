@@ -36,12 +36,11 @@
 // Remove this
 #define __PLN__ printf("At: [%s] %s, %d\n", __func__, __FILE__, __LINE__);
 
-#define MANIAC_TREE_BASE_SIZE 16
-#define MANIAC_TREE_MIN_COUNT 1
-#define MANIAC_TREE_MAX_COUNT 512
 #define FF_FLIF16_VARINT_APPEND(a,x) a = (a << 7) | (uint64_t) (x & 127)
+
 #define CHANCETABLE_DEFAULT_ALPHA 0xFFFFFFFF / 19
 #define CHANCETABLE_DEFAULT_CUT 2
+
 #define RANGE_MIN(ranges, channels, p) (((p) > (channels)) ? 0 : (ranges)[p][0])
 #define RANGE_MAX(ranges, channels, p) (((p) > (channels)) ? 0 : (ranges)[p][1])
 #define RANGE_SET(range, l, h) (range[0] = l, range[1] = h)
@@ -49,6 +48,9 @@
 #define MAX_PLANES 5
 
 static const uint8_t flif16_header[4] = "FLIF";
+
+struct FLIF16DecoderContext;
+typedef struct FLIF16DecoderContext FLIF16DecoderContext;
 
 typedef int16_t FLIF16ColorVal;
 
@@ -64,38 +66,26 @@ typedef struct FLIF16InterimPixelData {
     FLIF16ColorRanges ranges;
 } FLIF16InterimPixelData;
 
-typedef struct FLIF16MANIACStack {
-    unsigned int id;
-    int p;
-    int min;
-    int max;
-    int max2;
-    uint8_t mode;
-    uint8_t visited;
-} FLIF16MANIACStack;
+typedef struct FLIF16TransformContext{
+    uint8_t t_no;
+    unsigned int segment;     //segment the code is executing in.
+    int i;                    //variable to store iteration number.
+    size_t priv_data_size;
+    uint8_t done;
+    void *priv_data;
+}FLIF16TransformContext;
 
-typedef struct FLIF16MANIACNode {
-    int8_t property;         
-    int16_t count;
-    // typedef int32_t ColorVal; 
-    int32_t split_val;
-    uint32_t child_id;
-    uint32_t leaf_id;
-    // probably safe to use only uint16
-    //uint16_t childID;
-    //uint16_t leafID;
-    // PropertyDecisionNode(int p=-1, int s=0, int c=0) : property(p), count(0), splitval(s), childID(c), leafID(0) {}
-} FLIF16MANIACNode;
-
-typedef struct FLIF16MANIACContext {
-    FLIF16MANIACNode *tree;
-    FLIF16MANIACStack *stack;
-    FLIF16ChanceContext *ctx[3];
-    unsigned int tree_top;
-    unsigned int tree_size;
-    unsigned int stack_top;
-    unsigned int stack_size;
-} FLIF16MANIACContext;
+typedef struct FLIF16Transform {
+    uint8_t priv_data_size;
+    //Functions
+    uint8_t (*init) (FLIF16TransformContext*, FLIF16DecoderContext*);
+    uint8_t (*read) (FLIF16TransformContext*, FLIF16DecoderContext*);
+    uint8_t (*forward) (FLIF16TransformContext*, FLIF16DecoderContext*, 
+                        FLIF16InterimPixelData*);
+    uint8_t (*reverse) (FLIF16TransformContext*, FLIF16DecoderContext*, 
+                        FLIF16InterimPixelData*, 
+                        uint32_t, uint32_t);
+} FLIF16Transform;
 
 typedef struct FLIF16DecoderContext {
     GetByteContext gb;
@@ -129,18 +119,27 @@ typedef struct FLIF16DecoderContext {
                           ///  depending on transformations applied
     int32_t (*prop_ranges)[2];
     uint32_t prop_ranges_size;
+
+    // Transforms
+
+    FLIF16TransformContext *transforms[13];
+    uint8_t transform_top;
+    FLIF16ColorRanges src_ranges;
     
     // Dimensions and other things.
     uint32_t width;
     uint32_t height;
     uint32_t frames;
     uint32_t meta;      ///< Size of a meta chunk
-    FLIF16ColorRanges src_ranges;
 } FLIF16DecoderContext;
 
 void ff_flif16_maniac_ni_prop_ranges_init(int32_t (*prop_ranges)[2],
+                                          unsigned int *prop_ranges_size,
                                           int32_t (*ranges)[2],
                                           uint8_t property,
                                           uint8_t channels);
+
+// Must be included here to resolve circular include
+#include "flif16_transform.h"
 
 #endif /* AVCODEC_FLIF16_H */

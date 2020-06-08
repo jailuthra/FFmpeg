@@ -28,8 +28,9 @@
 #include "flif16_rangecoder.h"
 #include "libavutil/common.h"
 
-FLIF16ColorRanges* ff_get_ranges( FLIF16InterimPixelData *pixel_data,
-                                        FLIF16ColorRanges *ranges){
+FLIF16ColorRanges* ff_get_ranges(FLIF16InterimPixelData *pixel_data,
+                                 FLIF16ColorRanges *ranges)
+{
     int i, c, r, width, height;
     FLIF16ColorVal min, max;
     int p = pixel_data->ranges.num_planes;
