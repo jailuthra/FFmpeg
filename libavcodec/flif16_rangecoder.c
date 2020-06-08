@@ -148,19 +148,28 @@ FLIF16ChanceContext *ff_flif16_chancecontext_init(void)
     return ctx;
 }
 
+// TODO write free function for forest
 int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
                                FLIF16MANIACContext *m,
                                int32_t (*prop_ranges)[2],
                                unsigned int prop_ranges_size,
                                unsigned int channel)
 {
-    FLIF16MANIACTree *tree = m->forest[channel];
-    FLIF16MANIACNode     *curr_node;
-    FLIF16MANIACStack    *curr_stack;
+    FLIF16MANIACTree  *tree;
+    FLIF16MANIACNode  *curr_node;
+    FLIF16MANIACStack *curr_stack;
     int p, oldmin, oldmax, split_val;
 
-    if (!tree->size) {
-        tree->data  = av_malloc(MANIAC_TREE_BASE_SIZE * sizeof(*(tree)));
+    if (!(m->forest[channel])) {
+        m->forest[channel] = av_malloc(sizeof(*tree));
+        if(!(m->forest[channel]))
+            return AVERROR(ENOMEM);
+        m->forest[channel]->data  = av_mallocz(MANIAC_TREE_BASE_SIZE *
+                                               sizeof(*(m->forest[channel]->data)));
+        tree = m->forest[channel];
+        if (!tree->data) {
+            return AVERROR(ENOMEM);
+        }
         m->stack = av_malloc(MANIAC_TREE_BASE_SIZE * sizeof(*(m->stack)));
         if(!((tree->data) && (m->stack)))
             return AVERROR(ENOMEM);
@@ -183,7 +192,7 @@ int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
             curr_stack = &m->stack[m->stack_top - 1];
             curr_node  = &tree->data[curr_stack->id];
             p = curr_stack->p;
-
+            __PLN__
             if(!curr_stack->visited){
                 switch (curr_stack->mode) {
                     case 1:
@@ -210,6 +219,7 @@ int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
             p = --(curr_node->property);
 
             if (p == -1) {
+                __PLN__
                 --m->stack_top;
                 goto start;
             }
@@ -289,7 +299,6 @@ int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
     if (!tree->data)
         return AVERROR(ENOMEM);
     tree->size = m->tree_top;
-
     av_free(m->stack);
     for(int i = 0; i < 3; ++i)
         av_free(m->ctx[i]);

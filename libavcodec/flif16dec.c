@@ -255,9 +255,14 @@ static int ff_flif16_read_maniac_forest(AVCodecContext *avctx)
 {
     int ret;
     FLIF16DecoderContext *s = avctx->priv_data;
-    if(!s->maniac_ctx.forest) {
+    if (!s->maniac_ctx.forest) {
+        __PLN__
         s->maniac_ctx.forest = av_mallocz((s->channels) *
                                           sizeof(*(s->maniac_ctx.forest)));
+        if (!s->maniac_ctx.forest) {
+            av_log(avctx, AV_LOG_ERROR, "could not allocate \n");
+            return AVERROR(ENOMEM);
+        }
         s->segment = s->i = 0; // Remove later
     }
     switch (s->segment) {
@@ -269,6 +274,7 @@ static int ff_flif16_read_maniac_forest(AVCodecContext *avctx)
             ff_flif16_maniac_ni_prop_ranges_init(s->prop_ranges,
                                                  &s->prop_ranges_size, s->ranges,
                                                  s->i, s->channels);
+            __PLN__
             ++s->segment;
 
         case 1:
@@ -276,7 +282,9 @@ static int ff_flif16_read_maniac_forest(AVCodecContext *avctx)
                                              s->prop_ranges_size, s->i);
             if (ret)
                 goto end;
+            av_free(s->prop_ranges);
             --s->segment;
+            __PLN__
             goto loop;
     }
 
@@ -352,7 +360,7 @@ static int flif16_decode_frame(AVCodecContext *avctx,
             printf("%u, ", s->framedelay[i]);
         printf("\n");
     }
-    if(s->maniac_ctx.forest[0]) {
+    if(s->maniac_ctx.forest) {
         printf("MANIAC Tree first node:\n" \
                "property value: %d\n", s->maniac_ctx.forest[0]->data[0].property);
     }
