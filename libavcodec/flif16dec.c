@@ -207,6 +207,8 @@ static int ff_flif16_read_second_header(AVCodecContext *avctx)
     end:
     s->state   = FLIF16_TRANSFORM;
     s->segment = 0;
+    ff_flif16_chancetable_init(s->rc, CHANCETABLE_DEFAULT_ALPHA,
+                               CHANCETABLE_DEFAULT_CUT);
     // return AVERROR_EOF; // Remove this when testing out transforms.
     return 0;
 
@@ -242,7 +244,11 @@ static int ff_flif16_read_transforms(AVCodecContext *avctx)
     }
 
     end:
-    s->state = FLIF16_MANIAC;
+    // TODO write separate function to manage channels
+    for (int i = 0; i < s->channels; ++i)
+        ff_flif16_maniac_ni_prop_ranges_init(s->prop_ranges, s->ranges,
+                                             i, s->channels);
+    s->state  = FLIF16_MANIAC;
     return 0;
 
     need_more_data:

@@ -40,6 +40,8 @@
 #define MANIAC_TREE_MIN_COUNT 1
 #define MANIAC_TREE_MAX_COUNT 512
 #define FF_FLIF16_VARINT_APPEND(a,x) a = (a << 7) | (uint64_t) (x & 127)
+#define CHANCETABLE_DEFAULT_ALPHA 0xFFFFFFFF / 19
+#define CHANCETABLE_DEFAULT_CUT 2
 #define RANGE_MIN(ranges, channels, p) (((p) > (channels)) ? 0 : (ranges)[p][0])
 #define RANGE_MAX(ranges, channels, p) (((p) > (channels)) ? 0 : (ranges)[p][1])
 #define RANGE_SET(range, l, h) (range[0] = l, range[1] = h)
@@ -135,5 +137,10 @@ typedef struct FLIF16DecoderContext {
     uint32_t meta;      ///< Size of a meta chunk
     FLIF16ColorRanges src_ranges;
 } FLIF16DecoderContext;
+
+void ff_flif16_maniac_ni_prop_ranges_init(int32_t (*prop_ranges)[2],
+                                          int32_t (*ranges)[2],
+                                          uint8_t property,
+                                          uint8_t channels);
 
 #endif /* AVCODEC_FLIF16_H */

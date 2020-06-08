@@ -118,6 +118,7 @@ static uint32_t log4kf(int x, uint32_t base)
 
 void ff_flif16_build_log4k_table(FLIF16RangeCoder *rc)
 {
+    rc->log4k = av_mallocz(sizeof(*(rc->log4k)));
     rc->log4k->table[0] = 0;
     for (int i = 1; i < 4096; i++)
         rc->log4k->table[i] = (log4kf(i, (65535UL << 16) / 12) + 
