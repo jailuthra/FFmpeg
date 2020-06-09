@@ -88,6 +88,8 @@ typedef struct transform_priv_bounds{
     FLIF16ChanceContext *ctx_a;
 }transform_priv_bounds;
 
+extern FLIF16Transform *flif16_transforms[13];
+
 FLIF16ColorRanges* ff_get_ranges( FLIF16InterimPixelData *pixelData,
                                   FLIF16ColorRanges *ranges);
 
