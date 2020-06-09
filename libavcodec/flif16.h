@@ -38,7 +38,7 @@
 
 #define FF_FLIF16_VARINT_APPEND(a,x) a = (a << 7) | (uint64_t) (x & 127)
 
-#define CHANCETABLE_DEFAULT_ALPHA 0xFFFFFFFF / 19
+#define CHANCETABLE_DEFAULT_ALPHA (0xFFFFFFFF / 19)
 #define CHANCETABLE_DEFAULT_CUT 2
 
 #define RANGE_MIN(ranges, channels, p) (((p) > (channels)) ? 0 : (ranges)[p][0])
@@ -49,10 +49,13 @@
 
 static const uint8_t flif16_header[4] = "FLIF";
 
+typedef int16_t FLIF16ColorVal;
+
 struct FLIF16DecoderContext;
 typedef struct FLIF16DecoderContext FLIF16DecoderContext;
 
-typedef int16_t FLIF16ColorVal;
+struct FLIF16ColorRanges;
+typedef struct FLIF16ColorRanges FLIF16ColorRanges;
 
 typedef struct FLIF16ColorRanges {
     uint8_t num_planes;
@@ -91,6 +94,8 @@ typedef struct FLIF16Transform {
     uint8_t (*read) (FLIF16TransformContext*, FLIF16DecoderContext*,
                      FLIF16ColorRanges*);
     FLIF16ColorRanges* (*meta) (FLIF16TransformContext*, FLIF16ColorRanges*);
+    // forward will probably have to use FLIF16EncoderContext. Which doesn't
+    // exist yet.
     uint8_t (*forward) (FLIF16TransformContext*, FLIF16DecoderContext*, 
                         FLIF16InterimPixelData*);
     uint8_t (*reverse) (FLIF16TransformContext*, FLIF16DecoderContext*, 
@@ -102,6 +107,8 @@ typedef struct FLIF16DecoderContext {
     GetByteContext gb;
     FLIF16MANIACContext maniac_ctx;
     FLIF16RangeCoder *rc;
+    AVFrame *out_frames;
+    
     uint8_t buf[FLIF16_RAC_MAX_RANGE_BYTES]; ///< Storage for initial RAC buffer
     uint8_t buf_count;    ///< Count for initial RAC buffer
     int state;            ///< The section of the file the parser is in currently.
@@ -132,10 +139,11 @@ typedef struct FLIF16DecoderContext {
     uint32_t prop_ranges_size;
 
     // Transforms
-
-    FLIF16TransformContext *transforms[13];
+    // Size dynamically maybe
+    // FLIF16TransformContext *transforms[13];
     uint8_t transform_top;
-    FLIF16ColorRanges src_ranges;
+    //FLIF16ColorRanges ranges;
+    //FLIF16ColorRanges ranges_prev;
     
     // Dimensions and other things.
     uint32_t width;
@@ -149,8 +157,4 @@ void ff_flif16_maniac_ni_prop_ranges_init(int32_t (*prop_ranges)[2],
                                           int32_t (*ranges)[2],
                                           uint8_t property,
                                           uint8_t channels);
-
-// Must be included here to resolve circular include
-#include "flif16_transform.h"
-
 #endif /* AVCODEC_FLIF16_H */

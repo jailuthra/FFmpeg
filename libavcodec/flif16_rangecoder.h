@@ -90,7 +90,6 @@ typedef struct FLIF16ChanceContext {
     uint16_t data[sizeof(flif16_nz_int_chances)];
 } FLIF16ChanceContext;
 
-
 // rc->renorm may be useless. Check.
 
 typedef struct FLIF16RangeCoder {
@@ -110,6 +109,10 @@ typedef struct FLIF16RangeCoder {
     uint8_t segment; ///< The "segment" the function currently is in
     uint8_t sign;
     int amin, amax, emax, e, have, left, minabs1, maxabs0, pos;
+
+    // maniac_int state management
+    uint8_t segment2;
+    FLIF16ChanceContext *maniac_ctx;
 
     FLIF16ChanceTable *ct;
     FLIF16Log4kTable *log4k;
@@ -136,12 +139,14 @@ typedef struct FLIF16MANIACNode {
     // probably safe to use only uint16
     //uint16_t childID;
     //uint16_t leafID;
-    // PropertyDecisionNode(int p=-1, int s=0, int c=0) : property(p), count(0), splitval(s), childID(c), leafID(0) {}
 } FLIF16MANIACNode;
 
 typedef struct FLIF16MANIACTree {
     FLIF16MANIACNode *data;
+    FLIF16ChanceContext *leaves;
     unsigned int size;
+    unsigned int leaves_size;
+    unsigned int leaves_top;
 } FLIF16MANIACTree;
 
 typedef struct FLIF16MANIACContext {
@@ -169,6 +174,16 @@ int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
                                int32_t (*prop_ranges)[2],
                                unsigned int prop_ranges_size,
                                unsigned int channel);
+
+FLIF16ChanceContext *ff_flif16_maniac_findleaf(FLIF16MANIACContext *m,
+                                               uint8_t channel,
+                                               int32_t *properties);
+
+int ff_flif16_maniac_read_int(FLIF16RangeCoder *rc,
+                              FLIF16MANIACContext *m,
+                              int32_t *properties,
+                              uint8_t channel,
+                              int min, int max, int *target);
 
 // Functions
 
@@ -450,7 +465,6 @@ static inline int ff_flif16_rac_read_gnz_int(FLIF16RangeCoder *rc,
     
     return ret;
 }
-
 
 /**
  * Reads an integer encoded by FLIF's RAC.

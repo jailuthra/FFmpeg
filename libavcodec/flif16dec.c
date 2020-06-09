@@ -39,7 +39,6 @@
  * AVERROR(EAGAIN) as long as the bitstream is incomplete.
  */
 
-
 // TODO prefix approprate functions with ff_*
 
 enum FLIF16States {
@@ -227,7 +226,6 @@ static int ff_flif16_read_transforms(AVCodecContext *avctx)
     switch (s->segment) {
         case 0:
             RAC_GET(s->rc, NULL, 0, 0, &temp, FLIF16_RAC_BIT);
-            printf("[%s] 0x%x\n", __func__, temp);
             if(!temp)
                 goto end;
             av_log(avctx, AV_LOG_ERROR, "transforms not implemented\n");
@@ -255,6 +253,7 @@ static int ff_flif16_read_maniac_forest(AVCodecContext *avctx)
 {
     int ret;
     FLIF16DecoderContext *s = avctx->priv_data;
+
     if (!s->maniac_ctx.forest) {
         __PLN__
         s->maniac_ctx.forest = av_mallocz((s->channels) *
@@ -265,6 +264,7 @@ static int ff_flif16_read_maniac_forest(AVCodecContext *avctx)
         }
         s->segment = s->i = 0; // Remove later
     }
+
     switch (s->segment) {
         case 0:
             loop:
@@ -354,12 +354,14 @@ static int flif16_decode_frame(AVCodecContext *avctx,
            "loops: %u\n", s->width, s->height, s->frames, s->ia, s->bpc,
            s->channels, s->alphazero, s->custombc, s->cutoff,
            s->alphadiv, s->loops);
+
     if (s->framedelay) {
         printf("Framedelays:\n");
         for(uint32_t i = 0; i < s->frames; ++i)
             printf("%u, ", s->framedelay[i]);
         printf("\n");
     }
+
     if(s->maniac_ctx.forest) {
         printf("MANIAC Tree first node:\n" \
                "property value: %d\n", s->maniac_ctx.forest[0]->data[0].property);
@@ -369,6 +371,7 @@ static int flif16_decode_frame(AVCodecContext *avctx,
 
 static av_cold int flif16_decode_end(AVCodecContext *avctx)
 {
+    // TODO complete function
     FLIF16DecoderContext *s = avctx->priv_data;
     av_free(s->rc);
     if(s->framedelay)

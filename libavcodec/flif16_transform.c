@@ -235,7 +235,7 @@ FLIF16ColorRanges *ff_flif16_transform_permuteplanes_meta(
                                             FLIF16TransformContext* ctx,
                                             FLIF16ColorRanges* srcRanges)
 {
-    FLIF16ColorRanges* ranges = avmallocz(sizeof(FLIF16ColorRanges));
+    FLIF16ColorRanges* ranges = av_mallocz(sizeof(FLIF16ColorRanges));
     transform_priv_permuteplanes* data = ctx->priv_data;
     ranges->num_planes = srcRanges->num_planes;
     ranges->snap       = &ff_default_snap;
@@ -251,6 +251,8 @@ FLIF16ColorRanges *ff_flif16_transform_permuteplanes_meta(
         ranges->max    = &ff_permuteplanes_max;
         ranges->minmax = &ff_default_minmax;
     }
+
+    return ranges;
 }
 
 uint8_t ff_flif16_transform_permuteplanes_forward(

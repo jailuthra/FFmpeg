@@ -1,6 +1,8 @@
 /*
  * Range coder for FLIF16
- * Copyright (c) 2004, 2020 Jon Sneyers, Michael Niedermayer, Anamitra Ghorui
+ * Copyright (c) 2004, Michael Niedermayer,
+ *               2010-2016, Jon Sneyers & Pieter Wuille
+ *               2020, Anamitra Ghorui
  *
  * This file is part of FFmpeg.
  *
@@ -307,4 +309,92 @@ int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
 
     need_more_data:
     return AVERROR(EAGAIN);
+}
+
+
+// Properties properties((nump>3?NB_PROPERTIES_scanlinesA[p]:NB_PROPERTIES_scanlines[p]));
+
+FLIF16ChanceContext *ff_flif16_maniac_findleaf(FLIF16MANIACContext *m,
+                                               uint8_t channel,
+                                               int32_t *properties)
+{
+    unsigned int pos = 0;
+    uint32_t old_leaf;
+    uint32_t new_leaf;
+    FLIF16MANIACTree *tree = m->forest[channel];
+    FLIF16MANIACNode *nodes = tree->data;
+    FLIF16ChanceContext *leaves;
+
+    if (m->forest[channel]->leaves) {
+        m->forest[channel]->leaves = av_mallocz(MANIAC_TREE_BASE_SIZE *
+                                                sizeof(*m->forest[channel]->leaves));
+        m->forest[channel]->leaves_size = MANIAC_TREE_BASE_SIZE;
+    }
+    
+    leaves = m->forest[channel]->leaves;
+
+    while(nodes[pos].property != -1) {
+        if (nodes[pos].count < 0) {
+            if (properties[nodes[pos].property] > nodes[pos].split_val)
+                pos = nodes[pos].child_id;
+            else
+                pos = nodes[pos].child_id + 1;
+        } else if (nodes[pos].count > 0) {
+            // assert(inner_node[pos].leafID >= 0);
+            // assert((unsigned int)inner_node[pos].leafID < leaf_node.size());
+            --nodes[pos].count;
+            break;
+        } else { // count == 0
+            --nodes[pos].count;
+            if ((tree->leaves_top) >= tree->leaves_size) {
+                av_realloc(m->forest[channel]->leaves,
+                           m->forest[channel]->leaves_size * 2);
+                if (!m->forest[channel]->leaves)
+                    return NULL;
+                m->forest[channel]->leaves_size *= 2;
+            }
+
+            old_leaf = nodes[pos].leaf_id;
+            new_leaf = tree->leaves_top;
+            memcpy(&leaves[tree->leaves_top], &leaves[nodes[pos].leaf_id],
+                   sizeof(*leaves));
+
+            nodes[nodes[pos].child_id].leaf_id = old_leaf;
+            nodes[nodes[pos].child_id + 1].leaf_id = new_leaf;
+
+            if (properties[nodes[pos].property] > nodes[pos].split_val)
+                return &leaves[old_leaf];
+            else
+                return &leaves[new_leaf];
+        }
+    }
+    return &leaves[nodes[pos].leaf_id];
+}
+
+int ff_flif16_maniac_read_int(FLIF16RangeCoder *rc,
+                              FLIF16MANIACContext *m,
+                              int32_t *properties,
+                              uint8_t channel,
+                              int min, int max, int *target)
+{
+    int ret;
+
+    if (!rc->maniac_ctx)
+        rc->segment2 = 0;
+
+    switch(rc->segment2) {
+        case 0:
+            rc->maniac_ctx = ff_flif16_maniac_findleaf(m, channel, properties);
+            if(!rc->maniac_ctx)
+                return AVERROR(ENOMEM);
+            ++rc->segment2;
+
+        case 1:
+            ret = ff_flif16_rac_read_nz_int(rc, rc->maniac_ctx, min, max, target);
+            if(!ret)
+                return 0;
+    }
+
+    rc->maniac_ctx = NULL;
+    return 1;
 }
