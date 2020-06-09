@@ -107,16 +107,15 @@ FLIF16ColorRanges* ff_flif16_transform_ycocg_meta(
     return ranges;
 }
 
-uint8_t ff_flif16_transform_ycocg_forward(FLIF16TransformContext *ctx,
-                                          FLIF16DecoderContext *dec_ctx,
-                                          FLIF16InterimPixelData * pixel_data)
+uint8_t ff_flif16_transform_ycocg_forward(FLIF16TransformContext* ctx,
+                                          FLIF16InterimPixelData* pixel_data)
 {
     int p;
     int r, c;
     FLIF16ColorVal R,G,B,Y,Co,Cg;
 
-    int height = dec_ctx->height;
-    int width = dec_ctx->width;
+    int height = pixel_data->height;
+    int width = pixel_data->width;
 
     for (r=0; r<height; r++) {
         for (c=0; c<width; c++) {
@@ -137,15 +136,14 @@ uint8_t ff_flif16_transform_ycocg_forward(FLIF16TransformContext *ctx,
 }
 
 uint8_t ff_flif16_transform_ycocg_reverse(FLIF16TransformContext *ctx,
-                                          FLIF16DecoderContext *dec_ctx,
                                           FLIF16InterimPixelData * pixel_data,
                                           uint32_t stride_row,
                                           uint32_t stride_col)
 {
     int r, c;
     FLIF16ColorVal R,G,B,Y,Co,Cg;
-    int height = dec_ctx->height;
-    int width  = dec_ctx->width;
+    int height = pixel_data->height;
+    int width  = pixel_data->width;
     transform_priv_ycocg *data = ctx->priv_data;
 
     for (r=0; r<height; r+=stride_row) {
@@ -196,7 +194,8 @@ uint8_t ff_flif16_transform_permuteplanes_read(FLIF16TransformContext* ctx,
 
     switch (ctx->segment) {
         case 0:
-            RAC_GET(dec_ctx->rc, data->ctx_a, 0, 1, &data->subtract, FLIF16_RAC_NZ_INT);
+            RAC_GET(dec_ctx->rc, data->ctx_a, 0, 1, &data->subtract,
+                    FLIF16_RAC_NZ_INT);
             //data->subtract = read_nz_int(rac, 0, 1);
             ++ctx->segment; __PLN__
             
@@ -256,14 +255,13 @@ FLIF16ColorRanges *ff_flif16_transform_permuteplanes_meta(
 }
 
 uint8_t ff_flif16_transform_permuteplanes_forward(
-                                             FLIF16TransformContext *ctx,
-                                             FLIF16DecoderContext *dec_ctx,
-                                             FLIF16InterimPixelData * pixel_data)
+                                             FLIF16TransformContext* ctx,
+                                             FLIF16InterimPixelData* pixel_data)
 {
     FLIF16ColorVal pixel[5];
     int r, c, p;
-    int width  = dec_ctx->width;
-    int height = dec_ctx->height;
+    int width  = pixel_data->width;
+    int height = pixel_data->height;
     transform_priv_permuteplanes *data = ctx->priv_data;
     
     // Transforming pixel data.
@@ -290,7 +288,6 @@ uint8_t ff_flif16_transform_permuteplanes_forward(
 
 uint8_t ff_flif16_transform_permuteplanes_reverse(
                                         FLIF16TransformContext *ctx,
-                                        FLIF16DecoderContext *dec_ctx,
                                         FLIF16InterimPixelData * pixels,
                                         uint32_t stride_row,
                                         uint32_t stride_col)
@@ -298,8 +295,8 @@ uint8_t ff_flif16_transform_permuteplanes_reverse(
     int p, r, c;
     FLIF16ColorVal pixel[5];
     transform_priv_permuteplanes *data = ctx->priv_data;
-    int height = dec_ctx->height;
-    int width  = dec_ctx->width;
+    int height = pixels->height;
+    int width  = pixels->width;
     for (r=0; r<height; r+=stride_row) {
         for (c=0; c<width; c+=stride_col) {
             for (p=0; p<data->ranges->num_planes; p++)
@@ -419,9 +416,8 @@ FLIF16ColorRanges* ff_flif16_transform_channelcompact_meta(
 }
 
 uint8_t ff_flif16_transform_channelcompact_reverse(
-                                        FLIF16TransformContext *ctx,
-                                        FLIF16DecoderContext *dec_ctx,
-                                        FLIF16InterimPixelData * pixels,
+                                        FLIF16TransformContext* ctx,
+                                        FLIF16InterimPixelData* pixels,
                                         uint32_t stride_row,
                                         uint32_t stride_col)
 {   
@@ -431,17 +427,17 @@ uint8_t ff_flif16_transform_channelcompact_reverse(
     unsigned int palette_size;
     transform_priv_channelcompact *data = ctx->priv_data;
     
-    for(p=0; p<dec_ctx->channels; p++){
+    for(p=0; p<pixels->num_planes; p++){
         palette      = data->CPalette[p];
         palette_size = data->CPalette_size[p];
 
-        for(r=0; r < dec_ctx->height; r++){
-            for(c=0; c < dec_ctx->width; c++){
-                P = pixels->data[p][r*dec_ctx->width + c];
+        for(r=0; r < pixels->height; r++){
+            for(c=0; c < pixels->width; c++){
+                P = pixels->data[p][r*pixels->width + c];
                 if (P < 0 || P >= (int) palette_size)
                     P = 0;
                 assert(P < (int) palette_size);
-                pixels->data[p][r*dec_ctx->width + c] = palette[P];
+                pixels->data[p][r*pixels->width + c] = palette[P];
             }
         }
     }
@@ -595,9 +591,9 @@ FLIF16TransformContext* ff_flif16_transform_init(int t_no,
 }
 
 
-int ff_flif16_transform_read(FLIF16TransformContext *ctx,
-                             FLIF16DecoderContext *dec_ctx,
-                             FLIF16ColorRanges* srcRanges)
+uint8_t ff_flif16_transform_read(FLIF16TransformContext *ctx,
+                                 FLIF16DecoderContext *dec_ctx,
+                                 FLIF16ColorRanges* srcRanges)
 {
     FLIF16Transform *trans = flif16_transforms[ctx->t_no];
     if(!ctx)

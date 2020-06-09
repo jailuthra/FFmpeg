@@ -49,13 +49,10 @@
 
 static const uint8_t flif16_header[4] = "FLIF";
 
-typedef int16_t FLIF16ColorVal;
-
 struct FLIF16DecoderContext;
 typedef struct FLIF16DecoderContext FLIF16DecoderContext;
 
-struct FLIF16ColorRanges;
-typedef struct FLIF16ColorRanges FLIF16ColorRanges;
+typedef int16_t FLIF16ColorVal;
 
 typedef struct FLIF16ColorRanges {
     uint8_t num_planes;
@@ -75,7 +72,7 @@ typedef struct FLIF16InterimPixelData {
     uint8_t initialized;            //FLAG : initialized or not.
     int height, width;
     FLIF16ColorVal *data[MAX_PLANES];
-    FLIF16ColorRanges ranges;
+    int num_planes;
 } FLIF16InterimPixelData;
 
 typedef struct FLIF16TransformContext{
@@ -94,12 +91,8 @@ typedef struct FLIF16Transform {
     uint8_t (*read) (FLIF16TransformContext*, FLIF16DecoderContext*,
                      FLIF16ColorRanges*);
     FLIF16ColorRanges* (*meta) (FLIF16TransformContext*, FLIF16ColorRanges*);
-    // forward will probably have to use FLIF16EncoderContext. Which doesn't
-    // exist yet.
-    uint8_t (*forward) (FLIF16TransformContext*, FLIF16DecoderContext*, 
-                        FLIF16InterimPixelData*);
-    uint8_t (*reverse) (FLIF16TransformContext*, FLIF16DecoderContext*, 
-                        FLIF16InterimPixelData*, 
+    uint8_t (*forward) (FLIF16TransformContext*, FLIF16InterimPixelData*);
+    uint8_t (*reverse) (FLIF16TransformContext*, FLIF16InterimPixelData*, 
                         uint32_t, uint32_t);
 } FLIF16Transform;
 
@@ -157,4 +150,8 @@ void ff_flif16_maniac_ni_prop_ranges_init(int32_t (*prop_ranges)[2],
                                           int32_t (*ranges)[2],
                                           uint8_t property,
                                           uint8_t channels);
+
+// Must be included here to resolve circular include
+#include "flif16_transform.h"
+
 #endif /* AVCODEC_FLIF16_H */
