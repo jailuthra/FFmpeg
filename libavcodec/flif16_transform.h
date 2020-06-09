@@ -163,8 +163,8 @@ static inline int ff_get_max_cg(int origmax4, int yval, int coval){
 }
 
 static inline void ff_default_minmax(FLIF16ColorRanges *ranges ,const int p,
-                                  FLIF16ColorVal* prevPlanes,
-                                  FLIF16ColorVal* minv, FLIF16ColorVal* maxv)
+                                     FLIF16ColorVal* prevPlanes,
+                                     FLIF16ColorVal* minv, FLIF16ColorVal* maxv)
 {
     *minv = ranges->min(ranges, p);
     *maxv = ranges->max(ranges, p);
@@ -176,6 +176,8 @@ static inline void ff_default_snap(FLIF16ColorRanges *ranges ,const int p,
                                 FLIF16ColorVal* v)
 {
     ff_default_minmax(ranges, p, prevPlanes, minv, maxv);
+    if(*minv > *maxv)
+        *maxv = *minv;
     *v = CLIP(*v, *minv, *maxv);
 }
 
@@ -211,7 +213,7 @@ static inline FLIF16ColorVal ff_ycocg_min(FLIF16ColorRanges* ranges, int p)
         case 2:
             return -4 * data->origmax4 + 1;
         default:
-            ranges->min(ranges, p);
+            data->ranges->min(data->ranges, p);
     }
 }
 
@@ -226,7 +228,7 @@ static inline FLIF16ColorVal ff_ycocg_max(FLIF16ColorRanges* ranges, int p)
         case 2:
             return 4 * data->origmax4 - 1;
         default:
-            ranges->max(ranges, p);
+            data->ranges->max(data->ranges, p);
     }
 }
 
@@ -281,7 +283,7 @@ static inline FLIF16ColorVal ff_permuteplanes_min(
                                             int p)
 {
     transform_priv_permuteplanes* data = ranges->priv_data;
-    return ranges->min(ranges, data->permutation[p]);
+    return data->ranges->min(data->ranges, data->permutation[p]);
 }
 
 static inline FLIF16ColorVal ff_permuteplanes_max(
@@ -289,7 +291,7 @@ static inline FLIF16ColorVal ff_permuteplanes_max(
                                             int p)
 {
     transform_priv_permuteplanes* data = ranges->priv_data;
-    return ranges->max(ranges, data->permutation[p]);
+    return data->ranges->max(data->ranges, data->permutation[p]);
 }
 
 static inline void ff_permuteplanessubtract_minmax(
@@ -303,8 +305,8 @@ static inline void ff_permuteplanessubtract_minmax(
         *maxv = ranges->max(ranges, p);
     }
     else{
-        *minv = ranges->min(ranges, data->permutation[p]) - prevPlanes[0];
-        *maxv = ranges->max(ranges, data->permutation[p]) - prevPlanes[0];
+        *minv = data->ranges->min(data->ranges, data->permutation[p]) - prevPlanes[0];
+        *maxv = data->ranges->max(data->ranges, data->permutation[p]) - prevPlanes[0];
     }
 }
 
