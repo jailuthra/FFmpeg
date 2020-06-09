@@ -55,8 +55,17 @@ typedef struct FLIF16DecoderContext FLIF16DecoderContext;
 typedef int16_t FLIF16ColorVal;
 
 typedef struct FLIF16ColorRanges {
-    FLIF16ColorVal min[MAX_PLANES], max[MAX_PLANES];
-    int num_planes;
+    uint8_t num_planes;
+    uint8_t is_static; 
+    void *priv_data;
+
+    FLIF16ColorVal (*min)(FLIF16ColorRanges*, int);
+    FLIF16ColorVal (*max)(FLIF16ColorRanges*, int);
+    void (*minmax)(FLIF16ColorRanges*, const int, FLIF16ColorVal*,
+                   FLIF16ColorVal*, FLIF16ColorVal*);
+    void (*snap)(FLIF16ColorRanges*, const int, FLIF16ColorVal*,
+                 FLIF16ColorVal*, FLIF16ColorVal*, FLIF16ColorVal*);
+    void (*previous)(FLIF16ColorRanges*);
 } FLIF16ColorRanges;
 
 typedef struct FLIF16InterimPixelData {
@@ -78,8 +87,10 @@ typedef struct FLIF16TransformContext{
 typedef struct FLIF16Transform {
     uint8_t priv_data_size;
     //Functions
-    uint8_t (*init) (FLIF16TransformContext*, FLIF16DecoderContext*);
-    uint8_t (*read) (FLIF16TransformContext*, FLIF16DecoderContext*);
+    uint8_t (*init) (FLIF16TransformContext*, FLIF16ColorRanges*);
+    uint8_t (*read) (FLIF16TransformContext*, FLIF16DecoderContext*,
+                     FLIF16ColorRanges*);
+    FLIF16ColorRanges* (*meta) (FLIF16TransformContext*, FLIF16ColorRanges*);
     uint8_t (*forward) (FLIF16TransformContext*, FLIF16DecoderContext*, 
                         FLIF16InterimPixelData*);
     uint8_t (*reverse) (FLIF16TransformContext*, FLIF16DecoderContext*, 
