@@ -72,7 +72,7 @@ typedef struct FLIF16InterimPixelData {
     uint8_t initialized;            //FLAG : initialized or not.
     int height, width;
     FLIF16ColorVal *data[MAX_PLANES];
-    FLIF16ColorRanges ranges;
+    int num_planes;
 } FLIF16InterimPixelData;
 
 typedef struct FLIF16TransformContext{
@@ -91,10 +91,8 @@ typedef struct FLIF16Transform {
     uint8_t (*read) (FLIF16TransformContext*, FLIF16DecoderContext*,
                      FLIF16ColorRanges*);
     FLIF16ColorRanges* (*meta) (FLIF16TransformContext*, FLIF16ColorRanges*);
-    uint8_t (*forward) (FLIF16TransformContext*, FLIF16DecoderContext*, 
-                        FLIF16InterimPixelData*);
-    uint8_t (*reverse) (FLIF16TransformContext*, FLIF16DecoderContext*, 
-                        FLIF16InterimPixelData*, 
+    uint8_t (*forward) (FLIF16TransformContext*, FLIF16InterimPixelData*);
+    uint8_t (*reverse) (FLIF16TransformContext*, FLIF16InterimPixelData*, 
                         uint32_t, uint32_t);
 } FLIF16Transform;
 

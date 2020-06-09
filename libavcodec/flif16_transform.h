@@ -322,10 +322,8 @@ static inline FLIF16ColorVal ff_static_min(FLIF16ColorRanges* ranges, int p)
 uint8_t ff_flif16_transform_ycocg_init(FLIF16TransformContext*,
                                        FLIF16ColorRanges*);
 uint8_t ff_flif16_transform_ycocg_forward(FLIF16TransformContext*,
-                                          FLIF16DecoderContext*,
                                           FLIF16InterimPixelData*);
 uint8_t ff_flif16_transform_ycocg_reverse(FLIF16TransformContext*,
-                                          FLIF16DecoderContext*,
                                           FLIF16InterimPixelData*,
                                           uint32_t, uint32_t);
 
@@ -336,11 +334,9 @@ uint8_t ff_flif16_transform_permuteplanes_init(FLIF16TransformContext*,
                                                FLIF16ColorRanges*);
 uint8_t ff_flif16_transform_permuteplanes_forward(
                                             FLIF16TransformContext*,
-                                            FLIF16DecoderContext*,
                                             FLIF16InterimPixelData*);
 uint8_t ff_flif16_transform_permuteplanes_reverse(
                                         FLIF16TransformContext*,
-                                        FLIF16DecoderContext*,
                                         FLIF16InterimPixelData*,
                                         uint32_t, uint32_t);
 
@@ -355,7 +351,6 @@ uint8_t ff_flif16_transform_channelcompact_init(FLIF16TransformContext*,
 //                                            FLIF16InterimPixelData * pixelData);
 uint8_t ff_flif16_transform_channelcompact_reverse(
                                         FLIF16TransformContext*,
-                                        FLIF16DecoderContext*,
                                         FLIF16InterimPixelData*,
                                         uint32_t, uint32_t);
 
@@ -365,9 +360,9 @@ uint8_t ff_flif16_transform_bounds_read(FLIF16TransformContext*,
 uint8_t ff_flif16_transform_bounds_init(FLIF16TransformContext*,
                                         FLIF16ColorRanges*);
 
-int ff_flif16_transform_read(FLIF16TransformContext*, 
-                             FLIF16DecoderContext*,
-                             FLIF16ColorRanges*);
+uint8_t ff_flif16_transform_read(FLIF16TransformContext*, 
+                                FLIF16DecoderContext*,
+                                FLIF16ColorRanges*);
 FLIF16TransformContext *ff_flif16_transform_init(int, 
                                                  FLIF16DecoderContext*);
 
