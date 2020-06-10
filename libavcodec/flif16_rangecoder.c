@@ -63,8 +63,12 @@ FLIF16RangeCoder *ff_flif16_rac_init(GetByteContext *gb,
 
 void ff_flif16_rac_free(FLIF16RangeCoder *rc)
 {
-    free(rc->ct);
-    free(rc->log4k);
+    if (!rc)
+        return;
+    if (rc->ct)
+        free(rc->ct);
+    if (rc->log4k)
+        free(rc->log4k);
     free(rc);
 }
 
@@ -121,24 +125,21 @@ static uint32_t log4kf(int x, uint32_t base)
     return res;
 }
 
-void ff_flif16_build_log4k_table(FLIF16RangeCoder *rc)
+void ff_flif16_build_log4k_table(FLIF16Log4kTable *log4k)
 {
-    rc->log4k = av_mallocz(sizeof(*(rc->log4k)));
-    rc->log4k->table[0] = 0;
+    log4k = av_mallocz(sizeof(*log4k));
+    log4k->table[0] = 0;
     for (int i = 1; i < 4096; i++)
-        rc->log4k->table[i] = (log4kf(i, (65535UL << 16) / 12) + 
+        log4k->table[i] = (log4kf(i, (65535UL << 16) / 12) + 
                                (1 << 15)) >> 16;
-    rc->log4k->scale = 65535 / 12;
+    log4k->scale = 65535 / 12;
 }
 
-void ff_flif16_chancetable_init(FLIF16RangeCoder *rc, int alpha, int cut)
+void ff_flif16_chancetable_init(FLIF16ChanceTable *ct, int alpha, int cut)
 {
-    rc->chance = 0x800;
-    rc->ct = av_mallocz(sizeof(*(rc->ct)));
-    if(!rc->ct)
+    if(!ct)
         return;
-    build_table(rc->ct->zero_state, rc->ct->one_state, 4096, alpha, 4096 - cut);
-    ff_flif16_build_log4k_table(rc);
+    build_table(ct->zero_state, ct->one_state, 4096, alpha, 4096 - cut);
 }
 
 FLIF16ChanceContext *ff_flif16_chancecontext_init(void)
@@ -147,6 +148,26 @@ FLIF16ChanceContext *ff_flif16_chancecontext_init(void)
     if(!ctx)
         return NULL;
     memcpy(ctx, &flif16_nz_int_chances, sizeof(flif16_nz_int_chances));
+    return ctx;
+}
+
+// TODO write free function
+FLIF16MultiscaleChanceTable *ff_flif16_multiscale_chancetable_init(void)
+{
+    unsigned int len = MULTISCALE_CHANCETABLE_DEFAULT_SIZE;
+    FLIF16MultiscaleChanceTable *ct = av_malloc(sizeof(*ct));
+    for (int i = 0; i < len; ++i) {
+        ff_flif16_chancetable_init(&ct->sub_table[i],
+                                   flif16_multiscale_alphas[i],
+                                   MULTISCALE_CHANCETABLE_DEFAULT_CUT);
+    }
+    return ct;
+}
+
+FLIF16MultiscaleChanceContext *ff_flif16_multiscale_chancecontext_init(FLIF16RangeCoder *rc)
+{
+    FLIF16MultiscaleChanceContext *ctx = av_malloc(sizeof(*ctx));
+    ff_flif16_multiscale_chance_set(ctx, 0x800);
     return ctx;
 }
 

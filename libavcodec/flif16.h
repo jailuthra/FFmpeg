@@ -38,9 +38,6 @@
 
 #define FF_FLIF16_VARINT_APPEND(a,x) a = (a << 7) | (uint64_t) (x & 127)
 
-#define CHANCETABLE_DEFAULT_ALPHA (0xFFFFFFFF / 19)
-#define CHANCETABLE_DEFAULT_CUT 2
-
 #define RANGE_MIN(ranges, channels, p) (((p) > (channels)) ? 0 : (ranges)[p][0])
 #define RANGE_MAX(ranges, channels, p) (((p) > (channels)) ? 0 : (ranges)[p][1])
 #define RANGE_SET(range, l, h) (range[0] = l, range[1] = h)
@@ -63,10 +60,13 @@ typedef struct FLIF16ColorRanges {
 
     FLIF16ColorVal (*min)(FLIF16ColorRanges*, int);
     FLIF16ColorVal (*max)(FLIF16ColorRanges*, int);
+
     void (*minmax)(FLIF16ColorRanges*, const int, FLIF16ColorVal*,
                    FLIF16ColorVal*, FLIF16ColorVal*);
+
     void (*snap)(FLIF16ColorRanges*, const int, FLIF16ColorVal*,
                  FLIF16ColorVal*, FLIF16ColorVal*, FLIF16ColorVal*);
+
     void (*previous)(FLIF16ColorRanges*);
 } FLIF16ColorRanges;
 
@@ -90,10 +90,14 @@ typedef struct FLIF16Transform {
     uint8_t priv_data_size;
     //Functions
     uint8_t (*init) (FLIF16TransformContext*, FLIF16ColorRanges*);
+
     uint8_t (*read) (FLIF16TransformContext*, FLIF16DecoderContext*,
                      FLIF16ColorRanges*);
+
     FLIF16ColorRanges* (*meta) (FLIF16TransformContext*, FLIF16ColorRanges*);
+
     uint8_t (*forward) (FLIF16TransformContext*, FLIF16InterimPixelData*);
+
     uint8_t (*reverse) (FLIF16TransformContext*, FLIF16InterimPixelData*, 
                         uint32_t, uint32_t);
 } FLIF16Transform;
