@@ -164,10 +164,15 @@ FLIF16MultiscaleChanceTable *ff_flif16_multiscale_chancetable_init(void)
     return ct;
 }
 
+/**
+ * Allocate and set all chances according to flif16_nz_int_chances
+ */
 FLIF16MultiscaleChanceContext *ff_flif16_multiscale_chancecontext_init(FLIF16RangeCoder *rc)
 {
     FLIF16MultiscaleChanceContext *ctx = av_malloc(sizeof(*ctx));
-    ff_flif16_multiscale_chance_set(ctx, 0x800);
+    for (int i = 0; i < sizeof(flif16_nz_int_chances) /
+                        sizeof(flif16_nz_int_chances[0]); ++i)
+        ff_flif16_multiscale_chance_set(&ctx->data[i], flif16_nz_int_chances[i]);
     return ctx;
 }
 
@@ -398,8 +403,6 @@ int ff_flif16_maniac_read_int(FLIF16RangeCoder *rc,
                               uint8_t channel,
                               int min, int max, int *target)
 {
-    int ret;
-
     if (!rc->maniac_ctx)
         rc->segment2 = 0;
 
@@ -411,11 +414,12 @@ int ff_flif16_maniac_read_int(FLIF16RangeCoder *rc,
             ++rc->segment2;
 
         case 1:
-            ret = ff_flif16_rac_read_nz_int(rc, rc->maniac_ctx, min, max, target);
-            if(!ret)
-                return 0;
+            RAC_GET(rc, rc->maniac_ctx, min, max, target, FLIF16_RAC_NZ_INT);
     }
 
     rc->maniac_ctx = NULL;
     return 1;
+
+    need_more_data:
+        return 0;
 }
