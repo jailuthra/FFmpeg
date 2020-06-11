@@ -206,7 +206,14 @@ static int ff_flif16_read_second_header(AVCodecContext *avctx)
     end:
     s->state   = FLIF16_TRANSFORM;
     s->segment = 0;
-    ff_flif16_chancetable_init(s->rc->ct, CHANCETABLE_DEFAULT_ALPHA,
+
+    #ifdef MULTISCALE_CHANCES_ENABLED
+    s->rc->mct = ff_flif16_multiscale_chancetable_init();
+    ff_flif16_build_log4k_table(&s->rc->log4k);
+    #endif
+    
+    ff_flif16_chancetable_init(&s->rc->ct,
+                               CHANCETABLE_DEFAULT_ALPHA,
                                CHANCETABLE_DEFAULT_CUT);
     // return AVERROR_EOF; // Remove this when testing out transforms.
     return 0;
