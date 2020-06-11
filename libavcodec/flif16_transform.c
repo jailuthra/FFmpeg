@@ -353,7 +353,39 @@ FLIF16ColorVal ff_bounds_max(FLIF16ColorRangesContext* r_ctx,
     return FFMIN(ranges->max(r_ctx, p), data->bounds[1][p]);
 }
 
-void ff_ranges_close(FLIF16ColorRangesContext* r_ctx){
+inline FLIF16ColorVal ff_ranges_min(FLIF16ColorRangesContext* r_ctx, int p){
+    FLIF16ColorRanges* ranges = flif16_ranges[r_ctx->r_no];
+    if(!r_ctx)
+        return 0;
+    if(ranges->min)
+        return ranges->min(r_ctx, p);
+    else
+        return 0;
+}
+
+inline FLIF16ColorVal ff_ranges_max(FLIF16ColorRangesContext* r_ctx, int p){
+    FLIF16ColorRanges* ranges = flif16_ranges[r_ctx->r_no];
+    if(!r_ctx)
+        return 0;
+    if(ranges->max)
+        return ranges->max(r_ctx, p);
+    else
+        return 0;
+}
+
+inline void ff_ranges_minmax(FLIF16ColorRangesContext* r_ctx, int p,
+                             FLIF16ColorVal* prevPlanes, 
+                             FLIF16ColorVal* minv, FLIF16ColorVal* maxv){
+    flif16_ranges[r_ctx->r_no]->minmax(r_ctx, p, prevPlanes, minv, maxv);
+}
+
+inline void ff_ranges_snap(FLIF16ColorRangesContext* r_ctx, int p,
+                           FLIF16ColorVal* prevPlanes, FLIF16ColorVal* minv, 
+                           FLIF16ColorVal* maxv, FLIF16ColorVal* v){
+    flif16_ranges[r_ctx->r_no]->snap(r_ctx, p, prevPlanes, minv, maxv, v);
+}
+
+inline void ff_ranges_close(FLIF16ColorRangesContext* r_ctx){
     FLIF16ColorRanges* ranges = flif16_ranges[r_ctx->r_no];
     if(ranges->priv_data_size)
         av_freep(r_ctx->priv_data);
@@ -829,7 +861,7 @@ FLIF16Transform flif16_transform_channelcompact = {
     .init           = &ff_flif16_transform_channelcompact_init,
     .read           = &ff_flif16_transform_channelcompact_read,
     .meta           = &ff_flif16_transform_channelcompact_meta,
-    //.forward        = &ff_flif16_transform_channelcompact_forward,
+    .forward        = NULL,//&ff_flif16_transform_channelcompact_forward,
     .reverse        = &ff_flif16_transform_channelcompact_reverse 
 };
 
@@ -855,7 +887,9 @@ FLIF16Transform flif16_transform_bounds = {
     .priv_data_size = sizeof(transform_priv_bounds),
     .init           = &ff_flif16_transform_bounds_init,
     .read           = &ff_flif16_transform_bounds_read,
-    .meta           = &ff_flif16_transform_bounds_meta
+    .meta           = &ff_flif16_transform_bounds_meta,
+    .forward        = NULL,
+    .reverse        = NULL
 };
 
 FLIF16Transform *flif16_transforms[13] = {
@@ -896,7 +930,6 @@ FLIF16TransformContext* ff_flif16_transform_init(int t_no,
     return ctx;
 }
 
-
 uint8_t ff_flif16_transform_read(FLIF16TransformContext *ctx,
                                  FLIF16DecoderContext *dec_ctx,
                                  FLIF16ColorRangesContext* r_ctx)
@@ -909,6 +942,20 @@ uint8_t ff_flif16_transform_read(FLIF16TransformContext *ctx,
     else
         return 1;
 }
+
+uint8_t ff_flif16_transform_reverse(FLIF16TransformContext* ctx,
+                                    FLIF16InterimPixelData* pixelData,
+                                    uint8_t strideRow,
+                                    uint8_t strideCol)
+{
+    FLIF16Transform* trans = flif16_transforms[ctx->t_no];
+    if(!ctx)
+        return 0;
+    if(trans->reverse)
+        return trans->reverse(ctx, pixelData, strideRow, strideCol);
+    else
+        return 1;
+}                                    
 
 void ff_transforms_close(FLIF16TransformContext* ctx){
     FLIF16Transform* trans = flif16_transforms[ctx->t_no];

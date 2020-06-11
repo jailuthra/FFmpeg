@@ -297,6 +297,8 @@ FLIF16TransformContext *ff_flif16_transform_init(int,
 uint8_t ff_flif16_transform_read(FLIF16TransformContext*, 
                                  FLIF16DecoderContext*,
                                  FLIF16ColorRangesContext*);
+uint8_t ff_flif16_transform_reverse(FLIF16TransformContext*,
+                                    FLIF16InterimPixelData*, uint8_t, uint8_t);                                
 void ff_transforms_close(FLIF16TransformContext*);
 
 #endif /* FLIF16_TRANSFORM_H */
