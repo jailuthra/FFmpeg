@@ -65,11 +65,7 @@ void ff_flif16_rac_free(FLIF16RangeCoder *rc)
 {
     if (!rc)
         return;
-    if (rc->ct)
-        free(rc->ct);
-    if (rc->log4k)
-        free(rc->log4k);
-    free(rc);
+    av_free(rc);
 }
 
 // TODO Maybe restructure rangecoder.c/h to fit a more generic case
@@ -108,7 +104,7 @@ static void build_table(uint16_t *zero_state, uint16_t *one_state, size_t size,
         zero_state[i] = size - one_state[size - i];
 }
 
-static uint32_t log4kf(int x, uint32_t base)
+static inline uint32_t log4kf(int x, uint32_t base)
 {
     int bits     = 8 * sizeof(int) - ff_clz(x);
     uint64_t y   = ((uint64_t)x) << (32 - bits);
@@ -127,18 +123,15 @@ static uint32_t log4kf(int x, uint32_t base)
 
 void ff_flif16_build_log4k_table(FLIF16Log4kTable *log4k)
 {
-    log4k = av_mallocz(sizeof(*log4k));
     log4k->table[0] = 0;
     for (int i = 1; i < 4096; i++)
         log4k->table[i] = (log4kf(i, (65535UL << 16) / 12) + 
-                               (1 << 15)) >> 16;
+                          (1 << 15)) >> 16;
     log4k->scale = 65535 / 12;
 }
 
 void ff_flif16_chancetable_init(FLIF16ChanceTable *ct, int alpha, int cut)
 {
-    if(!ct)
-        return;
     build_table(ct->zero_state, ct->one_state, 4096, alpha, 4096 - cut);
 }
 
@@ -151,6 +144,7 @@ FLIF16ChanceContext *ff_flif16_chancecontext_init(void)
     return ctx;
 }
 
+#ifdef MULTISCALE_CHANCES_ENABLED
 // TODO write free function
 FLIF16MultiscaleChanceTable *ff_flif16_multiscale_chancetable_init(void)
 {
@@ -167,7 +161,7 @@ FLIF16MultiscaleChanceTable *ff_flif16_multiscale_chancetable_init(void)
 /**
  * Allocate and set all chances according to flif16_nz_int_chances
  */
-FLIF16MultiscaleChanceContext *ff_flif16_multiscale_chancecontext_init(FLIF16RangeCoder *rc)
+FLIF16MultiscaleChanceContext *ff_flif16_multiscale_chancecontext_init(void)
 {
     FLIF16MultiscaleChanceContext *ctx = av_malloc(sizeof(*ctx));
     for (int i = 0; i < sizeof(flif16_nz_int_chances) /
@@ -175,6 +169,8 @@ FLIF16MultiscaleChanceContext *ff_flif16_multiscale_chancecontext_init(FLIF16Ran
         ff_flif16_multiscale_chance_set(&ctx->data[i], flif16_nz_int_chances[i]);
     return ctx;
 }
+
+#endif
 
 // TODO write free function for forest
 int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
@@ -201,8 +197,13 @@ int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
         m->stack = av_malloc(MANIAC_TREE_BASE_SIZE * sizeof(*(m->stack)));
         if(!((tree->data) && (m->stack)))
             return AVERROR(ENOMEM);
-        for(int i = 0; i < 3; ++i)
+        for(int i = 0; i < 3; ++i) {
+            #ifdef MULTISCALE_CHANCES_ENABLED
+            m->ctx[i] = ff_flif16_multiscale_chancecontext_init();
+            #else
             m->ctx[i] = ff_flif16_chancecontext_init();
+            #endif
+        }
         m->stack_top = m->tree_top = 0;
         tree->size = MANIAC_TREE_BASE_SIZE;
         m->stack[m->stack_top].id   = 0;
@@ -242,8 +243,14 @@ int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
 
         case 1:
             // int p = tree[stack[top]].property = coder[0].read_int2(0,nb_properties) - 1;
+            #ifdef MULTISCALE_CHANCES_ENABLED
+            RAC_GET(rc, m->ctx[0], 0, prop_ranges_size, &curr_node->property,
+                    FLIF16_RAC_GNZ_MULTISCALE_INT);
+            #else
             RAC_GET(rc, m->ctx[0], 0, prop_ranges_size, &curr_node->property,
                     FLIF16_RAC_GNZ_INT);
+            #endif
+            
             p = --(curr_node->property);
 
             if (p == -1) {
@@ -262,14 +269,25 @@ int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
         case 2:
             //tree[stack[top]].count = coder[1].read_int2(CONTEXT_TREE_MIN_COUNT,
             //                                            CONTEXT_TREE_MAX_COUNT);
+            #ifdef MULTISCALE_CHANCES_ENABLED
+            RAC_GET(rc, m->ctx[1], MANIAC_TREE_MIN_COUNT, MANIAC_TREE_MAX_COUNT,
+                    &curr_node->count, FLIF16_RAC_GNZ_MULTISCALE_INT);
+            #else
             RAC_GET(rc, m->ctx[1], MANIAC_TREE_MIN_COUNT, MANIAC_TREE_MAX_COUNT,
                     &curr_node->count, FLIF16_RAC_GNZ_INT);
+            #endif
             ++rc->segment;
 
         case 3:
             // int splitval = n.splitval = coder[2].read_int2(oldmin, oldmax-1);
+            #ifdef MULTISCALE_CHANCES_ENABLED
+            RAC_GET(rc, m->ctx[2], oldmin, oldmax - 1, &curr_node->split_val,
+                    FLIF16_RAC_GNZ_MULTISCALE_INT);
+
+            #else
             RAC_GET(rc, m->ctx[2], oldmin, oldmax - 1, &curr_node->split_val,
                     FLIF16_RAC_GNZ_INT);
+            #endif
             split_val = curr_node->split_val;
             ++rc->segment;
 
@@ -340,16 +358,27 @@ int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
 
 // Properties properties((nump>3?NB_PROPERTIES_scanlinesA[p]:NB_PROPERTIES_scanlines[p]));
 
+#ifdef MULTISCALE_CHANCES_ENABLED
+FLIF16MultiscaleChanceContext *ff_flif16_maniac_findleaf(FLIF16MANIACContext *m,
+                                                         uint8_t channel,
+                                                         int32_t *properties)
+#else
 FLIF16ChanceContext *ff_flif16_maniac_findleaf(FLIF16MANIACContext *m,
                                                uint8_t channel,
                                                int32_t *properties)
+#endif
 {
     unsigned int pos = 0;
     uint32_t old_leaf;
     uint32_t new_leaf;
     FLIF16MANIACTree *tree = m->forest[channel];
     FLIF16MANIACNode *nodes = tree->data;
+
+    #ifdef MULTISCALE_CHANCES_ENABLED
+    FLIF16MultiscaleChanceContext *leaves;
+    #else
     FLIF16ChanceContext *leaves;
+    #endif
 
     if (m->forest[channel]->leaves) {
         m->forest[channel]->leaves = av_mallocz(MANIAC_TREE_BASE_SIZE *
@@ -414,7 +443,12 @@ int ff_flif16_maniac_read_int(FLIF16RangeCoder *rc,
             ++rc->segment2;
 
         case 1:
+            #ifdef MULTISCALE_CHANCES_ENABLED
+            RAC_GET(rc, rc->maniac_ctx, min, max, target, FLIF16_RAC_NZ_MULTISCALE_INT);
+            #else
             RAC_GET(rc, rc->maniac_ctx, min, max, target, FLIF16_RAC_NZ_INT);
+            #endif
+            
     }
 
     rc->maniac_ctx = NULL;

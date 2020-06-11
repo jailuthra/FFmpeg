@@ -188,38 +188,38 @@ typedef enum FLIF16TransformTypes {
 uint8_t ff_flif16_transform_ycocg_init(FLIF16TransformContext*,
                                        FLIF16ColorRangesContext*);
 FLIF16ColorRangesContext* ff_flif16_transform_ycocg_meta(
-                                    FLIF16TransformContext*,
-                                    FLIF16ColorRangesContext*);                                       
-uint8_t ff_flif16_transform_ycocg_forward(FLIF16TransformContext*,
-                                          FLIF16InterimPixelData*);
-uint8_t ff_flif16_transform_ycocg_reverse(FLIF16TransformContext*,
-                                          FLIF16InterimPixelData*,
-                                          uint32_t, uint32_t);
+                                                         FLIF16TransformContext*,
+                                                         FLIF16ColorRangesContext*);                                       
+static uint8_t ff_flif16_transform_ycocg_forward(FLIF16TransformContext*,
+                                                 FLIF16InterimPixelData*);
+static uint8_t ff_flif16_transform_ycocg_reverse(FLIF16TransformContext*,
+                                                 FLIF16InterimPixelData*,
+                                                 uint32_t, uint32_t);
 
-uint8_t ff_flif16_transform_permuteplanes_read(FLIF16TransformContext*,
-                                               FLIF16DecoderContext*,
-                                               FLIF16ColorRangesContext*);
-uint8_t ff_flif16_transform_permuteplanes_init(FLIF16TransformContext*,
-                                               FLIF16ColorRangesContext*);
-FLIF16ColorRangesContext* ff_flif16_transform_permuteplanes_meta(
-                                    FLIF16TransformContext*,
-                                    FLIF16ColorRangesContext*);
-uint8_t ff_flif16_transform_permuteplanes_forward(
-                                            FLIF16TransformContext*,
-                                            FLIF16InterimPixelData*);
-uint8_t ff_flif16_transform_permuteplanes_reverse(
-                                        FLIF16TransformContext*,
-                                        FLIF16InterimPixelData*,
-                                        uint32_t, uint32_t);
+static uint8_t ff_flif16_transform_permuteplanes_read(FLIF16TransformContext*,
+                                                      FLIF16DecoderContext*,
+                                                      FLIF16ColorRangesContext*);
+static uint8_t ff_flif16_transform_permuteplanes_init(FLIF16TransformContext*,
+                                                      FLIF16ColorRangesContext*);
+static FLIF16ColorRangesContext* ff_flif16_transform_permuteplanes_meta(
+                                                     FLIF16TransformContext*,
+                                                     FLIF16ColorRangesContext*);
+static uint8_t ff_flif16_transform_permuteplanes_forward(
+                                                      FLIF16TransformContext*,
+                                                       FLIF16InterimPixelData*);
+static uint8_t ff_flif16_transform_permuteplanes_reverse(
+                                                        FLIF16TransformContext*,
+                                                        FLIF16InterimPixelData*,
+                                                        uint32_t, uint32_t);
 
-uint8_t ff_flif16_transform_channelcompact_read(FLIF16TransformContext*,
-                                               FLIF16DecoderContext*,
-                                               FLIF16ColorRangesContext*);
-uint8_t ff_flif16_transform_channelcompact_init(FLIF16TransformContext*,
-                                                FLIF16ColorRangesContext*);
+static uint8_t ff_flif16_transform_channelcompact_read(FLIF16TransformContext*,
+                                                       FLIF16DecoderContext*,
+                                                       FLIF16ColorRangesContext*);
+static uint8_t ff_flif16_transform_channelcompact_init(FLIF16TransformContext*,
+                                                       FLIF16ColorRangesContext*);
 FLIF16ColorRangesContext* ff_flif16_transform_channelcompact_meta(
-                                    FLIF16TransformContext*,
-                                    FLIF16ColorRangesContext*);                                                
+                                                     FLIF16TransformContext*,
+                                                     FLIF16ColorRangesContext*);                                                
 //uint8_t ff_flif16_transform_channelcompact_forward(
 //                                            FLIF16TransformContext *ctx,
 //                                            FLIF16DecoderContext *dec_ctx,
