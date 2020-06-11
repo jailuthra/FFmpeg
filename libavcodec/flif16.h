@@ -61,7 +61,6 @@ typedef struct FLIF16ColorRangesContext{
 
 typedef struct FLIF16ColorRanges {
     uint8_t priv_data_size;
-    uint8_t is_static;
 
     FLIF16ColorVal (*min)(FLIF16ColorRangesContext*, int);
     FLIF16ColorVal (*max)(FLIF16ColorRangesContext*, int);
@@ -69,7 +68,7 @@ typedef struct FLIF16ColorRanges {
                    FLIF16ColorVal*, FLIF16ColorVal*);
     void (*snap)(FLIF16ColorRangesContext*, const int, FLIF16ColorVal*,
                  FLIF16ColorVal*, FLIF16ColorVal*, FLIF16ColorVal*);
-
+    uint8_t is_static;
     void (*previous)(FLIF16ColorRanges*);
 } FLIF16ColorRanges;
 
@@ -94,7 +93,8 @@ typedef struct FLIF16Transform {
     uint8_t (*init) (FLIF16TransformContext*, FLIF16ColorRangesContext*);
     uint8_t (*read) (FLIF16TransformContext*, FLIF16DecoderContext*,
                      FLIF16ColorRangesContext*);
-    FLIF16ColorRanges* (*meta) (FLIF16TransformContext*, FLIF16ColorRangesContext*);
+    FLIF16ColorRangesContext* (*meta) (FLIF16TransformContext*, 
+                                       FLIF16ColorRangesContext*);
     uint8_t (*forward) (FLIF16TransformContext*, FLIF16InterimPixelData*);
 
     uint8_t (*reverse) (FLIF16TransformContext*, FLIF16InterimPixelData*, 
