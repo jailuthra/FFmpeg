@@ -157,6 +157,6 @@ void ff_flif16_maniac_ni_prop_ranges_init(int32_t (*prop_ranges)[2],
                                           uint8_t channels);
 
 // Must be included here to resolve circular include
-#include "flif16_transform.h"
+// #include "flif16_transform.h"
 
 #endif /* AVCODEC_FLIF16_H */

@@ -48,7 +48,7 @@
 #define CHANCETABLE_DEFAULT_ALPHA (0xFFFFFFFF / 19)
 #define CHANCETABLE_DEFAULT_CUT 2
 
-#define MULTISCALE_CHANCES_ENABLED
+// #define MULTISCALE_CHANCES_ENABLED
 
 #define MULTISCALE_CHANCETABLE_DEFAULT_SIZE 6
 #define MULTISCALE_CHANCETABLE_DEFAULT_CUT  8
@@ -398,6 +398,7 @@ static inline uint8_t ff_flif16_rac_read_symbol(FLIF16RangeCoder *rc,
     return 1;
 }
 
+#ifdef MULTISCALE_CHANCES_ENABLED
 // Multiscale chance definitions
 
 static inline void ff_flif16_multiscale_chance_set(FLIF16MultiscaleChance *c,
@@ -447,6 +448,7 @@ static inline uint8_t ff_flif16_rac_read_multiscale_symbol(FLIF16RangeCoder *rc,
     ff_flif16_multiscale_chancetable_put(rc, ctx, type, *target);
     return 1;
 }
+#endif
 
 // NearZero Integer Coder
 
@@ -469,6 +471,7 @@ static inline int ff_flif16_rac_nz_read_internal(FLIF16RangeCoder *rc,
     return 1;
 }
 
+#ifdef MULTISCALE_CHANCES_ENABLED
 static inline int ff_flif16_rac_nz_read_multiscale_internal(FLIF16RangeCoder *rc,
                                                             FLIF16MultiscaleChanceContext *ctx,
                                                             uint16_t type, uint8_t *target)
@@ -486,7 +489,7 @@ static inline int ff_flif16_rac_nz_read_multiscale_internal(FLIF16RangeCoder *rc
     }
     return 1;
 }
-
+#endif
 
 #define RAC_NZ_GET(rc, ctx, chance, target)                                    \
     if (!ff_flif16_rac_nz_read_internal((rc), (ctx), (chance),                 \

@@ -144,6 +144,7 @@ FLIF16ChanceContext *ff_flif16_chancecontext_init(void)
     return ctx;
 }
 
+#ifdef MULTISCALE_CHANCES_ENABLED
 // TODO write free function
 FLIF16MultiscaleChanceTable *ff_flif16_multiscale_chancetable_init(void)
 {
@@ -168,6 +169,8 @@ FLIF16MultiscaleChanceContext *ff_flif16_multiscale_chancecontext_init(void)
         ff_flif16_multiscale_chance_set(&ctx->data[i], flif16_nz_int_chances[i]);
     return ctx;
 }
+
+#endif
 
 // TODO write free function for forest
 int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
