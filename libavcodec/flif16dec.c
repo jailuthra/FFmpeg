@@ -206,7 +206,7 @@ static int ff_flif16_read_second_header(AVCodecContext *avctx)
     end:
     s->state   = FLIF16_TRANSFORM;
     s->segment = 0;
-    ff_flif16_chancetable_init(s->rc, CHANCETABLE_DEFAULT_ALPHA,
+    ff_flif16_chancetable_init(s->rc->ct, CHANCETABLE_DEFAULT_ALPHA,
                                CHANCETABLE_DEFAULT_CUT);
     // return AVERROR_EOF; // Remove this when testing out transforms.
     return 0;
@@ -291,6 +291,11 @@ static int ff_flif16_read_maniac_forest(AVCodecContext *avctx)
     end:
     s->state = FLIF16_PIXELDATA;
     return ret;
+}
+
+static int ff_flif16_read_ni_image(void)
+{
+    return 0;
 }
 
 static int ff_flif16_read_pixeldata(AVCodecContext *avctx, AVFrame *p)
