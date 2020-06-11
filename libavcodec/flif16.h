@@ -50,27 +50,27 @@ struct FLIF16DecoderContext;
 typedef struct FLIF16DecoderContext FLIF16DecoderContext;
 
 typedef int16_t FLIF16ColorVal;
-struct FLIF16ColorRanges;
-typedef struct FLIF16ColorRanges FLIF16ColorRanges;
+struct FLIF16Ranges;
+typedef struct FLIF16Ranges FLIF16Ranges;
 
-typedef struct FLIF16ColorRangesContext{
+typedef struct FLIF16RangesContext{
     uint8_t r_no;
     uint8_t num_planes;
     void* priv_data;
-}FLIF16ColorRangesContext;
+}FLIF16RangesContext;
 
-typedef struct FLIF16ColorRanges {
+typedef struct FLIF16Ranges {
     uint8_t priv_data_size;
 
-    FLIF16ColorVal (*min)(FLIF16ColorRangesContext*, int);
-    FLIF16ColorVal (*max)(FLIF16ColorRangesContext*, int);
-    void (*minmax)(FLIF16ColorRangesContext*, const int, FLIF16ColorVal*,
+    FLIF16ColorVal (*min)(FLIF16RangesContext*, int);
+    FLIF16ColorVal (*max)(FLIF16RangesContext*, int);
+    void (*minmax)(FLIF16RangesContext*, const int, FLIF16ColorVal*,
                    FLIF16ColorVal*, FLIF16ColorVal*);
-    void (*snap)(FLIF16ColorRangesContext*, const int, FLIF16ColorVal*,
+    void (*snap)(FLIF16RangesContext*, const int, FLIF16ColorVal*,
                  FLIF16ColorVal*, FLIF16ColorVal*, FLIF16ColorVal*);
     uint8_t is_static;
-    void (*previous)(FLIF16ColorRanges*);
-} FLIF16ColorRanges;
+    void (*previous)(FLIF16Ranges*);
+} FLIF16Ranges;
 
 typedef struct FLIF16InterimPixelData {
     uint8_t initialized;            //FLAG : initialized or not.
@@ -90,11 +90,11 @@ typedef struct FLIF16TransformContext{
 typedef struct FLIF16Transform {
     uint8_t priv_data_size;
     //Functions
-    uint8_t (*init) (FLIF16TransformContext*, FLIF16ColorRangesContext*);
+    uint8_t (*init) (FLIF16TransformContext*, FLIF16RangesContext*);
     uint8_t (*read) (FLIF16TransformContext*, FLIF16DecoderContext*,
-                     FLIF16ColorRangesContext*);
-    FLIF16ColorRangesContext* (*meta) (FLIF16TransformContext*, 
-                                       FLIF16ColorRangesContext*);
+                     FLIF16RangesContext*);
+    FLIF16RangesContext* (*meta) (FLIF16TransformContext*, 
+                                       FLIF16RangesContext*);
     uint8_t (*forward) (FLIF16TransformContext*, FLIF16InterimPixelData*);
 
     uint8_t (*reverse) (FLIF16TransformContext*, FLIF16InterimPixelData*, 
@@ -140,8 +140,8 @@ typedef struct FLIF16DecoderContext {
     // Size dynamically maybe
     // FLIF16TransformContext *transforms[13];
     uint8_t transform_top;
-    //FLIF16ColorRanges ranges;
-    //FLIF16ColorRanges ranges_prev;
+    //FLIF16Ranges ranges;
+    //FLIF16Ranges ranges_prev;
     
     // Dimensions and other things.
     uint32_t width;

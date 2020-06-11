@@ -682,14 +682,14 @@ static inline int ff_flif16_rac_process(FLIF16RangeCoder *rc,
 #ifdef MULTISCALE_CHANCES_ENABLED
             case FLIF16_RAC_NZ_MULTISCALE_INT:
                 // handle nz_ints
-                flag = ff_flif16_rac_read_nz_multiscale_int(rc, (FLIF16MultiscaleChanceContext *) ctx, val1, val2, 
-                                                            (int *) target);
+                flag = ff_flif16_rac_read_nz_multiscale_int(rc, (FLIF16MultiscaleChanceContext *) ctx,
+                                                            val1, val2, (int *) target);
                 break;
 
             case FLIF16_RAC_GNZ_MULTISCALE_INT:
                 // handle nz_ints
-                flag = ff_flif16_rac_read_gnz_multiscale_int(rc, (FLIF16MultiscaleChanceContext *) ctx, val1, val2, 
-                                                             (int *) target);
+                flag = ff_flif16_rac_read_gnz_multiscale_int(rc, (FLIF16MultiscaleChanceContext *) ctx,
+                                                             val1, val2, (int *) target);
                 break;
 #endif
             default:

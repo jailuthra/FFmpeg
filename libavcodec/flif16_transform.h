@@ -33,64 +33,69 @@
 
 #define MAX_PLANES 5
 
-typedef enum FLIF16ColorRangesTypes{
-    FLIF16_COLORRANGES_DEFAULT,
-    FLIF16_COLORRANGES_CHANNELCOMPACT = 0,
-    FLIF16_COLORRANGES_YCOCG,
-    FLIF16_COLORRANGES_PERMUTEPLANES,
-    FLIF16_COLORRANGES_PERMUTEPLANESSUBTRACT,
-    FLIF16_COLORRANGES_BOUNDS,
-    FLIF16_COLORRANGES_STATIC,
-    FLIF16_COLORRANGES_PALETTEALPHA,
-    FLIF16_COLORRANGES_PALETTE,
-    FLIF16_COLORRANGES_COLORBUCKETS,
-    FLIF16_COLORRANGES_DUPLICATEFRAME,
-    FLIF16_COLORRANGES_FRAMESHAPE,
-    FLIF16_COLORRANGES_FRAMELOOKBACK,
-    FLIF16_COLORRANGES_DUP
-}FLIF16ColorRangesTypes;
+typedef enum FLIF16RangesTypes{
+    FLIF16_RANGES_DEFAULT,
+    FLIF16_RANGES_CHANNELCOMPACT = 0,
+    FLIF16_RANGES_YCOCG,
+    FLIF16_RANGES_PERMUTEPLANES,
+    FLIF16_RANGES_PERMUTEPLANESSUBTRACT,
+    FLIF16_RANGES_BOUNDS,
+    FLIF16_RANGES_STATIC,
+    FLIF16_RANGES_PALETTEALPHA,
+    FLIF16_RANGES_PALETTE,
+    FLIF16_RANGES_COLORBUCKETS,
+    FLIF16_RANGES_DUPLICATEFRAME,
+    FLIF16_RANGES_FRAMESHAPE,
+    FLIF16_RANGES_FRAMELOOKBACK,
+    FLIF16_RANGES_DUP
+} FLIF16RangesTypes;
 
-void ff_default_snap(FLIF16ColorRangesContext*, int,
-                                   FLIF16ColorVal*, FLIF16ColorVal*,
-                                   FLIF16ColorVal*, FLIF16ColorVal*);
-void ff_bounds_snap(FLIF16ColorRangesContext*, int,
-                                   FLIF16ColorVal*, FLIF16ColorVal*,
-                                   FLIF16ColorVal*, FLIF16ColorVal*);
-void ff_default_minmax(FLIF16ColorRangesContext*, int,
+static void ff_default_snap(FLIF16RangesContext*, int,
+                            FLIF16ColorVal*, FLIF16ColorVal*,
+                            FLIF16ColorVal*, FLIF16ColorVal*);
+
+static void ff_bounds_snap(FLIF16RangesContext*, int,
+                           FLIF16ColorVal*, FLIF16ColorVal*,
+                           FLIF16ColorVal*, FLIF16ColorVal*);
+
+static void ff_default_minmax(FLIF16RangesContext*, int,
+                              FLIF16ColorVal*, FLIF16ColorVal*,
+                              FLIF16ColorVal*);
+       
+static void ff_channelcompact_minmax(FLIF16RangesContext*, int,
                                      FLIF16ColorVal*, FLIF16ColorVal*,
                                      FLIF16ColorVal*);
-void ff_channelcompact_minmax(FLIF16ColorRangesContext*, int,
+       
+static void ff_ycocg_minmax(FLIF16RangesContext*, int,
+                            FLIF16ColorVal*, FLIF16ColorVal*,
+                            FLIF16ColorVal*);
+       
+static void ff_permuteplanessubtract_minmax(FLIF16RangesContext*, int,
                                             FLIF16ColorVal*, FLIF16ColorVal*,
                                             FLIF16ColorVal*);
-void ff_ycocg_minmax(FLIF16ColorRangesContext*, int,
-                                   FLIF16ColorVal*, FLIF16ColorVal*,
-                                   FLIF16ColorVal*);
-void ff_permuteplanessubtract_minmax(
-                                            FLIF16ColorRangesContext*, int,
-                                            FLIF16ColorVal*, FLIF16ColorVal*,
-                                            FLIF16ColorVal*);
-void ff_bounds_minmax(FLIF16ColorRangesContext*, int,
-                                    FLIF16ColorVal*, FLIF16ColorVal*,
-                                    FLIF16ColorVal*);
-FLIF16ColorVal ff_static_min(FLIF16ColorRangesContext*, int);
-FLIF16ColorVal ff_channelcompact_min(FLIF16ColorRangesContext*, int);
-FLIF16ColorVal ff_ycocg_min(FLIF16ColorRangesContext*, int);
-FLIF16ColorVal ff_permuteplanes_min(FLIF16ColorRangesContext*, int);
-FLIF16ColorVal ff_permuteplanessubtract_min(FLIF16ColorRangesContext*, int);
-FLIF16ColorVal ff_bounds_min(FLIF16ColorRangesContext*, int);
+       
+static void ff_bounds_minmax(FLIF16RangesContext*, int,
+                             FLIF16ColorVal*, FLIF16ColorVal*,
+                             FLIF16ColorVal*);
 
-FLIF16ColorVal ff_static_max(FLIF16ColorRangesContext*, int);
-FLIF16ColorVal ff_channelcompact_max(FLIF16ColorRangesContext*, int);
-FLIF16ColorVal ff_ycocg_max(FLIF16ColorRangesContext*, int);
-FLIF16ColorVal ff_permuteplanes_max(FLIF16ColorRangesContext*, int);
-FLIF16ColorVal ff_permuteplanessubtract_max(FLIF16ColorRangesContext*, int);
-FLIF16ColorVal ff_bounds_max(FLIF16ColorRangesContext*, int);
+static FLIF16ColorVal ff_static_min(FLIF16RangesContext*, int);
+static FLIF16ColorVal ff_channelcompact_min(FLIF16RangesContext*, int);
+static FLIF16ColorVal ff_ycocg_min(FLIF16RangesContext*, int);
+static FLIF16ColorVal ff_permuteplanes_min(FLIF16RangesContext*, int);
+static FLIF16ColorVal ff_permuteplanessubtract_min(FLIF16RangesContext*, int);
+static FLIF16ColorVal ff_bounds_min(FLIF16RangesContext*, int);
+static FLIF16ColorVal ff_static_max(FLIF16RangesContext*, int);
+static FLIF16ColorVal ff_channelcompact_max(FLIF16RangesContext*, int);
+static FLIF16ColorVal ff_ycocg_max(FLIF16RangesContext*, int);
+static FLIF16ColorVal ff_permuteplanes_max(FLIF16RangesContext*, int);
+static FLIF16ColorVal ff_permuteplanessubtract_max(FLIF16RangesContext*, int);
+static FLIF16ColorVal ff_bounds_max(FLIF16RangesContext*, int);
 
 
-void ff_ranges_close(FLIF16ColorRangesContext*);
+static void ff_ranges_close(FLIF16RangesContext*);
 /*
-FLIF16ColorRanges* ff_get_ranges(FLIF16InterimPixelData *pixel_data,
-                                 FLIF16ColorRanges *ranges)
+FLIF16Ranges* ff_get_ranges(FLIF16InterimPixelData *pixel_data,
+                                 FLIF16Ranges *ranges)
 {
     int i, c, r, width, height;
     FLIF16ColorVal min, max;
@@ -186,10 +191,10 @@ typedef enum FLIF16TransformTypes {
 */
 
 uint8_t ff_flif16_transform_ycocg_init(FLIF16TransformContext*,
-                                       FLIF16ColorRangesContext*);
-FLIF16ColorRangesContext* ff_flif16_transform_ycocg_meta(
+                                       FLIF16RangesContext*);
+FLIF16RangesContext* ff_flif16_transform_ycocg_meta(
                                                          FLIF16TransformContext*,
-                                                         FLIF16ColorRangesContext*);                                       
+                                                         FLIF16RangesContext*);                                       
 static uint8_t ff_flif16_transform_ycocg_forward(FLIF16TransformContext*,
                                                  FLIF16InterimPixelData*);
 static uint8_t ff_flif16_transform_ycocg_reverse(FLIF16TransformContext*,
@@ -198,12 +203,12 @@ static uint8_t ff_flif16_transform_ycocg_reverse(FLIF16TransformContext*,
 
 static uint8_t ff_flif16_transform_permuteplanes_read(FLIF16TransformContext*,
                                                       FLIF16DecoderContext*,
-                                                      FLIF16ColorRangesContext*);
+                                                      FLIF16RangesContext*);
 static uint8_t ff_flif16_transform_permuteplanes_init(FLIF16TransformContext*,
-                                                      FLIF16ColorRangesContext*);
-static FLIF16ColorRangesContext* ff_flif16_transform_permuteplanes_meta(
+                                                      FLIF16RangesContext*);
+static FLIF16RangesContext* ff_flif16_transform_permuteplanes_meta(
                                                      FLIF16TransformContext*,
-                                                     FLIF16ColorRangesContext*);
+                                                     FLIF16RangesContext*);
 static uint8_t ff_flif16_transform_permuteplanes_forward(
                                                       FLIF16TransformContext*,
                                                        FLIF16InterimPixelData*);
@@ -214,45 +219,44 @@ static uint8_t ff_flif16_transform_permuteplanes_reverse(
 
 static uint8_t ff_flif16_transform_channelcompact_read(FLIF16TransformContext*,
                                                        FLIF16DecoderContext*,
-                                                       FLIF16ColorRangesContext*);
+                                                       FLIF16RangesContext*);
 static uint8_t ff_flif16_transform_channelcompact_init(FLIF16TransformContext*,
-                                                       FLIF16ColorRangesContext*);
-FLIF16ColorRangesContext* ff_flif16_transform_channelcompact_meta(
-                                                     FLIF16TransformContext*,
-                                                     FLIF16ColorRangesContext*);                                                
+                                                       FLIF16RangesContext*);
+static FLIF16RangesContext* ff_flif16_transform_channelcompact_meta(FLIF16TransformContext*,
+                                                                    FLIF16RangesContext*);                                                
 //uint8_t ff_flif16_transform_channelcompact_forward(
 //                                            FLIF16TransformContext *ctx,
 //                                            FLIF16DecoderContext *dec_ctx,
 //                                            FLIF16InterimPixelData * pixelData);
-uint8_t ff_flif16_transform_channelcompact_reverse(
-                                        FLIF16TransformContext*,
-                                        FLIF16InterimPixelData*,
-                                        uint32_t, uint32_t);
+static uint8_t ff_flif16_transform_channelcompact_reverse(FLIF16TransformContext*,
+                                                          FLIF16InterimPixelData*,
+                                                          uint32_t, uint32_t);
 
-uint8_t ff_flif16_transform_bounds_read(FLIF16TransformContext*,
-                                        FLIF16DecoderContext*,
-                                        FLIF16ColorRangesContext*);
-uint8_t ff_flif16_transform_bounds_init(FLIF16TransformContext*,
-                                        FLIF16ColorRangesContext*);
-FLIF16ColorRangesContext* ff_flif16_transform_bounds_meta(
-                                    FLIF16TransformContext*,
-                                    FLIF16ColorRangesContext*);
+static uint8_t ff_flif16_transform_bounds_read(FLIF16TransformContext*,
+                                               FLIF16DecoderContext*,
+                                               FLIF16RangesContext*);
 
-typedef struct transform_priv_ycocg{
+static uint8_t ff_flif16_transform_bounds_init(FLIF16TransformContext*,
+                                               FLIF16RangesContext*);
+
+static FLIF16RangesContext* ff_flif16_transform_bounds_meta(FLIF16TransformContext*,
+                                                            FLIF16RangesContext*);
+
+typedef struct transform_priv_ycocg {
     int origmax4;
-    FLIF16ColorRangesContext* r_ctx;
-}transform_priv_ycocg;
+    FLIF16RangesContext* r_ctx;
+} transform_priv_ycocg;
 
-typedef struct transform_priv_permuteplanes{
+typedef struct transform_priv_permuteplanes {
     uint8_t subtract;
     uint8_t permutation[5];
-    FLIF16ColorRangesContext* r_ctx;
+    FLIF16RangesContext* r_ctx;
 
     uint8_t from[4], to[4];
     FLIF16ChanceContext *ctx_a;
-}transform_priv_permuteplanes;
+} transform_priv_permuteplanes;
 
-typedef struct transform_priv_channelcompact{
+typedef struct transform_priv_channelcompact {
     FLIF16ColorVal* CPalette[4];
     unsigned int CPalette_size[4];
     FLIF16ColorVal* CPalette_inv[4];
@@ -261,42 +265,41 @@ typedef struct transform_priv_channelcompact{
     FLIF16ColorVal min;
     unsigned int i;                   //Iterator for nested loop.
     FLIF16ChanceContext *ctx_a;
-}transform_priv_channelcompact;
+} transform_priv_channelcompact;
 
-typedef struct transform_priv_bounds{
+typedef struct transform_priv_bounds {
     FLIF16ColorVal *bounds[2];
     FLIF16ColorVal min;
     FLIF16ChanceContext *ctx_a;
-}transform_priv_bounds;
+} transform_priv_bounds;
 
-typedef struct ranges_priv_channelcompact{
+typedef struct ranges_priv_channelcompact {
     int nb_colors[4];
-}ranges_priv_channelcompact;
+} ranges_priv_channelcompact;
 
-typedef struct ranges_priv_ycocg{
+typedef struct ranges_priv_ycocg {
     int origmax4;
-    FLIF16ColorRangesContext* r_ctx;
-}ranges_priv_ycocg;
+    FLIF16RangesContext* r_ctx;
+} ranges_priv_ycocg;
 
-typedef struct ranges_priv_permuteplanes{
+typedef struct ranges_priv_permuteplanes {
     uint8_t permutation[5];
-    FLIF16ColorRangesContext* r_ctx;
-}ranges_priv_permuteplanes;
+    FLIF16RangesContext* r_ctx;
+} ranges_priv_permuteplanes;
 
-typedef struct ranges_priv_bounds{
+typedef struct ranges_priv_bounds {
     FLIF16ColorVal* bounds[2];
-    FLIF16ColorRangesContext* r_ctx;
-}ranges_priv_bounds;
+    FLIF16RangesContext* r_ctx;
+} ranges_priv_bounds;
 
-typedef struct ranges_priv_static{
+typedef struct ranges_priv_static {
     FLIF16ColorVal* bounds[2];
 }ranges_priv_static;
 
-FLIF16TransformContext *ff_flif16_transform_init(int, 
-                                                 FLIF16ColorRangesContext*);
+FLIF16TransformContext *ff_flif16_transform_init(int, FLIF16RangesContext*);
 uint8_t ff_flif16_transform_read(FLIF16TransformContext*, 
                                  FLIF16DecoderContext*,
-                                 FLIF16ColorRangesContext*);
+                                 FLIF16RangesContext*);
 uint8_t ff_flif16_transform_reverse(FLIF16TransformContext*,
                                     FLIF16InterimPixelData*, uint8_t, uint8_t);                                
 void ff_transforms_close(FLIF16TransformContext*);

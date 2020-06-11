@@ -28,7 +28,7 @@
 #include "flif16_rangecoder.h"
 #include "libavutil/common.h"
 
-FLIF16ColorRanges flif16_colorranges_default = {
+FLIF16Ranges flif16_colorranges_default = {
     .priv_data_size = 0,
     .min            = NULL,
     .max            = NULL,
@@ -37,7 +37,7 @@ FLIF16ColorRanges flif16_colorranges_default = {
     .is_static      = 1,
 };
 
-FLIF16ColorRanges flif16_colorranges_static = {
+FLIF16Ranges flif16_colorranges_static = {
     .priv_data_size = sizeof(ranges_priv_static),
     .min            = &ff_static_min,
     .max            = &ff_static_max,
@@ -46,7 +46,7 @@ FLIF16ColorRanges flif16_colorranges_static = {
     .is_static      = 1,
 };
 
-FLIF16ColorRanges flif16_colorranges_channelcompact = {
+FLIF16Ranges flif16_colorranges_channelcompact = {
     .priv_data_size = sizeof(ranges_priv_channelcompact),
     .min            = &ff_channelcompact_min,
     .max            = &ff_channelcompact_max,
@@ -55,7 +55,7 @@ FLIF16ColorRanges flif16_colorranges_channelcompact = {
     .is_static      = 1,
 };
 
-FLIF16ColorRanges flif16_colorranges_ycocg = {
+FLIF16Ranges flif16_colorranges_ycocg = {
     .priv_data_size = sizeof(ranges_priv_ycocg),
     .min            = &ff_ycocg_min,
     .max            = &ff_ycocg_max,
@@ -64,7 +64,7 @@ FLIF16ColorRanges flif16_colorranges_ycocg = {
     .is_static      = 0,
 };
 
-FLIF16ColorRanges flif16_colorranges_permuteplanessubtract = {
+FLIF16Ranges flif16_colorranges_permuteplanessubtract = {
     .priv_data_size = sizeof(ranges_priv_permuteplanes),
     .min            = &ff_permuteplanessubtract_min,
     .max            = &ff_permuteplanessubtract_max,
@@ -73,7 +73,7 @@ FLIF16ColorRanges flif16_colorranges_permuteplanessubtract = {
     .is_static      = 0,
 };
 
-FLIF16ColorRanges flif16_colorranges_permuteplanes = {
+FLIF16Ranges flif16_colorranges_permuteplanes = {
     .priv_data_size = sizeof(ranges_priv_permuteplanes),
     .min    = &ff_permuteplanes_min,
     .max    = &ff_permuteplanes_max,
@@ -82,7 +82,7 @@ FLIF16ColorRanges flif16_colorranges_permuteplanes = {
     .is_static = 0,
 };
 
-FLIF16ColorRanges flif16_colorranges_bounds = {
+FLIF16Ranges flif16_colorranges_bounds = {
     .priv_data_size = sizeof(ranges_priv_bounds),
     .min    = &ff_bounds_min,
     .max    = &ff_bounds_max,
@@ -91,38 +91,57 @@ FLIF16ColorRanges flif16_colorranges_bounds = {
     .is_static = 0,
 };
 
-FLIF16ColorRanges* flif16_ranges[] = {
+/*
+FLIF16Ranges* flif16_ranges[] = {
     &flif16_colorranges_default,
     &flif16_colorranges_channelcompact,
     &flif16_colorranges_ycocg,
+    NULL, // FLIF16_TRANSFORM_RESERVED1
     &flif16_colorranges_permuteplanes,
     &flif16_colorranges_permuteplanessubtract,
     &flif16_colorranges_bounds,
     &flif16_colorranges_static
 };
+*/
 
-void ff_default_minmax(FLIF16ColorRangesContext *src_ctx ,const int p,
-                                     FLIF16ColorVal* prevPlanes,
-                                     FLIF16ColorVal* minv, FLIF16ColorVal* maxv)
+FLIF16Ranges *flif16_ranges[] = {
+    &flif16_colorranges_channelcompact, // FLIF16_TRANSFORM_CHANNELCOMPACT = 0,
+    &flif16_colorranges_ycocg,          // FLIF16_TRANSFORM_YCOCG,
+    NULL, // FLIF16_TRANSFORM_RESERVED1,
+    &flif16_colorranges_permuteplanes,  // FLIF16_TRANSFORM_PERMUTEPLANES,
+    &flif16_colorranges_bounds,         // FLIF16_TRANSFORM_BOUNDS,
+    NULL, // FLIF16_TRANSFORM_PALETTEALPHA,
+    NULL, // FLIF16_TRANSFORM_PALETTE,
+    NULL, // FLIF16_TRANSFORM_COLORBUCKETS,
+    NULL, // FLIF16_TRANSFORM_RESERVED2,
+    NULL, // FLIF16_TRANSFORM_RESERVED3,
+    NULL, // FLIF16_TRANSFORM_DUPLICATEFRAME,
+    NULL, // FLIF16_TRANSFORM_FRAMESHAPE,
+    NULL, // FLIF16_TRANSFORM_FRAMELOOKBACK
+};
+
+void ff_default_minmax(FLIF16RangesContext *src_ctx ,const int p,
+                       FLIF16ColorVal* prev_planes,
+                       FLIF16ColorVal* minv, FLIF16ColorVal* maxv)
 {
-    FLIF16ColorRanges* ranges = flif16_ranges[src_ctx->r_no];
+    FLIF16Ranges* ranges = flif16_ranges[src_ctx->r_no];
     *minv = ranges->min(src_ctx, p);
     *maxv = ranges->max(src_ctx, p);
 }
 
-void ff_default_snap(FLIF16ColorRangesContext *src_ctx ,const int p,
-                                FLIF16ColorVal* prevPlanes,
-                                FLIF16ColorVal* minv, FLIF16ColorVal* maxv, 
-                                FLIF16ColorVal* v)
+void ff_default_snap(FLIF16RangesContext *src_ctx ,const int p,
+                     FLIF16ColorVal* prev_planes,
+                     FLIF16ColorVal* minv, FLIF16ColorVal* maxv, 
+                     FLIF16ColorVal* v)
 {
-    ff_default_minmax(src_ctx, p, prevPlanes, minv, maxv);
+    ff_default_minmax(src_ctx, p, prev_planes, minv, maxv);
     if(*minv > *maxv)
         *maxv = *minv;
     *v = av_clip(*v, *minv, *maxv);
 }
 
-FLIF16ColorVal ff_static_min(FLIF16ColorRangesContext* r_ctx,
-                                           int p)
+FLIF16ColorVal ff_static_min(FLIF16RangesContext* r_ctx,
+                             int p)
 {
     ranges_priv_static* data = r_ctx->priv_data;
     if(p >= r_ctx->num_planes)
@@ -131,8 +150,8 @@ FLIF16ColorVal ff_static_min(FLIF16ColorRangesContext* r_ctx,
     return data->bounds[0][p];
 }
 
-FLIF16ColorVal ff_static_max(FLIF16ColorRangesContext* r_ctx,
-                                           int p)
+FLIF16ColorVal ff_static_max(FLIF16RangesContext* r_ctx,
+                             int p)
 {
     ranges_priv_static* data = r_ctx->priv_data;
     if(p >= r_ctx->num_planes)
@@ -141,31 +160,31 @@ FLIF16ColorVal ff_static_max(FLIF16ColorRangesContext* r_ctx,
     return data->bounds[1][p];
 }
 
-FLIF16ColorVal ff_channelcompact_min(FLIF16ColorRangesContext* ranges, 
-                                                   int p){
+FLIF16ColorVal ff_channelcompact_min(FLIF16RangesContext* ranges, 
+                                     int p){
     return 0;
 }
 
-FLIF16ColorVal ff_channelcompact_max(FLIF16ColorRangesContext* src_ctx,
-                                                   int p){
+FLIF16ColorVal ff_channelcompact_max(FLIF16RangesContext* src_ctx,
+                                     int p){
     ranges_priv_channelcompact* data = src_ctx->priv_data;
     return data->nb_colors[p];
 }
 
-void ff_channelcompact_minmax(FLIF16ColorRangesContext *r_ctx, int p,
-                                         FLIF16ColorVal* prevPlanes,
-                                         FLIF16ColorVal* minv,
-                                         FLIF16ColorVal* maxv)
+void ff_channelcompact_minmax(FLIF16RangesContext *r_ctx, int p,
+                              FLIF16ColorVal* prev_planes,
+                              FLIF16ColorVal* minv,
+                              FLIF16ColorVal* maxv)
 {
     ranges_priv_channelcompact* data = r_ctx->priv_data;
     *minv = 0;
     *maxv = data->nb_colors[p];
 }
 
-FLIF16ColorVal ff_ycocg_min(FLIF16ColorRangesContext* r_ctx, int p)
+FLIF16ColorVal ff_ycocg_min(FLIF16RangesContext* r_ctx, int p)
 {   
     ranges_priv_ycocg* data = r_ctx->priv_data;
-    FLIF16ColorRanges* ranges = flif16_ranges[data->r_ctx->r_no];
+    FLIF16Ranges* ranges = flif16_ranges[data->r_ctx->r_no];
     switch(p) {
         case 0:
             return 0;
@@ -178,10 +197,10 @@ FLIF16ColorVal ff_ycocg_min(FLIF16ColorRangesContext* r_ctx, int p)
     }
 }
 
-FLIF16ColorVal ff_ycocg_max(FLIF16ColorRangesContext* r_ctx, int p)
+FLIF16ColorVal ff_ycocg_max(FLIF16RangesContext* r_ctx, int p)
 {
     ranges_priv_ycocg* data = r_ctx->priv_data;
-    FLIF16ColorRanges* ranges = flif16_ranges[data->r_ctx->r_no];
+    FLIF16Ranges* ranges = flif16_ranges[data->r_ctx->r_no];
     switch(p) {
         case 0:
             return 4 * data->origmax4 - 1;
@@ -194,105 +213,100 @@ FLIF16ColorVal ff_ycocg_max(FLIF16ColorRangesContext* r_ctx, int p)
     }
 }
 
-void ff_ycocg_minmax(FLIF16ColorRangesContext *r_ctx ,const int p,
-                                FLIF16ColorVal* prevPlanes,
-                                FLIF16ColorVal* minv,
-                                FLIF16ColorVal* maxv)
+void ff_ycocg_minmax(FLIF16RangesContext *r_ctx ,const int p,
+                     FLIF16ColorVal* prev_planes,
+                     FLIF16ColorVal* minv,
+                     FLIF16ColorVal* maxv)
 {
     ranges_priv_ycocg* data = r_ctx->priv_data;
-    FLIF16ColorRanges* ranges = flif16_ranges[data->r_ctx->r_no];
+    FLIF16Ranges* ranges = flif16_ranges[data->r_ctx->r_no];
     switch(p){
         case 0:
             *minv = 0;
             *maxv = ff_get_max_y(data->origmax4);
             break;
         case 1:
-            *minv = ff_get_min_co(data->origmax4, prevPlanes[0]);
-            *maxv = ff_get_max_co(data->origmax4, prevPlanes[0]);
+            *minv = ff_get_min_co(data->origmax4, prev_planes[0]);
+            *maxv = ff_get_max_co(data->origmax4, prev_planes[0]);
             break;    
         case 2:
-            *minv = ff_get_min_cg( data->origmax4, prevPlanes[0], prevPlanes[1]);
-            *maxv = ff_get_max_cg( data->origmax4, prevPlanes[0], prevPlanes[1]);
+            *minv = ff_get_min_cg( data->origmax4, prev_planes[0], prev_planes[1]);
+            *maxv = ff_get_max_cg( data->origmax4, prev_planes[0], prev_planes[1]);
             break;
         default:
-            ranges->minmax(data->r_ctx, p, prevPlanes, minv, maxv);
+            ranges->minmax(data->r_ctx, p, prev_planes, minv, maxv);
     }
 }
 
-FLIF16ColorVal ff_permuteplanessubtract_min(
-                                            FLIF16ColorRangesContext* r_ctx,
+FLIF16ColorVal ff_permuteplanessubtract_min(FLIF16RangesContext* r_ctx,
                                             int p)
 {
     ranges_priv_permuteplanes* data = r_ctx->priv_data;
-    FLIF16ColorRanges* ranges = flif16_ranges[data->r_ctx->r_no];
+    FLIF16Ranges* ranges = flif16_ranges[data->r_ctx->r_no];
     if(p==0 || p>2)
         return ranges->min(data->r_ctx, data->permutation[p]);
     return ranges->min(data->r_ctx, data->permutation[p]) - 
            ranges->max(data->r_ctx, data->permutation[0]);
 }
 
-FLIF16ColorVal ff_permuteplanessubtract_max(
-                                            FLIF16ColorRangesContext* r_ctx,
+FLIF16ColorVal ff_permuteplanessubtract_max(FLIF16RangesContext* r_ctx,
                                             int p)
 {
     ranges_priv_permuteplanes* data = r_ctx->priv_data;
-    FLIF16ColorRanges* ranges = flif16_ranges[data->r_ctx->r_no];
+    FLIF16Ranges* ranges = flif16_ranges[data->r_ctx->r_no];
     if(p==0 || p>2)
         return ranges->max(data->r_ctx, data->permutation[p]);
     return ranges->max(data->r_ctx, data->permutation[p]) - 
            ranges->min(data->r_ctx, data->permutation[0]);
 }
 
-FLIF16ColorVal ff_permuteplanes_min(
-                                            FLIF16ColorRangesContext* r_ctx,
-                                            int p)
+FLIF16ColorVal ff_permuteplanes_min(FLIF16RangesContext* r_ctx,
+                                    int p)
 {
     transform_priv_permuteplanes* data = r_ctx->priv_data;
-    FLIF16ColorRanges* ranges = flif16_ranges[data->r_ctx->r_no];
+    FLIF16Ranges* ranges = flif16_ranges[data->r_ctx->r_no];
     return ranges->min(data->r_ctx, data->permutation[p]);
 }
 
-FLIF16ColorVal ff_permuteplanes_max(
-                                            FLIF16ColorRangesContext* r_ctx,
-                                            int p)
+FLIF16ColorVal ff_permuteplanes_max(FLIF16RangesContext* r_ctx,
+                                    int p)
 {
     transform_priv_permuteplanes* data = r_ctx->priv_data;
-    FLIF16ColorRanges* ranges = flif16_ranges[data->r_ctx->r_no];
+    FLIF16Ranges* ranges = flif16_ranges[data->r_ctx->r_no];
     return ranges->max(data->r_ctx, data->permutation[p]);
 }
 
-void ff_permuteplanessubtract_minmax(
-                                    FLIF16ColorRangesContext* r_ctx, int p,
-                                    FLIF16ColorVal* prevPlanes, 
-                                    FLIF16ColorVal* minv, FLIF16ColorVal* maxv)
+void ff_permuteplanessubtract_minmax(FLIF16RangesContext* r_ctx, int p,
+                                     FLIF16ColorVal* prev_planes, 
+                                     FLIF16ColorVal* minv, FLIF16ColorVal* maxv)
 {
     ranges_priv_permuteplanes* data = r_ctx->priv_data;
-    FLIF16ColorRanges* ranges = flif16_ranges[data->r_ctx->r_no];
+    FLIF16Ranges* ranges = flif16_ranges[data->r_ctx->r_no];
     if(p==0 || p>2){
         *minv = ranges->min(data->r_ctx, p);
         *maxv = ranges->max(data->r_ctx, p);
     }
     else{
-        *minv = ranges->min(data->r_ctx, data->permutation[p]) - prevPlanes[0];
-        *maxv = ranges->max(data->r_ctx, data->permutation[p]) - prevPlanes[0];
+        *minv = ranges->min(data->r_ctx, data->permutation[p]) - prev_planes[0];
+        *maxv = ranges->max(data->r_ctx, data->permutation[p]) - prev_planes[0];
     }
 }
 
-void ff_bounds_snap(FLIF16ColorRangesContext* r_ctx, 
-                                  int p, FLIF16ColorVal* prevPlanes,
-                                  FLIF16ColorVal* minv,
-                                  FLIF16ColorVal* maxv,
-                                  FLIF16ColorVal* v)
+void ff_bounds_snap(FLIF16RangesContext* r_ctx, 
+                    int p, FLIF16ColorVal* prev_planes,
+                    FLIF16ColorVal* minv,
+                    FLIF16ColorVal* maxv,
+                    FLIF16ColorVal* v)
 {
     ranges_priv_bounds *data = r_ctx->priv_data;
-    FLIF16ColorRanges* ranges = flif16_ranges[data->r_ctx->r_no];
+    FLIF16Ranges* ranges = flif16_ranges[data->r_ctx->r_no];
     if(p==0 || p==3){
         *minv = data->bounds[0][p];
         *maxv = data->bounds[1][p];
         return;
     }
     else{
-        ranges->snap(data->r_ctx, p, prevPlanes, minv, maxv, v);
+        ranges->snap(data->r_ctx, p, prev_planes, minv, maxv, v);
         if(*minv < data->bounds[0][p])
             *minv = data->bounds[0][p];
         if(*maxv > data->bounds[1][p])
@@ -310,19 +324,19 @@ void ff_bounds_snap(FLIF16ColorRangesContext* r_ctx,
     }
 }
 
-void ff_bounds_minmax(FLIF16ColorRangesContext* r_ctx, 
-                                    int p, FLIF16ColorVal* prevPlanes,
-                                    FLIF16ColorVal* minv, FLIF16ColorVal* maxv)
+void ff_bounds_minmax(FLIF16RangesContext* r_ctx, 
+                      int p, FLIF16ColorVal* prev_planes,
+                      FLIF16ColorVal* minv, FLIF16ColorVal* maxv)
 {
     ranges_priv_bounds *data = r_ctx->priv_data;
-    FLIF16ColorRanges* ranges = flif16_ranges[data->r_ctx->r_no];
+    FLIF16Ranges* ranges = flif16_ranges[data->r_ctx->r_no];
     assert(p < r_ctx->num_planes);
     if(p==0 || p==3){
         *minv = data->bounds[0][p];
         *maxv = data->bounds[1][p];
         return;
     }
-    ranges->minmax(data->r_ctx, p, prevPlanes, minv, maxv);
+    ranges->minmax(data->r_ctx, p, prev_planes, minv, maxv);
     if(*minv < data->bounds[0][p])
         *minv = data->bounds[0][p];
     if(*maxv > data->bounds[1][p])
@@ -335,26 +349,26 @@ void ff_bounds_minmax(FLIF16ColorRangesContext* r_ctx,
     assert(*minv <= *maxv);
 }
 
-FLIF16ColorVal ff_bounds_min(FLIF16ColorRangesContext* r_ctx,
-                                           int p)
+FLIF16ColorVal ff_bounds_min(FLIF16RangesContext* r_ctx,
+                             int p)
 {
-    FLIF16ColorRanges* ranges = flif16_ranges[r_ctx->r_no];
+    FLIF16Ranges* ranges = flif16_ranges[r_ctx->r_no];
     ranges_priv_bounds* data = r_ctx->priv_data;
     assert(p < r_ctx->num_planes);
     return FFMAX(ranges->min(r_ctx, p), data->bounds[0][p]);
 }
 
-FLIF16ColorVal ff_bounds_max(FLIF16ColorRangesContext* r_ctx,
-                                           int p)
+FLIF16ColorVal ff_bounds_max(FLIF16RangesContext* r_ctx,
+                             int p)
 {
-    FLIF16ColorRanges* ranges = flif16_ranges[r_ctx->r_no];
+    FLIF16Ranges* ranges = flif16_ranges[r_ctx->r_no];
     ranges_priv_bounds* data = r_ctx->priv_data;
     assert(p < r_ctx->num_planes);
     return FFMIN(ranges->max(r_ctx, p), data->bounds[1][p]);
 }
 
-inline FLIF16ColorVal ff_ranges_min(FLIF16ColorRangesContext* r_ctx, int p){
-    FLIF16ColorRanges* ranges = flif16_ranges[r_ctx->r_no];
+inline FLIF16ColorVal ff_ranges_min(FLIF16RangesContext* r_ctx, int p){
+    FLIF16Ranges* ranges = flif16_ranges[r_ctx->r_no];
     if(!r_ctx)
         return 0;
     if(ranges->min)
@@ -363,8 +377,8 @@ inline FLIF16ColorVal ff_ranges_min(FLIF16ColorRangesContext* r_ctx, int p){
         return 0;
 }
 
-inline FLIF16ColorVal ff_ranges_max(FLIF16ColorRangesContext* r_ctx, int p){
-    FLIF16ColorRanges* ranges = flif16_ranges[r_ctx->r_no];
+inline FLIF16ColorVal ff_ranges_max(FLIF16RangesContext* r_ctx, int p){
+    FLIF16Ranges* ranges = flif16_ranges[r_ctx->r_no];
     if(!r_ctx)
         return 0;
     if(ranges->max)
@@ -373,60 +387,59 @@ inline FLIF16ColorVal ff_ranges_max(FLIF16ColorRangesContext* r_ctx, int p){
         return 0;
 }
 
-inline void ff_ranges_minmax(FLIF16ColorRangesContext* r_ctx, int p,
+inline void ff_ranges_minmax(FLIF16RangesContext* r_ctx, int p,
                              FLIF16ColorVal* prevPlanes, 
                              FLIF16ColorVal* minv, FLIF16ColorVal* maxv){
     flif16_ranges[r_ctx->r_no]->minmax(r_ctx, p, prevPlanes, minv, maxv);
 }
 
-inline void ff_ranges_snap(FLIF16ColorRangesContext* r_ctx, int p,
+inline void ff_ranges_snap(FLIF16RangesContext* r_ctx, int p,
                            FLIF16ColorVal* prevPlanes, FLIF16ColorVal* minv, 
                            FLIF16ColorVal* maxv, FLIF16ColorVal* v){
     flif16_ranges[r_ctx->r_no]->snap(r_ctx, p, prevPlanes, minv, maxv, v);
 }
 
-inline void ff_ranges_close(FLIF16ColorRangesContext* r_ctx){
-    FLIF16ColorRanges* ranges = flif16_ranges[r_ctx->r_no];
+inline void ff_ranges_close(FLIF16RangesContext* r_ctx){
+    FLIF16Ranges* ranges = flif16_ranges[r_ctx->r_no];
     if(ranges->priv_data_size)
         av_freep(r_ctx->priv_data);
     av_freep(r_ctx);
 }
 
 uint8_t ff_flif16_transform_ycocg_init(FLIF16TransformContext *ctx, 
-                                       FLIF16ColorRangesContext* r_ctx)
+                                       FLIF16RangesContext* r_ctx)
 {   
     transform_priv_ycocg *data = ctx->priv_data;
-    FLIF16ColorRanges* srcRanges = flif16_ranges[r_ctx->r_no];
+    FLIF16Ranges* src_ranges = flif16_ranges[r_ctx->r_no];
     if(r_ctx->num_planes < 3) 
         return 0;
     
-    if(   srcRanges->min(r_ctx, 0) == srcRanges->max(r_ctx, 0) 
-       || srcRanges->min(r_ctx, 1) == srcRanges->max(r_ctx, 1) 
-       || srcRanges->min(r_ctx, 2) == srcRanges->max(r_ctx, 2))
+    if(   src_ranges->min(r_ctx, 0) == src_ranges->max(r_ctx, 0) 
+       || src_ranges->min(r_ctx, 1) == src_ranges->max(r_ctx, 1) 
+       || src_ranges->min(r_ctx, 2) == src_ranges->max(r_ctx, 2))
         return 0;
     
-    if(  srcRanges->min(r_ctx, 0) < 1 
-       ||srcRanges->min(r_ctx, 1) < 1 
-       ||srcRanges->min(r_ctx, 2) < 1) 
+    if(  src_ranges->min(r_ctx, 0) < 1 
+       ||src_ranges->min(r_ctx, 1) < 1 
+       ||src_ranges->min(r_ctx, 2) < 1) 
         return 0;
 
-    data->origmax4 = FFMAX3(srcRanges->max(r_ctx, 0), 
-                            srcRanges->max(r_ctx, 1), 
-                            srcRanges->max(r_ctx, 2))/4 -1;
+    data->origmax4 = FFMAX3(src_ranges->max(r_ctx, 0), 
+                            src_ranges->max(r_ctx, 1), 
+                            src_ranges->max(r_ctx, 2))/4 -1;
 
     data->r_ctx = r_ctx;
     return 1;
 }
 
-FLIF16ColorRangesContext* ff_flif16_transform_ycocg_meta(
-                                    FLIF16TransformContext* ctx,
-                                    FLIF16ColorRangesContext* src_ctx)
+FLIF16RangesContext* ff_flif16_transform_ycocg_meta(FLIF16TransformContext* ctx,
+                                                    FLIF16RangesContext* src_ctx)
 {
-    FLIF16ColorRangesContext* r_ctx;
+    FLIF16RangesContext* r_ctx;
     ranges_priv_ycocg* data;
     transform_priv_ycocg* trans_data = ctx->priv_data;
-    r_ctx = av_mallocz(sizeof(FLIF16ColorRanges));
-    r_ctx->r_no = FLIF16_COLORRANGES_YCOCG;
+    r_ctx = av_mallocz(sizeof(FLIF16Ranges));
+    r_ctx->r_no = FLIF16_RANGES_YCOCG;
     r_ctx->priv_data = av_mallocz(sizeof(ranges_priv_ycocg));
     data = r_ctx->priv_data;
     
@@ -476,7 +489,7 @@ uint8_t ff_flif16_transform_ycocg_reverse(FLIF16TransformContext *ctx,
     int height = pixel_data->height;
     int width  = pixel_data->width;
     transform_priv_ycocg *data = ctx->priv_data;
-    FLIF16ColorRanges* ranges = flif16_ranges[data->r_ctx->r_no];
+    FLIF16Ranges* ranges = flif16_ranges[data->r_ctx->r_no];
 
     for (r=0; r<height; r+=stride_row) {
         for (c=0; c<width; c+=stride_col) {
@@ -501,10 +514,10 @@ uint8_t ff_flif16_transform_ycocg_reverse(FLIF16TransformContext *ctx,
 }
 
 uint8_t ff_flif16_transform_permuteplanes_init(FLIF16TransformContext* ctx, 
-                                               FLIF16ColorRangesContext* r_ctx)
+                                               FLIF16RangesContext* r_ctx)
 {
     transform_priv_permuteplanes *data = ctx->priv_data;
-    FLIF16ColorRanges* ranges = flif16_ranges[r_ctx->r_no];
+    FLIF16Ranges* ranges = flif16_ranges[r_ctx->r_no];
     data->ctx_a = ff_flif16_chancecontext_init();
     
     if(r_ctx->num_planes< 3)
@@ -520,7 +533,7 @@ uint8_t ff_flif16_transform_permuteplanes_init(FLIF16TransformContext* ctx,
 
 uint8_t ff_flif16_transform_permuteplanes_read(FLIF16TransformContext* ctx,
                                                FLIF16DecoderContext* dec_ctx,
-                                               FLIF16ColorRangesContext* r_ctx)
+                                               FLIF16RangesContext* r_ctx)
 {
     int p;
     transform_priv_permuteplanes* data = ctx->priv_data;
@@ -563,18 +576,17 @@ uint8_t ff_flif16_transform_permuteplanes_read(FLIF16TransformContext* ctx,
         return AVERROR(EAGAIN);
 }
 
-FLIF16ColorRangesContext* ff_flif16_transform_permuteplanes_meta(
-                                            FLIF16TransformContext* ctx,
-                                            FLIF16ColorRangesContext* src_ctx)
+FLIF16RangesContext* ff_flif16_transform_permuteplanes_meta(FLIF16TransformContext* ctx,
+                                                            FLIF16RangesContext* src_ctx)
 {
-    FLIF16ColorRangesContext* r_ctx = av_mallocz(sizeof(FLIF16ColorRanges));
+    FLIF16RangesContext* r_ctx = av_mallocz(sizeof(FLIF16Ranges));
     transform_priv_permuteplanes* data = ctx->priv_data;
     ranges_priv_permuteplanes* priv_data = av_mallocz(sizeof(ranges_priv_permuteplanes));
     int i;
     if(data->subtract)
-        r_ctx->r_no = FLIF16_COLORRANGES_PERMUTEPLANESSUBTRACT;
+        r_ctx->r_no = FLIF16_RANGES_PERMUTEPLANESSUBTRACT;
     else
-        r_ctx->r_no = FLIF16_COLORRANGES_PERMUTEPLANES;
+        r_ctx->r_no = FLIF16_RANGES_PERMUTEPLANES;
     r_ctx->num_planes = src_ctx->num_planes;
     for(i=0; i<5; i++){
         priv_data->permutation[i] = data->permutation[i];
@@ -584,9 +596,8 @@ FLIF16ColorRangesContext* ff_flif16_transform_permuteplanes_meta(
     return r_ctx;
 }
 
-uint8_t ff_flif16_transform_permuteplanes_forward(
-                                             FLIF16TransformContext* ctx,
-                                             FLIF16InterimPixelData* pixel_data)
+uint8_t ff_flif16_transform_permuteplanes_forward(FLIF16TransformContext* ctx,
+                                                  FLIF16InterimPixelData* pixel_data)
 {
     FLIF16ColorVal pixel[5];
     int r, c, p;
@@ -616,16 +627,15 @@ uint8_t ff_flif16_transform_permuteplanes_forward(
     return 1;
 }
 
-uint8_t ff_flif16_transform_permuteplanes_reverse(
-                                        FLIF16TransformContext *ctx,
-                                        FLIF16InterimPixelData * pixels,
-                                        uint32_t stride_row,
-                                        uint32_t stride_col)
+uint8_t ff_flif16_transform_permuteplanes_reverse(FLIF16TransformContext *ctx,
+                                                  FLIF16InterimPixelData * pixels,
+                                                  uint32_t stride_row,
+                                                  uint32_t stride_col)
 {   
     int p, r, c;
     FLIF16ColorVal pixel[5];
     transform_priv_permuteplanes *data = ctx->priv_data;
-    FLIF16ColorRanges* ranges = flif16_ranges[data->r_ctx->r_no];
+    FLIF16Ranges* ranges = flif16_ranges[data->r_ctx->r_no];
     int height = pixels->height;
     int width  = pixels->width;
     for (r=0; r<height; r+=stride_row) {
@@ -655,12 +665,12 @@ uint8_t ff_flif16_transform_permuteplanes_reverse(
 
 uint8_t ff_flif16_transform_channelcompact_read(FLIF16TransformContext * ctx,
                                                 FLIF16DecoderContext *dec_ctx,
-                                                FLIF16ColorRangesContext* src_ctx)
+                                                FLIF16RangesContext* src_ctx)
 {
     unsigned int nb;
     int remaining;
     transform_priv_channelcompact *data = ctx->priv_data;
-    FLIF16ColorRanges* ranges = flif16_ranges[src_ctx->r_no];
+    FLIF16Ranges* ranges = flif16_ranges[src_ctx->r_no];
     start:
     switch (ctx->segment) {
         case 0:
@@ -708,7 +718,7 @@ uint8_t ff_flif16_transform_channelcompact_read(FLIF16TransformContext * ctx,
 }
 
 uint8_t ff_flif16_transform_channelcompact_init(FLIF16TransformContext *ctx, 
-                                                FLIF16ColorRangesContext* src_ctx)
+                                                FLIF16RangesContext* src_ctx)
 {
     int p;
     transform_priv_channelcompact *data = ctx->priv_data;
@@ -723,12 +733,11 @@ uint8_t ff_flif16_transform_channelcompact_init(FLIF16TransformContext *ctx,
     return 1;
 }
 
-FLIF16ColorRangesContext* ff_flif16_transform_channelcompact_meta(
-                                    FLIF16TransformContext* ctx,
-                                    FLIF16ColorRangesContext* src_ctx)
+FLIF16RangesContext* ff_flif16_transform_channelcompact_meta(FLIF16TransformContext* ctx,
+                                                             FLIF16RangesContext* src_ctx)
 {
     int i;
-    FLIF16ColorRangesContext* r_ctx = av_mallocz(sizeof(FLIF16ColorRanges));
+    FLIF16RangesContext* r_ctx = av_mallocz(sizeof(FLIF16Ranges));
     ranges_priv_channelcompact* data = av_mallocz(sizeof(ranges_priv_channelcompact));
     transform_priv_channelcompact* trans_data = ctx->priv_data;
     r_ctx->num_planes = src_ctx->num_planes;
@@ -736,15 +745,14 @@ FLIF16ColorRangesContext* ff_flif16_transform_channelcompact_meta(
         data->nb_colors[i] = trans_data->CPalette_size[i] - 1;
     }
     r_ctx->priv_data = data;
-    r_ctx->r_no = FLIF16_COLORRANGES_CHANNELCOMPACT;
+    r_ctx->r_no = FLIF16_RANGES_CHANNELCOMPACT;
     return r_ctx;
 }
 
-uint8_t ff_flif16_transform_channelcompact_reverse(
-                                        FLIF16TransformContext* ctx,
-                                        FLIF16InterimPixelData* pixels,
-                                        uint32_t stride_row,
-                                        uint32_t stride_col)
+uint8_t ff_flif16_transform_channelcompact_reverse(FLIF16TransformContext* ctx,
+                                                   FLIF16InterimPixelData* pixels,
+                                                   uint32_t stride_row,
+                                                   uint32_t stride_col)
 {   
     int p, P;
     uint32_t r, c;
@@ -770,7 +778,7 @@ uint8_t ff_flif16_transform_channelcompact_reverse(
 }
 
 uint8_t ff_flif16_transform_bounds_init(FLIF16TransformContext *ctx, 
-                                        FLIF16ColorRangesContext* src_ctx)
+                                        FLIF16RangesContext* src_ctx)
 {
     transform_priv_bounds *data = ctx->priv_data;
     if(src_ctx->num_planes > 4)
@@ -784,10 +792,10 @@ uint8_t ff_flif16_transform_bounds_init(FLIF16TransformContext *ctx,
 
 uint8_t ff_flif16_transform_bounds_read(FLIF16TransformContext* ctx,
                                         FLIF16DecoderContext* dec_ctx,
-                                        FLIF16ColorRangesContext* src_ctx)
+                                        FLIF16RangesContext* src_ctx)
 {
     transform_priv_bounds *data = ctx->priv_data;
-    FLIF16ColorRanges* ranges = flif16_ranges[src_ctx->r_no];
+    FLIF16Ranges* ranges = flif16_ranges[src_ctx->r_no];
     FLIF16ColorVal max;
 
     start:
@@ -829,24 +837,24 @@ uint8_t ff_flif16_transform_bounds_read(FLIF16TransformContext* ctx,
         return AVERROR(EAGAIN);
 }
 
-FLIF16ColorRangesContext* ff_flif16_transform_bounds_meta(FLIF16TransformContext* ctx,
-                                                   FLIF16ColorRangesContext* src_ctx)
+FLIF16RangesContext* ff_flif16_transform_bounds_meta(FLIF16TransformContext* ctx,
+                                                     FLIF16RangesContext* src_ctx)
 {
-    FLIF16ColorRangesContext* r_ctx = av_mallocz(sizeof(FLIF16ColorRanges));
+    FLIF16RangesContext* r_ctx = av_mallocz(sizeof(FLIF16Ranges));
     transform_priv_bounds* trans_data = ctx->priv_data;
     ranges_priv_static* data;
     ranges_priv_bounds* dataB;
     r_ctx->num_planes = src_ctx->num_planes;
     
     if(flif16_ranges[src_ctx->r_no]->is_static){
-        r_ctx->r_no = FLIF16_COLORRANGES_STATIC;
+        r_ctx->r_no = FLIF16_RANGES_STATIC;
         r_ctx->priv_data = av_mallocz(sizeof(ranges_priv_static));
         data = r_ctx->priv_data;
         data->bounds[0] = trans_data->bounds[0];
         data->bounds[1] = trans_data->bounds[1];
     }
     else{
-        r_ctx->r_no = FLIF16_COLORRANGES_BOUNDS;
+        r_ctx->r_no = FLIF16_RANGES_BOUNDS;
         r_ctx->priv_data = av_mallocz(sizeof(ranges_priv_bounds));
         dataB = r_ctx->priv_data;
         dataB->bounds[0] = trans_data->bounds[0];
@@ -909,7 +917,7 @@ FLIF16Transform *flif16_transforms[13] = {
 };
 
 FLIF16TransformContext* ff_flif16_transform_init(int t_no, 
-                                                 FLIF16ColorRangesContext* r_ctx)
+                                                 FLIF16RangesContext* r_ctx)
 {
     FLIF16Transform *trans = flif16_transforms[t_no];
     FLIF16TransformContext *ctx = av_mallocz(sizeof(FLIF16TransformContext));
@@ -932,7 +940,7 @@ FLIF16TransformContext* ff_flif16_transform_init(int t_no,
 
 uint8_t ff_flif16_transform_read(FLIF16TransformContext *ctx,
                                  FLIF16DecoderContext *dec_ctx,
-                                 FLIF16ColorRangesContext* r_ctx)
+                                 FLIF16RangesContext* r_ctx)
 {
     FLIF16Transform *trans = flif16_transforms[ctx->t_no];
     if(!ctx)
