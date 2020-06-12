@@ -120,9 +120,13 @@ static int ff_flif16_read_second_header(AVCodecContext *avctx)
     FLIF16DecoderContext *s = avctx->priv_data;
 
     if (!s->rc) {
-        s->buf_count += bytestream2_get_buffer(&s->gb, s->buf,
+        s->buf_count += bytestream2_get_buffer(&s->gb, s->buf + s->buf_count,
                                                FFMIN(bytestream2_get_bytes_left(&s->gb),
                                                (FLIF16_RAC_MAX_RANGE_BYTES - s->buf_count)));
+        printf("[%s] s->buf_count = %d buf = ", __func__, s->buf_count);
+        for(int i = 0; i < FLIF16_RAC_MAX_RANGE_BYTES; ++i)
+            printf("%x ", s->buf[i]);
+        printf("\n");
         if (s->buf_count < FLIF16_RAC_MAX_RANGE_BYTES)
             return AVERROR(EAGAIN);
 
@@ -149,8 +153,8 @@ static int ff_flif16_read_second_header(AVCodecContext *avctx)
             for (int i = 0; i < s->channels; ++i)
                 RANGE_SET(s->ranges[i], 0, s->bpc);
             //for(int i = 0; i < s->channels; ++i)
-            //    s->src_ranges->max[i] = s->bpc;
-            ++s->segment; __PLN__*/
+            //    s->src_ranges->max[i] = s->bpc;*/
+            ++s->segment; __PLN__
 
         case 1:
             if (s->channels > 3)
@@ -164,9 +168,11 @@ static int ff_flif16_read_second_header(AVCodecContext *avctx)
                         FLIF16_RAC_UNI_INT);
                 s->framedelay = av_mallocz(sizeof(*(s->framedelay)) * s->frames);
             }
-            ++s->segment; __PLN__
+            ++s->segment;
 
         case 3:
+            __PLN__
+            printf("[%s] s->segment = %d\n",  __func__, s->segment);
             if (s->frames > 1) {
                 for (; (s->i) < (s->frames); ++(s->i)) {
                     RAC_GET(s->rc, NULL, 0, 60000, &(s->framedelay[(s->i)]),
@@ -174,26 +180,26 @@ static int ff_flif16_read_second_header(AVCodecContext *avctx)
                 }
                 s->i = 0;
             }
-            ++s->segment;
+            ++s->segment; __PLN__ printf("[%s] s->segment = %d\n", __func__, s->segment);
 
         case 4:
             // Has custom alpha flag
-            RAC_GET(s->rc, NULL, 0, 1, &temp, FLIF16_RAC_UNI_INT);
+            RAC_GET(s->rc, NULL, 0, 1, &s->customalpha, FLIF16_RAC_UNI_INT);
             printf("[%s] has_custom_cutoff_alpha = %d\n", __func__, temp);
-            ++s->segment;
+            ++s->segment; printf("[%s] s->segment = %d\n",  __func__, s->segment);
 
         case 5:
-            if (temp)
+            if (s->customalpha)
                 RAC_GET(s->rc, NULL, 1, 128, &s->cut, FLIF16_RAC_UNI_INT);
-            ++s->segment;
+            ++s->segment; printf("[%s] s->segment = %d\n", __func__, s->segment);
 
         case 6:
-            if (temp)
+            if (s->customalpha)
                 RAC_GET(s->rc, NULL, 2, 128, &s->alpha, FLIF16_RAC_UNI_INT);
-            ++s->segment;
+            ++s->segment; printf("[%s] s->segment = %d\n", __func__, s->segment);
 
         case 7:
-            if (temp)
+            if (s->customalpha)
                 RAC_GET(s->rc, NULL, 0, 1, &s->custombc, FLIF16_RAC_UNI_INT);
             if (s->custombc) {
                 av_log(avctx, AV_LOG_ERROR,
@@ -211,7 +217,8 @@ static int ff_flif16_read_second_header(AVCodecContext *avctx)
     s->rc->mct = ff_flif16_multiscale_chancetable_init();
     ff_flif16_build_log4k_table(&s->rc->log4k);
     #endif
-    
+
+    // Change
     ff_flif16_chancetable_init(&s->rc->ct,
                                CHANCETABLE_DEFAULT_ALPHA,
                                CHANCETABLE_DEFAULT_CUT);
