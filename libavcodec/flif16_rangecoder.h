@@ -1,6 +1,6 @@
 /*
  * Range coder for FLIF16
- * Copyright (c) 2020 Anamitra Ghorui
+ * Copyright (c) 2020 Anamitra Ghorui <aghorui@teknik.io>
  *
  * This file is part of FFmpeg.
  *

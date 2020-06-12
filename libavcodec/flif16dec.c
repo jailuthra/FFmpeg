@@ -1,6 +1,6 @@
 /*
  * FLIF16 Decoder
- * Copyright (c) 2020 Anamitra Ghorui
+ * Copyright (c) 2020 Anamitra Ghorui <aghorui@teknik.io>
  *
  * This file is part of FFmpeg.
  *
@@ -121,9 +121,8 @@ static int ff_flif16_read_second_header(AVCodecContext *avctx)
 
     if (!s->rc) {
         s->buf_count += bytestream2_get_buffer(&s->gb, s->buf,
-                                       FFMIN(bytestream2_get_bytes_left(&s->gb),
-                                       (FLIF16_RAC_MAX_RANGE_BYTES -
-                                       s->buf_count)));
+                                               FFMIN(bytestream2_get_bytes_left(&s->gb),
+                                               (FLIF16_RAC_MAX_RANGE_BYTES - s->buf_count)));
         if (s->buf_count < FLIF16_RAC_MAX_RANGE_BYTES)
             return AVERROR(EAGAIN);
 
@@ -144,6 +143,7 @@ static int ff_flif16_read_second_header(AVCodecContext *avctx)
             } else
                 s->bpc = (s->bpc == '1') ? 255 : 65535;
             s->i = 0;
+            s->ranges = ff_flif16_ranges_static_init(s->channels, s->bpc);
             /*
             s->ranges = av_malloc(s->channels * sizeof(*(s->ranges)));
             for (int i = 0; i < s->channels; ++i)
@@ -184,17 +184,17 @@ static int ff_flif16_read_second_header(AVCodecContext *avctx)
 
         case 5:
             if (temp)
-                RAC_GET(s->rc, NULL, 1, 128, &s->cutoff, FLIF16_RAC_UNI_INT);
+                RAC_GET(s->rc, NULL, 1, 128, &s->cut, FLIF16_RAC_UNI_INT);
             ++s->segment;
 
         case 6:
             if (temp)
-                RAC_GET(s->rc, NULL, 2, 128, &s->alphadiv, FLIF16_RAC_UNI_INT);
+                RAC_GET(s->rc, NULL, 2, 128, &s->alpha, FLIF16_RAC_UNI_INT);
             ++s->segment;
 
         case 7:
             if (temp)
-                RAC_GET(s->rc, NULL, 0, 1, &s->cutoff, FLIF16_RAC_UNI_INT);
+                RAC_GET(s->rc, NULL, 0, 1, &s->custombc, FLIF16_RAC_UNI_INT);
             if (s->custombc) {
                 av_log(avctx, AV_LOG_ERROR,
                        "custom bitchances not implemented\n");
@@ -229,7 +229,7 @@ static int ff_flif16_read_transforms(AVCodecContext *avctx)
     FLIF16DecoderContext *s = avctx->priv_data;
     uint8_t temp;
 
-    start:
+    loop:
     switch (s->segment) {
         case 0:
             RAC_GET(s->rc, NULL, 0, 0, &temp, FLIF16_RAC_BIT);
@@ -245,10 +245,23 @@ static int ff_flif16_read_transforms(AVCodecContext *avctx)
         case 1:
             // ff_flif16_transform_read(s->tlist[s->tlist_top], ...)
             s->segment = 0;
-            goto start;
+            goto loop;
+
+        case 2:
+            end:
+            s->segment = 2;
+            // Read invisible pixel predictor
+            /*
+             * if (alphazero && ranges->numPlanes() > 3 
+             *     && ranges->min(3) <= 0 
+             *     && encoding == flifEncoding::interlaced) {
+             */
+            if ( s->alphazero && s->ranges->num_planes > 3
+                && ff_flif16_ranges_min(s->ranges, 3) <= 0
+                && !(s->ia % 2))
+                RAC_GET(s->rc, NULL, 0, 2, &s->ipp, FLIF16_RAC_UNI_INT);
     }
 
-    end:
     s->state  = FLIF16_MANIAC;
     return 0;
 
@@ -364,8 +377,8 @@ static int flif16_decode_frame(AVCodecContext *avctx,
            "alphazero: %u custombc: %u\n"       \
            "cutoff: %u alphadiv: %u \n"         \
            "loops: %u\n", s->width, s->height, s->frames, s->ia, s->bpc,
-           s->channels, s->alphazero, s->custombc, s->cutoff,
-           s->alphadiv, s->loops);
+           s->channels, s->alphazero, s->custombc, s->cut,
+           s->alpha, s->loops);
 
     if (s->framedelay) {
         printf("Framedelays:\n");

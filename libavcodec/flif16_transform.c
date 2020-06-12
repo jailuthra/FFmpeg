@@ -28,24 +28,27 @@
 #include "flif16_rangecoder.h"
 #include "libavutil/common.h"
 
+
+// Transform private structs
+
 typedef struct transform_priv_ycocg {
     int origmax4;
-    FLIF16RangesContext* r_ctx;
+    FLIF16RangesContext *r_ctx;
 } transform_priv_ycocg;
 
 typedef struct transform_priv_permuteplanes {
     uint8_t subtract;
     uint8_t permutation[5];
-    FLIF16RangesContext* r_ctx;
+    FLIF16RangesContext *r_ctx;
 
     uint8_t from[4], to[4];
     FLIF16ChanceContext *ctx_a;
 } transform_priv_permuteplanes;
 
 typedef struct transform_priv_channelcompact {
-    FLIF16ColorVal* CPalette[4];
+    FLIF16ColorVal *CPalette[4];
     unsigned int CPalette_size[4];
-    FLIF16ColorVal* CPalette_inv[4];
+    FLIF16ColorVal *CPalette_inv[4];
     unsigned int CPalette_inv_size[4];
 
     FLIF16ColorVal min;
@@ -59,34 +62,43 @@ typedef struct transform_priv_bounds {
     FLIF16ChanceContext *ctx_a;
 } transform_priv_bounds;
 
+
+// Ranges Private structs
+
 typedef struct ranges_priv_channelcompact {
     int nb_colors[4];
 } ranges_priv_channelcompact;
 
 typedef struct ranges_priv_ycocg {
     int origmax4;
-    FLIF16RangesContext* r_ctx;
+    FLIF16RangesContext *r_ctx;
 } ranges_priv_ycocg;
 
 typedef struct ranges_priv_permuteplanes {
     uint8_t permutation[5];
-    FLIF16RangesContext* r_ctx;
+    FLIF16RangesContext *r_ctx;
 } ranges_priv_permuteplanes;
 
 typedef struct ranges_priv_bounds {
-    FLIF16ColorVal* bounds[2];
-    FLIF16RangesContext* r_ctx;
+    FLIF16ColorVal *bounds[2];
+    FLIF16RangesContext *r_ctx;
 } ranges_priv_bounds;
 
 typedef struct ranges_priv_static {
-    FLIF16ColorVal* bounds[2];
+    FLIF16ColorVal *bounds[2];   // Try using FLIF16ColorVal (*bounds)[2]
+                                 // Using this type allows us to allocate all
+                                 // Memory in a single malloc. Try changing it
+                                 // above as well
+                                 // (This is an array of(i.e. pointer to) 2
+                                 // element arrays, as opposed to a 2 element
+                                 // array of pointers to bounds
 }ranges_priv_static;
 
 
 /*
- * ======
+ * =============================================================================
  * Ranges
- * ======
+ * =============================================================================
  */
 
 /*
@@ -118,24 +130,26 @@ static void ff_default_snap(FLIF16RangesContext *src_ctx ,const int p,
  * Static
  */
 
+// Maybe you can rename these to default instead of static
+
 static FLIF16ColorVal ff_static_min(FLIF16RangesContext* r_ctx,
-                             int p)
+                                    int p)
 {
     ranges_priv_static* data = r_ctx->priv_data;
     if(p >= r_ctx->num_planes)
         return 0;
     assert(p < r_ctx->num_planes);
-    return data->bounds[0][p];
+    return /* data->bounds[p][0] */ data->bounds[0][p];
 }
 
 static FLIF16ColorVal ff_static_max(FLIF16RangesContext* r_ctx,
-                             int p)
+                                    int p)
 {
     ranges_priv_static* data = r_ctx->priv_data;
     if(p >= r_ctx->num_planes)
         return 0;
     assert(p < r_ctx->num_planes);
-    return data->bounds[1][p];
+    return /* data->bounds[p][0] */ data->bounds[1][p];
 }
 
 /*
@@ -480,35 +494,63 @@ FLIF16Ranges flif16_colorranges_bounds = {
 };
 
 FLIF16Ranges* flif16_ranges[] = {
-    &flif16_colorranges_default,
-    &flif16_colorranges_channelcompact,
-    &flif16_colorranges_ycocg,
-    NULL, // FLIF16_TRANSFORM_RESERVED1
-    &flif16_colorranges_permuteplanes,
-    &flif16_colorranges_permuteplanessubtract,
-    &flif16_colorranges_bounds,
-    &flif16_colorranges_static
+    &flif16_colorranges_default,               // FLIF16_RANGES_DEFAULT,
+    &flif16_colorranges_channelcompact,        // FLIF16_RANGES_CHANNELCOMPACT = 0,
+    &flif16_colorranges_ycocg,                 // FLIF16_RANGES_YCOCG,
+    &flif16_colorranges_permuteplanes,         // FLIF16_RANGES_PERMUTEPLANES,
+    &flif16_colorranges_permuteplanessubtract, // FLIF16_RANGES_PERMUTEPLANESSUBTRACT,
+    &flif16_colorranges_bounds,                // FLIF16_RANGES_BOUNDS,
+    &flif16_colorranges_static,                // FLIF16_RANGES_STATIC,
+    NULL,                                      // FLIF16_RANGES_PALETTEALPHA,
+    NULL,                                      // FLIF16_RANGES_PALETTE,
+    NULL,                                      // FLIF16_RANGES_COLORBUCKETS,
+    NULL,                                      // FLIF16_RANGES_DUPLICATEFRAME,
+    NULL,                                      // FLIF16_RANGES_FRAMESHAPE,
+    NULL,                                      // FLIF16_RANGES_FRAMELOOKBACK,
+    NULL                                       // FLIF16_RANGES_DUP
 };
 
+FLIF16RangesContext *ff_flif16_ranges_static_init(unsigned int channels,
+                                                  unsigned int bpc)
+{
+    FLIF16Ranges *r = flif16_ranges[FLIF16_RANGES_STATIC];
+    FLIF16RangesContext *ctx = av_mallocz(sizeof(*ctx));
+    ctx->r_no       = FLIF16_RANGES_STATIC;
+    ctx->num_planes = channels;
+    ctx->priv_data  = av_mallocz(r->priv_data_size);
+    ranges_priv_static *data = ctx->priv_data;
+    data->bounds[0] = av_mallocz(sizeof(*(data->bounds[0])) * channels);
+    data->bounds[1] = av_mallocz(sizeof(*(data->bounds[0])) * channels);
+    for (int i = 0; i < channels; ++i) {
+        data->bounds[0][i] = 0;
+        data->bounds[1][i] = bpc;
+    }
+    return ctx;
+    // 2 Frees are needed. One for bounds, and other for the private struct
+    // itself.
+}
 
 void ff_flif16_ranges_close(FLIF16RangesContext* r_ctx){
     FLIF16Ranges* ranges = flif16_ranges[r_ctx->r_no];
     if(ranges->priv_data_size)
         av_freep(r_ctx->priv_data);
+    // You will need specific close functions if you are allocating data
+    // within the struct. This will leave dangling pointers. A generalised
+    // init function like in the transforms may be better.
     av_freep(r_ctx);
 }
 
 /*
- * ==========
+ * =============================================================================
  * Transforms
- * ==========
+ * =============================================================================
  */
 
 /*
  * YCoCg
  */
 static uint8_t ff_flif16_transform_ycocg_init(FLIF16TransformContext *ctx, 
-                                       FLIF16RangesContext* r_ctx)
+                                              FLIF16RangesContext* r_ctx)
 {   
     transform_priv_ycocg *data = ctx->priv_data;
     FLIF16Ranges* src_ranges = flif16_ranges[r_ctx->r_no];
@@ -534,7 +576,7 @@ static uint8_t ff_flif16_transform_ycocg_init(FLIF16TransformContext *ctx,
 }
 
 static FLIF16RangesContext* ff_flif16_transform_ycocg_meta(FLIF16TransformContext* ctx,
-                                                    FLIF16RangesContext* src_ctx)
+                                                           FLIF16RangesContext* src_ctx)
 {
     FLIF16RangesContext* r_ctx;
     ranges_priv_ycocg* data;

@@ -2,7 +2,7 @@
  * Range coder for FLIF16
  * Copyright (c) 2004, Michael Niedermayer,
  *               2010-2016, Jon Sneyers & Pieter Wuille
- *               2020, Anamitra Ghorui
+ *               2020, Anamitra Ghorui <aghorui@teknik.io>
  *
  * This file is part of FFmpeg.
  *

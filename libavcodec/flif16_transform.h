@@ -81,11 +81,15 @@ FLIF16Ranges* ff_get_ranges(FLIF16InterimPixelData *pixel_data,
 }
 */
 
+FLIF16RangesContext *ff_flif16_ranges_static_init(unsigned int channels,
+                                                  unsigned int bpc);
 
-static inline FLIF16ColorVal ff_flif16_ranges_min(FLIF16RangesContext* r_ctx, int p)
+void ff_flif16_ranges_close(FLIF16RangesContext *);
+
+static inline FLIF16ColorVal ff_flif16_ranges_min(FLIF16RangesContext *r_ctx, int p)
 {
-    FLIF16Ranges* ranges = flif16_ranges[r_ctx->r_no];
-    if(!r_ctx)
+    FLIF16Ranges *ranges = flif16_ranges[r_ctx->r_no];
+    if(!r_ctx) // See Comment Below
         return 0;
     if(ranges->min)
         return ranges->min(r_ctx, p);
@@ -93,10 +97,11 @@ static inline FLIF16ColorVal ff_flif16_ranges_min(FLIF16RangesContext* r_ctx, in
         return 0;
 }
 
-static inline FLIF16ColorVal ff_flif16_ranges_max(FLIF16RangesContext* r_ctx, int p)
+static inline FLIF16ColorVal ff_flif16_ranges_max(FLIF16RangesContext *r_ctx, int p)
 {
     FLIF16Ranges* ranges = flif16_ranges[r_ctx->r_no];
-    if(!r_ctx)
+    if(!r_ctx)  // Remove this. It should segfault if we are calling with a null pointer
+                // Masking it will make bugs hard to detect
         return 0;
     if(ranges->max)
         return ranges->max(r_ctx, p);
@@ -104,26 +109,24 @@ static inline FLIF16ColorVal ff_flif16_ranges_max(FLIF16RangesContext* r_ctx, in
         return 0;
 }
 
-static inline void ff_flif16_ranges_minmax(FLIF16RangesContext* r_ctx, int p,
-                                           FLIF16ColorVal* prev_planes, 
-                                           FLIF16ColorVal* minv, FLIF16ColorVal* maxv)
+static inline void ff_flif16_ranges_minmax(FLIF16RangesContext *r_ctx, int p,
+                                           FLIF16ColorVal *prev_planes, 
+                                           FLIF16ColorVal *minv, FLIF16ColorVal *maxv)
 {
     flif16_ranges[r_ctx->r_no]->minmax(r_ctx, p, prev_planes, minv, maxv);
 }
 
-static inline void ff_flif16_ranges_snap(FLIF16RangesContext* r_ctx, int p,
-                                         FLIF16ColorVal* prev_planes, FLIF16ColorVal* minv, 
-                                         FLIF16ColorVal* maxv, FLIF16ColorVal* v)
+static inline void ff_flif16_ranges_snap(FLIF16RangesContext *r_ctx, int p,
+                                         FLIF16ColorVal *prev_planes, FLIF16ColorVal *minv, 
+                                         FLIF16ColorVal *maxv, FLIF16ColorVal *v)
 {
     flif16_ranges[r_ctx->r_no]->snap(r_ctx, p, prev_planes, minv, maxv, v);
 }
 
-void ff_flif16_ranges_close(FLIF16RangesContext*);
+FLIF16TransformContext *ff_flif16_transform_init(int, FLIF16RangesContext *);
 
-FLIF16TransformContext *ff_flif16_transform_init(int, FLIF16RangesContext*);
-
-uint8_t ff_flif16_transform_read(FLIF16TransformContext*, FLIF16DecoderContext*,
-                                 FLIF16RangesContext*);
+uint8_t ff_flif16_transform_read(FLIF16TransformContext *, FLIF16DecoderContext*,
+                                 FLIF16RangesContext *);
 
 uint8_t ff_flif16_transform_reverse(FLIF16TransformContext*, FLIF16InterimPixelData*,
                                     uint8_t, uint8_t);

@@ -1,6 +1,6 @@
 /*
  * FLIF16 Image Format Definitions
- * Copyright (c) 2020 Anamitra Ghorui
+ * Copyright (c) 2020 Anamitra Ghorui <aghorui@teknik.io>
  *
  * This file is part of FFmpeg.
  *
@@ -121,27 +121,28 @@ typedef struct FLIF16DecoderContext {
                           
     // Secondary Header
     
-    // Flags. TODO Merge all these flags
-    uint8_t alphazero;    ///< Alphazero
-    uint8_t custombc;     ///< Custom Bitchance
+    uint8_t alphazero;    ///< Alphazero Flag
+    uint8_t custombc;     ///< Custom Bitchance Flag
 
-    uint8_t cutoff; 
-    uint8_t alphadiv;
+    uint8_t cut;          ///< Chancetable custom cutoff
+    uint8_t alpha;        ///< Chancetable custom alphadivisor
+    uint8_t ipp;          ///< Invisible pixel predictor
 
     uint8_t loops;        ///< Number of times animation loops
     uint16_t *framedelay; ///< Frame delay for each frame
-   // int32_t (*ranges)[2]; ///< The minimum and maximum values a
-                          ///  channel's pixels can take. Changes
-                          ///  depending on transformations applied
-    int32_t (*prop_ranges)[2];
-    uint32_t prop_ranges_size;
 
     // Transforms
     // Size dynamically maybe
     // FLIF16TransformContext *transforms[13];
     uint8_t transform_top;
-    FLIF16Ranges ranges;
-    FLIF16Ranges ranges_prev;
+    FLIF16RangesContext *ranges; ///< The minimum and maximum values a
+                                 ///  channel's pixels can take. Changes
+                                 ///  depending on transformations applied
+    FLIF16RangesContext *ranges_prev;
+
+    // MANIAC Trees and pixeldata
+    int32_t (*prop_ranges)[2]; ///< Property Ranges
+    uint32_t prop_ranges_size;
     
     // Dimensions and other things.
     uint32_t width;
@@ -152,7 +153,7 @@ typedef struct FLIF16DecoderContext {
 
 /*void ff_flif16_maniac_ni_prop_ranges_init(int32_t (*prop_ranges)[2],
                                           unsigned int *prop_ranges_size,
-                                          int32_t (*ranges)[2],
+                                          FLIF16RangesContext *ranges,
                                           uint8_t property,
                                           uint8_t channels);*/
 
