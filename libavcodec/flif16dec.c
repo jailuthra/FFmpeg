@@ -144,13 +144,13 @@ static int ff_flif16_read_second_header(AVCodecContext *avctx)
             } else
                 s->bpc = (s->bpc == '1') ? 255 : 65535;
             s->i = 0;
-
+            /*
             s->ranges = av_malloc(s->channels * sizeof(*(s->ranges)));
             for (int i = 0; i < s->channels; ++i)
                 RANGE_SET(s->ranges[i], 0, s->bpc);
             //for(int i = 0; i < s->channels; ++i)
             //    s->src_ranges->max[i] = s->bpc;
-            ++s->segment; __PLN__
+            ++s->segment; __PLN__*/
 
         case 1:
             if (s->channels > 3)
@@ -277,10 +277,10 @@ static int ff_flif16_read_maniac_forest(AVCodecContext *avctx)
             loop:
             if (s->i >= s->channels)
                 goto end;
-
+            /*
             ff_flif16_maniac_ni_prop_ranges_init(s->prop_ranges,
                                                  &s->prop_ranges_size, s->ranges,
-                                                 s->i, s->channels);
+                                                 s->i, s->channels);*/
             __PLN__
             ++s->segment;
 

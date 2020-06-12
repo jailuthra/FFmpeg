@@ -130,7 +130,7 @@ typedef struct FLIF16DecoderContext {
 
     uint8_t loops;        ///< Number of times animation loops
     uint16_t *framedelay; ///< Frame delay for each frame
-    int32_t (*ranges)[2]; ///< The minimum and maximum values a
+   // int32_t (*ranges)[2]; ///< The minimum and maximum values a
                           ///  channel's pixels can take. Changes
                           ///  depending on transformations applied
     int32_t (*prop_ranges)[2];
@@ -140,8 +140,8 @@ typedef struct FLIF16DecoderContext {
     // Size dynamically maybe
     // FLIF16TransformContext *transforms[13];
     uint8_t transform_top;
-    //FLIF16Ranges ranges;
-    //FLIF16Ranges ranges_prev;
+    FLIF16Ranges ranges;
+    FLIF16Ranges ranges_prev;
     
     // Dimensions and other things.
     uint32_t width;
@@ -150,13 +150,13 @@ typedef struct FLIF16DecoderContext {
     uint32_t meta;      ///< Size of a meta chunk
 } FLIF16DecoderContext;
 
-void ff_flif16_maniac_ni_prop_ranges_init(int32_t (*prop_ranges)[2],
+/*void ff_flif16_maniac_ni_prop_ranges_init(int32_t (*prop_ranges)[2],
                                           unsigned int *prop_ranges_size,
                                           int32_t (*ranges)[2],
                                           uint8_t property,
-                                          uint8_t channels);
+                                          uint8_t channels);*/
 
 // Must be included here to resolve circular include
-// #include "flif16_transform.h"
+#include "flif16_transform.h"
 
 #endif /* AVCODEC_FLIF16_H */

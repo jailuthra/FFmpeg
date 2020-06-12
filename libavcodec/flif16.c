@@ -31,7 +31,7 @@
  * @param[out] prop_ranges resultant ranges
  * @param[in]  color ranges of each channel
  * @param[in]  channels number of channels
- */
+ *//*
 void ff_flif16_maniac_ni_prop_ranges_init(int32_t (*prop_ranges)[2],
                                           unsigned int *prop_ranges_size,
                                           int32_t (*ranges)[2],
@@ -59,3 +59,4 @@ void ff_flif16_maniac_ni_prop_ranges_init(int32_t (*prop_ranges)[2],
     for (int i = 0; i < 5; ++i)
         RANGE_SET(prop_ranges[top++], mind, maxd);
 }
+*/
