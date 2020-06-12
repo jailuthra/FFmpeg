@@ -65,7 +65,7 @@ void ff_flif16_rac_free(FLIF16RangeCoder *rc)
 {
     if (!rc)
         return;
-    av_free(rc);
+    av_freep(rc);
 }
 
 // TODO Maybe restructure rangecoder.c/h to fit a more generic case
@@ -140,7 +140,7 @@ FLIF16ChanceContext *ff_flif16_chancecontext_init(void)
     FLIF16ChanceContext *ctx = av_malloc(sizeof(flif16_nz_int_chances));
     if(!ctx)
         return NULL;
-    memcpy(ctx, &flif16_nz_int_chances, sizeof(flif16_nz_int_chances));
+    memcpy(ctx->data, &flif16_nz_int_chances, sizeof(flif16_nz_int_chances));
     return ctx;
 }
 
@@ -186,7 +186,7 @@ int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
 
     if (!(m->forest[channel])) {
         m->forest[channel] = av_malloc(sizeof(*tree));
-        if(!(m->forest[channel]))
+        if (!(m->forest[channel]))
             return AVERROR(ENOMEM);
         m->forest[channel]->data  = av_mallocz(MANIAC_TREE_BASE_SIZE *
                                                sizeof(*(m->forest[channel]->data)));
@@ -195,14 +195,18 @@ int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
             return AVERROR(ENOMEM);
         }
         m->stack = av_malloc(MANIAC_TREE_BASE_SIZE * sizeof(*(m->stack)));
-        if(!((tree->data) && (m->stack)))
+        if (!((tree->data) && (m->stack)))
             return AVERROR(ENOMEM);
-        for(int i = 0; i < 3; ++i) {
+        for (int i = 0; i < 3; ++i) {
             #ifdef MULTISCALE_CHANCES_ENABLED
             m->ctx[i] = ff_flif16_multiscale_chancecontext_init();
             #else
             m->ctx[i] = ff_flif16_chancecontext_init();
             #endif
+
+            if (!m->ctx[i]) {
+                __PLN__
+            }
         }
         m->stack_top = m->tree_top = 0;
         tree->size = MANIAC_TREE_BASE_SIZE;
@@ -299,7 +303,7 @@ int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
             }
             tree->size *= 2;
 
-            if((m->stack_top) >= m->stack_size) {
+            if ((m->stack_top) >= m->stack_size) {
                 av_realloc(m->stack, (m->stack_size) * 2);
                 if(!(m->stack))
                     return AVERROR(ENOMEM);
@@ -345,8 +349,8 @@ int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
     if (!tree->data)
         return AVERROR(ENOMEM);
     tree->size = m->tree_top;
-    av_free(m->stack);
-    for(int i = 0; i < 3; ++i)
+    av_freep(m->stack);
+    for (int i = 0; i < 3; ++i)
         av_free(m->ctx[i]);
     // return 0;
     return AVERROR_EOF;
@@ -388,7 +392,7 @@ FLIF16ChanceContext *ff_flif16_maniac_findleaf(FLIF16MANIACContext *m,
     
     leaves = m->forest[channel]->leaves;
 
-    while(nodes[pos].property != -1) {
+    while (nodes[pos].property != -1) {
         if (nodes[pos].count < 0) {
             if (properties[nodes[pos].property] > nodes[pos].split_val)
                 pos = nodes[pos].child_id;

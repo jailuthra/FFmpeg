@@ -131,6 +131,8 @@ static int ff_flif16_read_second_header(AVCodecContext *avctx)
             return AVERROR(EAGAIN);
 
         s->rc = ff_flif16_rac_init(&s->gb, s->buf, s->buf_count);
+        if(!s->rc)
+            return AVERROR(ENOMEM);
     }
 
     switch (s->segment) {
@@ -180,30 +182,29 @@ static int ff_flif16_read_second_header(AVCodecContext *avctx)
                 }
                 s->i = 0;
             }
-            ++s->segment; __PLN__ printf("[%s] s->segment = %d\n", __func__, s->segment);
+            ++s->segment; __PLN__
 
         case 4:
             // Has custom alpha flag
             RAC_GET(s->rc, NULL, 0, 1, &s->customalpha, FLIF16_RAC_UNI_INT);
             printf("[%s] has_custom_cutoff_alpha = %d\n", __func__, temp);
-            ++s->segment; printf("[%s] s->segment = %d\n",  __func__, s->segment);
+            ++s->segment;
 
         case 5:
             if (s->customalpha)
                 RAC_GET(s->rc, NULL, 1, 128, &s->cut, FLIF16_RAC_UNI_INT);
-            ++s->segment; printf("[%s] s->segment = %d\n", __func__, s->segment);
+            ++s->segment;
 
         case 6:
             if (s->customalpha)
                 RAC_GET(s->rc, NULL, 2, 128, &s->alpha, FLIF16_RAC_UNI_INT);
-            ++s->segment; printf("[%s] s->segment = %d\n", __func__, s->segment);
+            ++s->segment;
 
         case 7:
             if (s->customalpha)
                 RAC_GET(s->rc, NULL, 0, 1, &s->custombc, FLIF16_RAC_UNI_INT);
             if (s->custombc) {
-                av_log(avctx, AV_LOG_ERROR,
-                       "custom bitchances not implemented\n");
+                av_log(avctx, AV_LOG_ERROR, "custom bitchances not implemented\n");
                 return AVERROR_PATCHWELCOME;
             }
             goto end;
@@ -283,8 +284,7 @@ static int ff_flif16_read_maniac_forest(AVCodecContext *avctx)
 
     if (!s->maniac_ctx.forest) {
         __PLN__
-        s->maniac_ctx.forest = av_mallocz((s->channels) *
-                                          sizeof(*(s->maniac_ctx.forest)));
+        s->maniac_ctx.forest = av_mallocz((s->channels) * sizeof(*(s->maniac_ctx.forest)));
         if (!s->maniac_ctx.forest) {
             av_log(avctx, AV_LOG_ERROR, "could not allocate \n");
             return AVERROR(ENOMEM);
@@ -297,21 +297,26 @@ static int ff_flif16_read_maniac_forest(AVCodecContext *avctx)
             loop:
             if (s->i >= s->channels)
                 goto end;
-            /*
+            __PLN__
             ff_flif16_maniac_ni_prop_ranges_init(s->prop_ranges,
                                                  &s->prop_ranges_size, s->ranges,
-                                                 s->i, s->channels);*/
+                                                 s->i, s->channels);
             __PLN__
             ++s->segment;
 
         case 1:
+            /*if (ff_flif16_ranges_min(s->ranges, s->i) >= ff_flif16_ranges_max(s->ranges, s->i)) {
+                ++s->i;
+                goto loop;
+            }*/
             ret = ff_flif16_read_maniac_tree(s->rc, &s->maniac_ctx, s->prop_ranges,
                                              s->prop_ranges_size, s->i);
             if (ret)
                 goto end;
-            av_free(s->prop_ranges);
+            av_freep(s->prop_ranges);
             --s->segment;
             __PLN__
+            ++s->i;
             goto loop;
     }
 
@@ -408,6 +413,8 @@ static av_cold int flif16_decode_end(AVCodecContext *avctx)
     av_free(s->rc);
     if(s->framedelay)
         av_free(s->framedelay);
+    if (s->prop_ranges)
+        av_free(s->prop_ranges);
     return 0;
 }
 

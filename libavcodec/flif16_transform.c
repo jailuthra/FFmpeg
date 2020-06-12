@@ -491,20 +491,20 @@ FLIF16Ranges flif16_ranges_bounds = {
 };
 
 FLIF16Ranges* flif16_ranges[] = {
-    &flif16_ranges_default,               // FLIF16_RANGES_DEFAULT,
-    &flif16_ranges_channelcompact,        // FLIF16_RANGES_CHANNELCOMPACT = 0,
+    &flif16_ranges_default,               // FLIF16_RANGES_DEFAULT = 0,
+    &flif16_ranges_channelcompact,        // FLIF16_RANGES_CHANNELCOMPACT,
     &flif16_ranges_ycocg,                 // FLIF16_RANGES_YCOCG,
     &flif16_ranges_permuteplanes,         // FLIF16_RANGES_PERMUTEPLANES,
     &flif16_ranges_permuteplanessubtract, // FLIF16_RANGES_PERMUTEPLANESSUBTRACT,
     &flif16_ranges_bounds,                // FLIF16_RANGES_BOUNDS,
     &flif16_ranges_static,                // FLIF16_RANGES_STATIC,
-    NULL,                                      // FLIF16_RANGES_PALETTEALPHA,
-    NULL,                                      // FLIF16_RANGES_PALETTE,
-    NULL,                                      // FLIF16_RANGES_COLORBUCKETS,
-    NULL,                                      // FLIF16_RANGES_DUPLICATEFRAME,
-    NULL,                                      // FLIF16_RANGES_FRAMESHAPE,
-    NULL,                                      // FLIF16_RANGES_FRAMELOOKBACK,
-    NULL                                       // FLIF16_RANGES_DUP
+    NULL,                                 // FLIF16_RANGES_PALETTEALPHA,
+    NULL,                                 // FLIF16_RANGES_PALETTE,
+    NULL,                                 // FLIF16_RANGES_COLORBUCKETS,
+    NULL,                                 // FLIF16_RANGES_DUPLICATEFRAME,
+    NULL,                                 // FLIF16_RANGES_FRAMESHAPE,
+    NULL,                                 // FLIF16_RANGES_FRAMELOOKBACK,
+    NULL                                  // FLIF16_RANGES_DUP
 };
 
 FLIF16RangesContext *ff_flif16_ranges_static_init(unsigned int channels,
@@ -522,6 +522,7 @@ FLIF16RangesContext *ff_flif16_ranges_static_init(unsigned int channels,
         data->bounds[0][i] = 0;
         data->bounds[1][i] = bpc;
     }
+    __PLN__
     return ctx;
     // 2 Frees are needed. One for bounds, and other for the private struct
     // itself.
