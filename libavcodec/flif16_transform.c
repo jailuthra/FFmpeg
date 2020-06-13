@@ -1010,7 +1010,7 @@ static uint8_t transform_bounds_read(FLIF16TransformContext* ctx,
     end:
         MSG("[Bounds Result]\n");
         for(int i = 0; i < 3; ++i)
-            printf("%d (%d, %d)\n", i, data->bounds[0][ctx->i], data->bounds[1][ctx->i]);
+            printf("%d (%d, %d)\n", i, data->bounds[0][i], data->bounds[1][i]);
         return 1;
 
     need_more_data:
