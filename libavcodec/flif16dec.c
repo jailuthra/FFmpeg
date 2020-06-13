@@ -151,8 +151,8 @@ static int flif16_read_second_header(AVCodecContext *avctx)
             } else
                 s->bpc = (s->bpc == '1') ? 255 : 65535;
             s->i = 0;
-            s->ranges = ff_flif16_ranges_static_init(s->channels, s->bpc);
-            ++s->segment; __PLN__
+            s->range = ff_flif16_ranges_static_init(s->channels, s->bpc);
+            printf("channels : %d & bpc : %d\n", s->channels, s->bpc);
 
         case 1:
             if (s->channels > 3)
@@ -232,31 +232,37 @@ static int flif16_read_transforms(AVCodecContext *avctx)
 {
     FLIF16DecoderContext *s = avctx->priv_data;
     uint8_t temp;
-
     loop:
     switch (s->segment) {
         case 0:
             RAC_GET(s->rc, NULL, 0, 0, &temp, FLIF16_RAC_BIT);
             if(!temp)
                 goto end;
-            av_log(avctx, AV_LOG_ERROR, "transforms not implemented\n");
-            return AVERROR_PATCHWELCOME;
-            // Make a pointer array. Do something like:
-            // s->tlist[++s->tlist_top] = ff_flif16_transform_init(temp, ...)
-            // tlist is an array of pointers of FLIF16TransformContexts
+            //av_log(avctx, AV_LOG_ERROR, "transforms not implemented\n");
+            //return AVERROR_PATCHWELCOME;
             ++s->segment;
 
         case 1:
-            // ff_flif16_transform_read(s->tlist[s->tlist_top], ...)
+            RAC_GET(s->rc, NULL, 0, 13, &temp, FLIF16_RAC_UNI_INT);
+            printf("Transform : %d\n", temp);
+            //s->prev_range = ff_flif16_ranges_static_init(s->channels, s->bpc); 
+            s->transforms[s->transform_top] = ff_flif16_transform_init(temp, s->range, s->transforms[s->transform_top]);
+            //printf("%d\n", s->transforms[s->transform_top]->t_no);
+            ff_flif16_transform_read(s->transforms[s->transform_top], s,
+                                     s->range);
+            s->range = ff_flif16_transform_meta(s->transforms[s->transform_top],
+                                                s->range);
+            printf("Ranges : %d\n", s->range->r_no);
             s->segment = 0;
+            s->transform_top++;
             goto loop;
 
         case 2:
             end:
             s->segment = 2;
             // Read invisible pixel predictor
-            if ( s->alphazero && s->ranges->num_planes > 3
-                && ff_flif16_ranges_min(s->ranges, 3) <= 0
+            if ( s->alphazero && s->channels > 3
+                && ff_flif16_ranges_min(s->range, 3) <= 0
                 && !(s->ia % 2))
                 RAC_GET(s->rc, NULL, 0, 2, &s->ipp, FLIF16_RAC_UNI_INT);
     }
@@ -290,7 +296,7 @@ static int flif16_read_maniac_forest(AVCodecContext *avctx)
                 goto end;
             __PLN__
             ff_flif16_maniac_ni_prop_ranges_init(s->prop_ranges,
-                                                 &s->prop_ranges_size, s->ranges,
+                                                 &s->prop_ranges_size, s->range,
                                                  s->i, s->channels);
             __PLN__
             ++s->segment;

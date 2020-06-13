@@ -123,14 +123,17 @@ static inline void ff_flif16_ranges_snap(FLIF16RangesContext *r_ctx, int p,
     flif16_ranges[r_ctx->r_no]->snap(r_ctx, p, prev_planes, minv, maxv, v);
 }
 
-FLIF16TransformContext *ff_flif16_transform_init(int, FLIF16RangesContext *);
+FLIF16TransformContext *ff_flif16_transform_init(int, FLIF16RangesContext *, FLIF16TransformContext *);
 
-uint8_t ff_flif16_transform_read(FLIF16TransformContext *, FLIF16DecoderContext*,
+uint8_t ff_flif16_transform_read(FLIF16TransformContext *, FLIF16DecoderContext *,
                                  FLIF16RangesContext *);
+
+FLIF16RangesContext* ff_flif16_transform_meta(FLIF16TransformContext *, 
+                                             FLIF16RangesContext *);
 
 uint8_t ff_flif16_transform_reverse(FLIF16TransformContext*, FLIF16PixelData*,
                                     uint8_t, uint8_t);
 
-void ff_flif16_transforms_close(FLIF16TransformContext*);
+void ff_flif16_transforms_close(FLIF16TransformContext *);
 
 #endif /* FLIF16_TRANSFORM_H */
