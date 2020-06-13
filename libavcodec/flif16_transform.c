@@ -489,20 +489,20 @@ FLIF16Ranges flif16_ranges_bounds = {
 };
 
 FLIF16Ranges* flif16_ranges[] = {
-    &flif16_ranges_default,               // FLIF16_RANGES_DEFAULT,
-    &flif16_ranges_channelcompact,        // FLIF16_RANGES_CHANNELCOMPACT = 0,
+    &flif16_ranges_default,               // FLIF16_RANGES_DEFAULT = 0,
+    &flif16_ranges_channelcompact,        // FLIF16_RANGES_CHANNELCOMPACT,
     &flif16_ranges_ycocg,                 // FLIF16_RANGES_YCOCG,
     &flif16_ranges_permuteplanes,         // FLIF16_RANGES_PERMUTEPLANES,
     &flif16_ranges_permuteplanessubtract, // FLIF16_RANGES_PERMUTEPLANESSUBTRACT,
     &flif16_ranges_bounds,                // FLIF16_RANGES_BOUNDS,
     &flif16_ranges_static,                // FLIF16_RANGES_STATIC,
-    NULL,                                      // FLIF16_RANGES_PALETTEALPHA,
-    NULL,                                      // FLIF16_RANGES_PALETTE,
-    NULL,                                      // FLIF16_RANGES_COLORBUCKETS,
-    NULL,                                      // FLIF16_RANGES_DUPLICATEFRAME,
-    NULL,                                      // FLIF16_RANGES_FRAMESHAPE,
-    NULL,                                      // FLIF16_RANGES_FRAMELOOKBACK,
-    NULL                                       // FLIF16_RANGES_DUP
+    NULL,                                 // FLIF16_RANGES_PALETTEALPHA,
+    NULL,                                 // FLIF16_RANGES_PALETTE,
+    NULL,                                 // FLIF16_RANGES_COLORBUCKETS,
+    NULL,                                 // FLIF16_RANGES_DUPLICATEFRAME,
+    NULL,                                 // FLIF16_RANGES_FRAMESHAPE,
+    NULL,                                 // FLIF16_RANGES_FRAMELOOKBACK,
+    NULL                                  // FLIF16_RANGES_DUP
 };
 
 FLIF16RangesContext *ff_flif16_ranges_static_init(unsigned int channels,
@@ -510,16 +510,18 @@ FLIF16RangesContext *ff_flif16_ranges_static_init(unsigned int channels,
 {
     FLIF16Ranges *r = flif16_ranges[FLIF16_RANGES_STATIC];
     FLIF16RangesContext *ctx = av_mallocz(sizeof(*ctx));
+    ranges_priv_static *data;
     ctx->r_no       = FLIF16_RANGES_STATIC;
     ctx->num_planes = channels;
     ctx->priv_data  = av_mallocz(r->priv_data_size);
-    ranges_priv_static *data = ctx->priv_data;
+    data = ctx->priv_data;
     data->bounds[0] = av_mallocz(sizeof(*(data->bounds[0])) * channels);
     data->bounds[1] = av_mallocz(sizeof(*(data->bounds[0])) * channels);
     for (int i = 0; i < channels; ++i) {
         data->bounds[0][i] = 0;
         data->bounds[1][i] = bpc;
     }
+    __PLN__
     return ctx;
     // 2 Frees are needed. One for bounds, and other for the private struct
     // itself.
@@ -593,7 +595,7 @@ static FLIF16RangesContext* transform_ycocg_meta(FLIF16TransformContext* ctx,
 }
 
 static uint8_t transform_ycocg_forward(FLIF16TransformContext* ctx,
-                                          FLIF16InterimPixelData* pixel_data)
+                                          FLIF16PixelData* pixel_data)
 {
     int r, c;
     FLIF16ColorVal R,G,B,Y,Co,Cg;
@@ -620,7 +622,7 @@ static uint8_t transform_ycocg_forward(FLIF16TransformContext* ctx,
 }
 
 static uint8_t transform_ycocg_reverse(FLIF16TransformContext *ctx,
-                                          FLIF16InterimPixelData * pixel_data,
+                                          FLIF16PixelData * pixel_data,
                                           uint32_t stride_row,
                                           uint32_t stride_col)
 {
@@ -742,7 +744,7 @@ static FLIF16RangesContext* transform_permuteplanes_meta(FLIF16TransformContext*
 }
 
 static uint8_t transform_permuteplanes_forward(FLIF16TransformContext* ctx,
-                                                  FLIF16InterimPixelData* pixel_data)
+                                                  FLIF16PixelData* pixel_data)
 {
     FLIF16ColorVal pixel[5];
     int r, c, p;
@@ -773,7 +775,7 @@ static uint8_t transform_permuteplanes_forward(FLIF16TransformContext* ctx,
 }
 
 static uint8_t transform_permuteplanes_reverse(FLIF16TransformContext *ctx,
-                                                  FLIF16InterimPixelData * pixels,
+                                                  FLIF16PixelData * pixels,
                                                   uint32_t stride_row,
                                                   uint32_t stride_col)
 {   
@@ -900,7 +902,7 @@ static FLIF16RangesContext* transform_channelcompact_meta(FLIF16TransformContext
 }
 
 static uint8_t transform_channelcompact_reverse(FLIF16TransformContext* ctx,
-                                                   FLIF16InterimPixelData* pixels,
+                                                   FLIF16PixelData* pixels,
                                                    uint32_t stride_row,
                                                    uint32_t stride_col)
 {   
@@ -1124,7 +1126,7 @@ FLIF16RangesContext *ff_flif16_transform_meta(FLIF16TransformContext *ctx,
 }
 
 uint8_t ff_flif16_transform_reverse(FLIF16TransformContext* ctx,
-                                    FLIF16InterimPixelData* pixelData,
+                                    FLIF16PixelData* pixelData,
                                     uint8_t strideRow,
                                     uint8_t strideCol)
 {

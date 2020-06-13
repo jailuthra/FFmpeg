@@ -36,8 +36,8 @@
 #include <stdint.h>
 #include <assert.h>
 
-// Remove this
 #define __PLN__ printf("At: [%s] %s, %d\n", __func__, __FILE__, __LINE__);
+#define MSG(fmt, ...) printf("[%s] " fmt, __func__, ##__VA_ARGS__)
 
 #define FLIF16_RAC_MAX_RANGE_BITS 24
 #define FLIF16_RAC_MAX_RANGE_BYTES (FLIF16_RAC_MAX_RANGE_BITS / 8)
@@ -48,7 +48,7 @@
 #define CHANCETABLE_DEFAULT_ALPHA (0xFFFFFFFF / 19)
 #define CHANCETABLE_DEFAULT_CUT 2
 
-// #define MULTISCALE_CHANCES_ENABLED
+#define MULTISCALE_CHANCES_ENABLED
 
 #define MULTISCALE_CHANCETABLE_DEFAULT_SIZE 6
 #define MULTISCALE_CHANCETABLE_DEFAULT_CUT  8
@@ -253,7 +253,7 @@ int ff_flif16_maniac_read_int(FLIF16RangeCoder *rc,
 static inline int ff_flif16_rac_renorm(FLIF16RangeCoder *rc)
 {
     uint32_t left = bytestream2_get_bytes_left(rc->gb);
-    printf("[%s] left = %d\n", __func__, left);
+    MSG("left = %d\n", left);
     if (!left)
         return 0;
     while (rc->range <= FLIF16_RAC_MIN_RANGE) {
@@ -273,7 +273,7 @@ static inline uint8_t ff_flif16_rac_get(FLIF16RangeCoder *rc, uint32_t chance,
                                         uint8_t *target)
 {
     if (rc->renorm) {
-        printf("[%s] Triggered\n", __func__);
+        MSG("Triggered\n");
         return 0;
     }
 
@@ -303,7 +303,7 @@ static inline uint32_t ff_flif16_rac_read_chance(FLIF16RangeCoder *rc,
     uint32_t ret;
     
     if (rc->renorm) {
-        printf("[%s] Triggered\n", __func__);
+        MSG("Triggered\n");
         return 0;
     }
 
@@ -327,7 +327,7 @@ static inline int ff_flif16_rac_read_uni_int(FLIF16RangeCoder *rc,
     uint8_t bit;
 
     if (rc->renorm) {
-        printf("[%s] Triggered\n", __func__);
+        MSG("Triggered\n");
         return 0;
     }
 
@@ -346,11 +346,11 @@ static inline int ff_flif16_rac_read_uni_int(FLIF16RangeCoder *rc,
         } else {
             rc->len = med;
         }
-        printf("[%s] min = %d , len = %d\n", __func__, rc->min, rc->len);
+        MSG("min = %d , len = %d\n", rc->min, rc->len);
         return 0;
     } else {
         *target = rc->min;
-        printf("[%s] target = %d\n", __func__, rc->min);
+        MSG("target = %d\n", rc->min);
         rc->active = 0;
         return 1;
     }
@@ -404,7 +404,6 @@ static inline uint8_t ff_flif16_rac_read_symbol(FLIF16RangeCoder *rc,
 static inline void ff_flif16_multiscale_chance_set(FLIF16MultiscaleChance *c,
                                                    uint16_t chance)
 {
-    __PLN__
     for (int i = 0; i < MULTISCALE_CHANCETABLE_DEFAULT_SIZE; i++) {
         c->chances[i] = chance;
         c->quality[i] = 0;
@@ -428,7 +427,6 @@ static inline void ff_flif16_multiscale_chancetable_put(FLIF16RangeCoder *rc,
         ff_flif16_chance_estim(rc, c->chances[i], bit, &sbits);
         oqual = c->quality[i]; 
         c->quality[i] = (oqual * 255 + sbits * 4097 + 128) >> 8;
-        __PLN__
         c->chances[i] = (bit) ? rc->mct->sub_table[i].one_state[c->chances[i]]
                               : rc->mct->sub_table[i].zero_state[c->chances[i]];
     }
@@ -440,10 +438,8 @@ static inline void ff_flif16_multiscale_chancetable_put(FLIF16RangeCoder *rc,
 
 static inline uint8_t ff_flif16_rac_read_multiscale_symbol(FLIF16RangeCoder *rc,
                                                            FLIF16MultiscaleChanceContext *ctx,
-                                                           uint16_t type, 
-                                                           uint8_t *target)
+                                                           uint16_t type, uint8_t *target)
 {
-    __PLN__
     ff_flif16_rac_read_chance(rc, ff_flif16_multiscale_chance_get(ctx->data[type]), target);
     ff_flif16_multiscale_chancetable_put(rc, ctx, type, *target);
     return 1;
@@ -459,8 +455,7 @@ static inline int ff_flif16_rac_nz_read_internal(FLIF16RangeCoder *rc,
     int flag = 0;
     // Maybe remove the while loop
     while (!flag) {
-        printf("[%s] low = %d range = %d renorm = %d\n", __func__, rc->low, 
-               rc->range, rc->renorm);
+        MSG("low = %d range = %d renorm = %d\n", rc->low, rc->range, rc->renorm);
         if (rc->renorm) {
             if(!ff_flif16_rac_renorm(rc))
                 return 0; // EAGAIN condition
@@ -479,8 +474,7 @@ static inline int ff_flif16_rac_nz_read_multiscale_internal(FLIF16RangeCoder *rc
     int flag = 0;
     // Maybe remove the while loop
     while (!flag) {
-        printf("[%s] low = %d range = %d renorm = %d\n", __func__, rc->low, 
-               rc->range, rc->renorm);
+        MSG("low = %d range = %d renorm = %d\n", rc->low,  rc->range, rc->renorm);
         if (rc->renorm) {
             if(!ff_flif16_rac_renorm(rc))
                 return 0; // EAGAIN condition
@@ -522,6 +516,7 @@ static inline int ff_flif16_rac_read_nz ## _name ## _int(FLIF16RangeCoder *rc,  
         case 0:                                                                \
             RAC_NZ_GET(rc, ctx, NZ_INT_ZERO, &(temp));                         \
             if (temp) {                                                        \
+                MSG("nz_int_zero triggered\n");                                \
                 *target = 0;                                                   \
                 goto end;                                                      \
             }                                                                  \
@@ -647,8 +642,7 @@ static inline int ff_flif16_rac_process(FLIF16RangeCoder *rc,
 {
     int flag = 0;
     while (!flag) {
-        printf("[%s] low = %d range = %d renorm = %d\n", __func__, rc->low, 
-               rc->range, rc->renorm);
+        MSG("low = %d range = %d renorm = %d\n", rc->low, rc->range, rc->renorm);
         if(rc->renorm) {
             if(!ff_flif16_rac_renorm(rc))
                 return 0; // EAGAIN condition
@@ -670,14 +664,14 @@ static inline int ff_flif16_rac_process(FLIF16RangeCoder *rc,
             
             case FLIF16_RAC_NZ_INT:
                 // handle nz_ints
-                flag = ff_flif16_rac_read_nz_int(rc, (FLIF16ChanceContext *) ctx, val1, val2, 
-                                                 (int *) target);
+                flag = ff_flif16_rac_read_nz_int(rc, (FLIF16ChanceContext *) ctx,
+                                                 val1, val2, (int *) target);
                 break;
             
             case FLIF16_RAC_GNZ_INT:
                 // handle gnz_ints
-                flag = ff_flif16_rac_read_gnz_int(rc, (FLIF16ChanceContext *) ctx, val1, val2, 
-                                                  (int *) target);
+                flag = ff_flif16_rac_read_gnz_int(rc, (FLIF16ChanceContext *) ctx,
+                                                  val1, val2, (int *) target);
                 break;
 #ifdef MULTISCALE_CHANCES_ENABLED
             case FLIF16_RAC_NZ_MULTISCALE_INT:
@@ -693,7 +687,7 @@ static inline int ff_flif16_rac_process(FLIF16RangeCoder *rc,
                 break;
 #endif
             default:
-                printf("[%s] unknown rac reader\n", __func__);
+                MSG("unknown rac reader\n");
                 break;
         }
     }

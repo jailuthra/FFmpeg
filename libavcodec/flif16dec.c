@@ -39,7 +39,11 @@
  * AVERROR(EAGAIN) as long as the bitstream is incomplete.
  */
 
-// TODO prefix approprate functions with ff_*
+// Properties properties((nump>3?NB_PROPERTIES_scanlinesA[p]:NB_PROPERTIES_scanlines[p]));
+
+// Static property values
+static const int properties_ni_rgb_size[] = {7, 8, 9, 7, 7};
+static const int properties_ni_rgba_size[] = {8, 9, 10, 7, 7};
 
 enum FLIF16States {
     FLIF16_HEADER = 1,
@@ -50,7 +54,7 @@ enum FLIF16States {
     FLIF16_CHECKSUM
 };
 
-static int ff_flif16_read_header(AVCodecContext *avctx)
+static int flif16_read_header(AVCodecContext *avctx)
 {
     uint8_t temp, count = 3;
     FLIF16DecoderContext *s = avctx->priv_data;
@@ -114,19 +118,25 @@ static int ff_flif16_read_header(AVCodecContext *avctx)
     return 0;
 }
 
-static int ff_flif16_read_second_header(AVCodecContext *avctx)
+static int flif16_read_second_header(AVCodecContext *avctx)
 {
     uint32_t temp;
     FLIF16DecoderContext *s = avctx->priv_data;
 
     if (!s->rc) {
-        s->buf_count += bytestream2_get_buffer(&s->gb, s->buf,
+        s->buf_count += bytestream2_get_buffer(&s->gb, s->buf + s->buf_count,
                                                FFMIN(bytestream2_get_bytes_left(&s->gb),
                                                (FLIF16_RAC_MAX_RANGE_BYTES - s->buf_count)));
+        MSG("s->buf_count = %d buf = ", s->buf_count);
+        for(int i = 0; i < FLIF16_RAC_MAX_RANGE_BYTES; ++i)
+            printf("%x ", s->buf[i]);
+        printf("\n");
         if (s->buf_count < FLIF16_RAC_MAX_RANGE_BYTES)
             return AVERROR(EAGAIN);
 
         s->rc = ff_flif16_rac_init(&s->gb, s->buf, s->buf_count);
+        if(!s->rc)
+            return AVERROR(ENOMEM);
     }
 
     switch (s->segment) {
@@ -145,13 +155,6 @@ static int ff_flif16_read_second_header(AVCodecContext *avctx)
             s->i = 0;
             s->range = ff_flif16_ranges_static_init(s->channels, s->bpc);
             printf("channels : %d & bpc : %d\n", s->channels, s->bpc);
-            /*
-            s->ranges = av_malloc(s->channels * sizeof(*(s->ranges)));
-            for (int i = 0; i < s->channels; ++i)
-                RANGE_SET(s->ranges[i], 0, s->bpc);
-            //for(int i = 0; i < s->channels; ++i)
-            //    s->src_ranges->max[i] = s->bpc;
-            ++s->segment; __PLN__*/
 
         case 1:
             if (s->channels > 3)
@@ -165,9 +168,11 @@ static int ff_flif16_read_second_header(AVCodecContext *avctx)
                         FLIF16_RAC_UNI_INT);
                 s->framedelay = av_mallocz(sizeof(*(s->framedelay)) * s->frames);
             }
-            ++s->segment; __PLN__
+            ++s->segment;
 
         case 3:
+            __PLN__
+            MSG("s->segment = %d\n", s->segment);
             if (s->frames > 1) {
                 for (; (s->i) < (s->frames); ++(s->i)) {
                     RAC_GET(s->rc, NULL, 0, 60000, &(s->framedelay[(s->i)]),
@@ -175,30 +180,29 @@ static int ff_flif16_read_second_header(AVCodecContext *avctx)
                 }
                 s->i = 0;
             }
-            ++s->segment;
+            ++s->segment; __PLN__
 
         case 4:
             // Has custom alpha flag
-            RAC_GET(s->rc, NULL, 0, 1, &temp, FLIF16_RAC_UNI_INT);
-            printf("[%s] has_custom_cutoff_alpha = %d\n", __func__, temp);
+            RAC_GET(s->rc, NULL, 0, 1, &s->customalpha, FLIF16_RAC_UNI_INT);
+            MSG("has_custom_cutoff_alpha = %d\n", s->customalpha);
             ++s->segment;
 
         case 5:
-            if (temp)
+            if (s->customalpha)
                 RAC_GET(s->rc, NULL, 1, 128, &s->cut, FLIF16_RAC_UNI_INT);
             ++s->segment;
 
         case 6:
-            if (temp)
+            if (s->customalpha)
                 RAC_GET(s->rc, NULL, 2, 128, &s->alpha, FLIF16_RAC_UNI_INT);
             ++s->segment;
 
         case 7:
-            if (temp)
+            if (s->customalpha)
                 RAC_GET(s->rc, NULL, 0, 1, &s->custombc, FLIF16_RAC_UNI_INT);
             if (s->custombc) {
-                av_log(avctx, AV_LOG_ERROR,
-                       "custom bitchances not implemented\n");
+                av_log(avctx, AV_LOG_ERROR, "custom bitchances not implemented\n");
                 return AVERROR_PATCHWELCOME;
             }
             goto end;
@@ -212,7 +216,8 @@ static int ff_flif16_read_second_header(AVCodecContext *avctx)
     s->rc->mct = ff_flif16_multiscale_chancetable_init();
     ff_flif16_build_log4k_table(&s->rc->log4k);
     #endif
-    
+
+    // Change
     ff_flif16_chancetable_init(&s->rc->ct,
                                CHANCETABLE_DEFAULT_ALPHA,
                                CHANCETABLE_DEFAULT_CUT);
@@ -220,12 +225,12 @@ static int ff_flif16_read_second_header(AVCodecContext *avctx)
     return 0;
 
     need_more_data:
-    printf("[%s] Need more data\n", __func__);
+    MSG("Need more data\n");
     return AVERROR(EAGAIN);
 }
 
 
-static int ff_flif16_read_transforms(AVCodecContext *avctx)
+static int flif16_read_transforms(AVCodecContext *avctx)
 {
     FLIF16DecoderContext *s = avctx->priv_data;
     uint8_t temp;
@@ -258,11 +263,6 @@ static int ff_flif16_read_transforms(AVCodecContext *avctx)
             end:
             s->segment = 2;
             // Read invisible pixel predictor
-            /*
-             * if (alphazero && ranges->numPlanes() > 3 
-             *     && ranges->min(3) <= 0 
-             *     && encoding == flifEncoding::interlaced) {
-             */
             if ( s->alphazero && s->channels > 3
                 && ff_flif16_ranges_min(s->range, 3) <= 0
                 && !(s->ia % 2))
@@ -276,15 +276,14 @@ static int ff_flif16_read_transforms(AVCodecContext *avctx)
     return AVERROR(EAGAIN);
 }
 
-static int ff_flif16_read_maniac_forest(AVCodecContext *avctx)
+static int flif16_read_maniac_forest(AVCodecContext *avctx)
 {
     int ret;
     FLIF16DecoderContext *s = avctx->priv_data;
 
     if (!s->maniac_ctx.forest) {
         __PLN__
-        s->maniac_ctx.forest = av_mallocz((s->channels) *
-                                          sizeof(*(s->maniac_ctx.forest)));
+        s->maniac_ctx.forest = av_mallocz((s->channels) * sizeof(*(s->maniac_ctx.forest)));
         if (!s->maniac_ctx.forest) {
             av_log(avctx, AV_LOG_ERROR, "could not allocate \n");
             return AVERROR(ENOMEM);
@@ -297,21 +296,26 @@ static int ff_flif16_read_maniac_forest(AVCodecContext *avctx)
             loop:
             if (s->i >= s->channels)
                 goto end;
-            /*
+            __PLN__
             ff_flif16_maniac_ni_prop_ranges_init(s->prop_ranges,
-                                                 &s->prop_ranges_size, s->ranges,
-                                                 s->i, s->channels);*/
+                                                 &s->prop_ranges_size, s->range,
+                                                 s->i, s->channels);
             __PLN__
             ++s->segment;
 
         case 1:
+            /*if (ff_flif16_ranges_min(s->ranges, s->i) >= ff_flif16_ranges_max(s->ranges, s->i)) {
+                ++s->i;
+                goto loop;
+            }*/
             ret = ff_flif16_read_maniac_tree(s->rc, &s->maniac_ctx, s->prop_ranges,
                                              s->prop_ranges_size, s->i);
             if (ret)
                 goto end;
-            av_free(s->prop_ranges);
+            av_freep(s->prop_ranges);
             --s->segment;
             __PLN__
+            ++s->i;
             goto loop;
     }
 
@@ -320,17 +324,90 @@ static int ff_flif16_read_maniac_forest(AVCodecContext *avctx)
     return ret;
 }
 
-static int ff_flif16_read_ni_image(void)
+/*
+FLIF16ColorVal flif16_ni_pixel_predict(Properties &properties,
+                                       const ColorRanges *ranges, const Image &image,
+                                       const plane_t &plane, const int p, const uint32_t r,
+                                       const uint32_t c, ColorVal &min, ColorVal &max,
+                                       const ColorVal fallback)
 {
+    ColorVal guess;
+    int which = 0;
+    int index=0;
+    if (p < 3) {
+        for (int pp = 0; pp < p; pp++) {
+            properties[index++] = image(pp,r,c);
+        }
+        if (image.numPlanes()>3) properties[index++] = image(3,r,c);
+    }
+    ColorVal left = (nobordercases || c>0 ? plane.get(r,c-1) : (r > 0 ? plane.get(r-1, c) : fallback));
+    ColorVal top = (nobordercases || r>0 ? plane.get(r-1,c) : left);
+    ColorVal topleft = (nobordercases || (r>0 && c>0) ? plane.get(r-1,c-1) : (r > 0 ? top : left));
+    ColorVal gradientTL = left + top - topleft;
+    guess = median3(gradientTL, left, top);
+    ranges->snap(p,properties,min,max,guess);
+    if (guess == gradientTL)
+        which = 0;
+    else if (guess == left)
+        which = 1;
+    else if (guess == top)
+        which = 2;
+
+    properties[index++] = guess;
+    properties[index++] = which;
+
+    if (nobordercases || (c > 0 && r > 0)) {
+        properties[index++] = left - topleft;
+        properties[index++] = topleft - top;
+    } else   {
+        properties[index++] = 0;
+        properties[index++] = 0;
+    }
+
+    if (nobordercases || (c+1 < image.cols() && r > 0)) properties[index++] = top - plane.get(r-1,c+1); // top - topright
+    else   properties[index++] = 0;
+    if (nobordercases || r > 1) properties[index++] = plane.get(r-2,c)-top;    // toptop - top
+    else properties[index++] = 0;
+    if (nobordercases || c > 1) properties[index++] = plane.get(r,c-2)-left;    // leftleft - left
+    else properties[index++] = 0;
+    return guess;
+}
+*/
+
+/*
+inline std::vector<ColorVal> computeGreys(const ColorRanges *ranges)
+{
+    std::vector<ColorVal> greys; // a pixel with values in the middle of the bounds
+    for (int p = 0; p < ranges->numPlanes(); p++) greys.push_back((ranges->min(p)+ranges->max(p))/2);
+    return greys;
+}
+*/
+
+/*
+static int flif16_read_ni_image(AVCodecContext *avctx)
+{
+    FLIF16DecoderContext *s = avctx->priv_data;
+    for (int p = 0; p < s->ranges->num_planes; p++) {
+        if (ff_flif16_ranges_min(s->ranges, p) < ranges->max(p))
+            for (int fr = 0; fr < s->frames; fr++) {
+                for (uint32_t r = 0; r < images[fr].rows(); r++) {
+                    for (uint32_t c = 0; c < images[fr].cols(); c++) {
+                        images[fr].set(p,r,c,(ranges->min(p)+ranges->max(p))/2);
+                    }
+                }
+            }
+    }
+
     return 0;
 }
+*/
 
-static int ff_flif16_read_pixeldata(AVCodecContext *avctx, AVFrame *p)
+static int flif16_read_pixeldata(AVCodecContext *avctx, AVFrame *p)
 {
     return AVERROR_EOF;
 }
 
-static int ff_flif16_read_checksum(AVCodecContext *avctx)
+static int flif16_read_checksum(AVCodecContext *avctx)
 {
     return AVERROR_EOF;
 }
@@ -344,7 +421,7 @@ static int flif16_decode_frame(AVCodecContext *avctx,
     const uint8_t *buf      = avpkt->data;
     int buf_size            = avpkt->size;
     AVFrame *p              = data;
-    printf("[Decode] Packet Size = %d\n", buf_size);
+    MSG("Packet Size = %d\n", buf_size);
     bytestream2_init(&s->gb, buf, buf_size);
     __PLN__
     // Looping is done to change states in between functions.
@@ -352,28 +429,28 @@ static int flif16_decode_frame(AVCodecContext *avctx,
     do {
         switch(s->state) {
             case 0: case FLIF16_HEADER:
-                ret = ff_flif16_read_header(avctx);
+                ret = flif16_read_header(avctx);
                 break;
 
             case FLIF16_SECONDHEADER:
-                ret = ff_flif16_read_second_header(avctx);
+                ret = flif16_read_second_header(avctx);
                 break;
 
             case FLIF16_TRANSFORM:
-                ret = ff_flif16_read_transforms(avctx);
+                ret = flif16_read_transforms(avctx);
                 break;
 
             case FLIF16_MANIAC:
-                ret = ff_flif16_read_maniac_forest(avctx);
+                ret = flif16_read_maniac_forest(avctx);
                 break;
 
             case FLIF16_PIXELDATA:
                 __PLN__
-                ret = ff_flif16_read_pixeldata(avctx, p);
+                ret = flif16_read_pixeldata(avctx, p);
                 break;
 
             case FLIF16_CHECKSUM:
-                ret = ff_flif16_read_checksum(avctx);
+                ret = flif16_read_checksum(avctx);
                 break;
         }
     } while (!ret);
@@ -408,6 +485,8 @@ static av_cold int flif16_decode_end(AVCodecContext *avctx)
     av_free(s->rc);
     if(s->framedelay)
         av_free(s->framedelay);
+    if (s->prop_ranges)
+        av_free(s->prop_ranges);
     return 0;
 }
 
