@@ -133,12 +133,12 @@ typedef struct FLIF16DecoderContext {
 
     // Transforms
     // Size dynamically maybe
-    // FLIF16TransformContext *transforms[13];
+    FLIF16TransformContext *transforms[13];
     uint8_t transform_top;
-    FLIF16RangesContext *ranges; ///< The minimum and maximum values a
+    FLIF16RangesContext *range; ///< The minimum and maximum values a
                                  ///  channel's pixels can take. Changes
                                  ///  depending on transformations applied
-    FLIF16RangesContext *ranges_prev;
+    FLIF16RangesContext *prev_range;
 
     // MANIAC Trees and pixeldata
     int32_t (*prop_ranges)[2]; ///< Property Ranges
