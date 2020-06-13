@@ -39,8 +39,6 @@
  * AVERROR(EAGAIN) as long as the bitstream is incomplete.
  */
 
-// Properties properties((nump>3?NB_PROPERTIES_scanlinesA[p]:NB_PROPERTIES_scanlines[p]));
-
 // Static property values
 static const int properties_ni_rgb_size[] = {7, 8, 9, 7, 7};
 static const int properties_ni_rgba_size[] = {8, 9, 10, 7, 7};
@@ -318,7 +316,6 @@ static int flif16_read_maniac_forest(AVCodecContext *avctx)
     return ret;
 }
 
-/*
 FLIF16ColorVal flif16_ni_pixel_predict(Properties &properties,
                                        const ColorRanges *ranges, const Image &image,
                                        const plane_t &plane, const int p, const uint32_t r,
@@ -334,10 +331,10 @@ FLIF16ColorVal flif16_ni_pixel_predict(Properties &properties,
         }
         if (image.numPlanes()>3) properties[index++] = image(3,r,c);
     }
-    ColorVal left = (nobordercases || c>0 ? plane.get(r,c-1) : (r > 0 ? plane.get(r-1, c) : fallback));
-    ColorVal top = (nobordercases || r>0 ? plane.get(r-1,c) : left);
-    ColorVal topleft = (nobordercases || (r>0 && c>0) ? plane.get(r-1,c-1) : (r > 0 ? top : left));
-    ColorVal gradientTL = left + top - topleft;
+    FLIF16ColorVal left = (nobordercases || c > 0 ? plane.get(r, c - 1) : (r > 0 ? plane.get(r - 1, c) : fallback));
+    FLIF16ColorVal top = (nobordercases || r > 0 ? plane.get(r - 1, c) : left);
+    FLIF16ColorVal topleft = (nobordercases || (r > 0 && c > 0) ? plane.get(r - 1, c - 1) : (r > 0 ? top : left));
+    FLIF16ColorVal gradientTL = left + top - topleft;
     guess = median3(gradientTL, left, top);
     ranges->snap(p,properties,min,max,guess);
     if (guess == gradientTL)
@@ -366,10 +363,9 @@ FLIF16ColorVal flif16_ni_pixel_predict(Properties &properties,
     else properties[index++] = 0;
     return guess;
 }
-*/
 
 /*
-inline std::vector<ColorVal> computeGreys(const ColorRanges *ranges)
+static inline void flif16_compute_grays(FLIF16RangesContext *ranges)
 {
     std::vector<ColorVal> greys; // a pixel with values in the middle of the bounds
     for (int p = 0; p < ranges->numPlanes(); p++) greys.push_back((ranges->min(p)+ranges->max(p))/2);
