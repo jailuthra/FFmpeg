@@ -57,7 +57,7 @@ FLIF16RangeCoder *ff_flif16_rac_init(GetByteContext *gb,
         rc->low <<= 8;
         rc->low |= bytestream2_get_byte(&gbi);
     }
-    printf("[%s] low = %d\n", __func__, rc->low);
+    MSG("low = %lu\n", rc->low);
     return rc;
 }
 

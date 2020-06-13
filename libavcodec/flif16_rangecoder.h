@@ -48,7 +48,7 @@
 #define CHANCETABLE_DEFAULT_ALPHA (0xFFFFFFFF / 19)
 #define CHANCETABLE_DEFAULT_CUT 2
 
-#define MULTISCALE_CHANCES_ENABLED
+// #define MULTISCALE_CHANCES_ENABLED
 
 #define MULTISCALE_CHANCETABLE_DEFAULT_SIZE 6
 #define MULTISCALE_CHANCETABLE_DEFAULT_CUT  8
@@ -94,30 +94,70 @@ typedef struct FLIF16MultiscaleChance {
     uint8_t best;
 } FLIF16MultiscaleChance;
 
-typedef struct FLIF16MultiscaleChanceContext {
-    FLIF16MultiscaleChance data[20];
-} FLIF16MultiscaleChanceContext;
-
-// Maybe pad with extra 2048s for faster access like in original code.
-static uint16_t flif16_nz_int_chances[20] = {
+// Apparently this will not overflow over to any other section.
+/*
+static uint16_t flif16_nz_int_chances[] = {
     1000, // Zero
     2048, // Sign
     
     // Exponents
-    1000, 1200, 1500, 1750, 2000, 2300, 2800, 2400, 2300, 
-    2048, // <- exp >= 9
+    1000, 1200, 1500, 1750, 2000, 2300, 2800, 2400, 2300, 2048,
+    2048, 2048, 2048, 2048, 2048, 2048, 2048,
     
     // Mantisaa
-    1900, 1850, 1800, 1750, 1650, 1600, 1600, 
-    2048 // <- mant > 7
-};
+    1900, 1850, 1800, 1750, 1650, 1600, 1600, 2048,
+    2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048
+};*/
 
+static uint16_t flif16_nz_int_chances[] = {
+    1000,        // ZERO:       0
+    2048,        // SIGN:       1
+    1000, 1000,  // EXP: 0, 1:  2
+    1200, 1200,  // EXP: 2, 3:  
+    1500, 1500,  // EXP: 4, 5:  
+    1750, 1750,  // EXP: 6, 7:  
+    2000, 2000,  // EXP: 8, 9:  
+    2300, 2300,  // EXP: 10, 11:
+    2800, 2800,  // EXP: 12, 13:
+    2400, 2400,  // EXP: 14, 15:
+    2300, 2300,  // EXP: 16, 17:
+    2048, 2048,  // EXP: 18, 19:
+    2048, 2048,  // EXP: 20, 21:
+    2048, 2048,  // EXP: 22, 23:
+    2048, 2048,  // EXP: 24, 25:
+    2048, 2048,  // EXP: 26, 27:
+    2048, 2048,  // EXP: 28, 29:
+    2048, 2048,  // EXP: 30, 31:
+    2048, 2048,  // EXP: 32, 33:
+    1900,        // MANT: 0:    
+    1850,        // MANT: 1:    
+    1800,        // MANT: 2:    
+    1750,        // MANT: 3:    
+    1650,        // MANT: 4:    
+    1600,        // MANT: 5:    
+    1600,        // MANT: 6:    
+    2048,        // MANT: 7:    
+    2048,        // MANT: 8:    
+    2048,        // MANT: 9:    
+    2048,        // MANT: 10:   
+    2048,        // MANT: 11:   
+    2048,        // MANT: 12:   
+    2048,        // MANT: 13:   
+    2048,        // MANT: 14:   
+    2048,        // MANT: 15:   
+    2048,        // MANT: 16:   
+    2048         // MANT: 17:   
+};
 
 #define NZ_INT_ZERO (0)
 #define NZ_INT_SIGN (1)
-#define NZ_INT_EXP(k) (((k) < 9) ? (2 + (k)) : 11)
-#define NZ_INT_MANT(k) (((k) < 8) ? (12 + (k)) : 19)
+#define NZ_INT_EXP(k) ((2 + (k)))
+#define NZ_INT_MANT(k) ((36 + (k)))
 
+
+typedef struct FLIF16MultiscaleChanceContext {
+    FLIF16MultiscaleChance data[sizeof(flif16_nz_int_chances)];
+} FLIF16MultiscaleChanceContext;
 
 // Maybe rename to symbol context
 typedef struct FLIF16ChanceContext {
@@ -127,8 +167,8 @@ typedef struct FLIF16ChanceContext {
 // rc->renorm may be useless. Check.
 
 typedef struct FLIF16RangeCoder {
-    unsigned int range;
-    unsigned int low;
+    uint_fast32_t range;
+    uint_fast32_t low;
     uint16_t chance;
     uint8_t empty;    ///< Is bytestream empty
     uint8_t renorm;   ///< Is a renormalisation required 
@@ -370,6 +410,7 @@ static inline void ff_flif16_chancetable_put(FLIF16RangeCoder *rc,
                                              FLIF16ChanceContext *ctx,
                                              uint16_t type, uint8_t bit)
 {
+    MSG("type = %d chance = %d\n", type, ctx->data[type]);
     ctx->data[type] = (!bit) ? rc->ct.zero_state[ctx->data[type]]
                              : rc->ct.one_state[ctx->data[type]];
 }
@@ -391,10 +432,9 @@ static inline uint8_t ff_flif16_rac_read_symbol(FLIF16RangeCoder *rc,
                                                 uint16_t type, 
                                                 uint8_t *target)
 {
+    __PLN__
     ff_flif16_rac_read_chance(rc, ctx->data[type], target);
-    __PLN__
     ff_flif16_chancetable_put(rc, ctx, type, *target);
-    __PLN__
     return 1;
 }
 
@@ -436,9 +476,9 @@ static inline void ff_flif16_multiscale_chancetable_put(FLIF16RangeCoder *rc,
             c->best = i;
 }
 
-static inline uint8_t ff_flif16_rac_read_multiscale_symbol(FLIF16RangeCoder *rc,
-                                                           FLIF16MultiscaleChanceContext *ctx,
-                                                           uint16_t type, uint8_t *target)
+static inline int ff_flif16_rac_read_multiscale_symbol(FLIF16RangeCoder *rc,
+                                                       FLIF16MultiscaleChanceContext *ctx,
+                                                       uint16_t type, uint8_t *target)
 {
     ff_flif16_rac_read_chance(rc, ff_flif16_multiscale_chance_get(ctx->data[type]), target);
     ff_flif16_multiscale_chancetable_put(rc, ctx, type, *target);
@@ -453,9 +493,9 @@ static inline int ff_flif16_rac_nz_read_internal(FLIF16RangeCoder *rc,
                                                  uint16_t type, uint8_t *target)
 {
     int flag = 0;
+    __PLN__
     // Maybe remove the while loop
     while (!flag) {
-        MSG("low = %d range = %d renorm = %d\n", rc->low, rc->range, rc->renorm);
         if (rc->renorm) {
             if(!ff_flif16_rac_renorm(rc))
                 return 0; // EAGAIN condition
@@ -499,7 +539,7 @@ static inline int ff_flif16_rac_read_nz ## _name ## _int(FLIF16RangeCoder *rc,  
                                                           _context_type    *ctx,        \
                                                          int min, int max, int *target) \
 {                                                                              \
-    int temp;                                                                  \
+    int temp = 0;                                                                  \
                                                                                \
     if (min == max) {                                                          \
         *target = min;                                                         \
@@ -510,6 +550,8 @@ static inline int ff_flif16_rac_read_nz ## _name ## _int(FLIF16RangeCoder *rc,  
         rc->segment = 0;                                                       \
         rc->amin    = 1;                                                       \
         rc->active  = 1;                                                       \
+        rc->sign    = 0;                                                       \
+        rc->have    = 0;                                                       \
     }                                                                          \
                                                                                \
     switch (rc->segment) {                                                     \
@@ -526,11 +568,12 @@ static inline int ff_flif16_rac_read_nz ## _name ## _int(FLIF16RangeCoder *rc,  
             if (min < 0) {                                                     \
                 if (max > 0) {                                                 \
                     RAC_NZ_GET(rc, ctx, NZ_INT_SIGN, &(rc->sign));             \
-                } else                                                         \
+                } else {                                                       \
                     rc->sign = 0;                                              \
-            } else                                                             \
+                }                                                              \
+            } else {                                                           \
                 rc->sign = 1;                                                  \
-                                                                               \
+            }                                                                  \
             rc->amax = (rc->sign ? max : -min);                                \
             rc->emax = ff_log2(rc->amax);                                      \
             rc->e    = ff_log2(rc->amin);                                      \
@@ -538,10 +581,12 @@ static inline int ff_flif16_rac_read_nz ## _name ## _int(FLIF16RangeCoder *rc,  
                                                                                \
         case 2:                                                                \
             for (; (rc->e) < (rc->emax); (rc->e++)) {                          \
-                RAC_NZ_GET(rc, ctx, NZ_INT_EXP(((rc->e) << 1) + rc->sign),     \
+                MSG("rc->sign = %d, en: %d\n", rc->sign, (((rc->e) << 1) + rc->sign));      \
+                RAC_NZ_GET(rc, ctx, NZ_INT_EXP((((rc->e) << 1) + rc->sign)),   \
                            &(temp));                                           \
                 if (temp)                                                      \
                     break;                                                     \
+                temp = 0;                                                      \
             }                                                                  \
             rc->have = (1 << (rc->e));                                         \
             rc->left = rc->have - 1;                                           \
@@ -567,9 +612,10 @@ static inline int ff_flif16_rac_read_nz ## _name ## _int(FLIF16RangeCoder *rc,  
             if ((rc->minabs1) > (rc->amax)) {                                  \
                 goto loop; /* continue; */                                     \
             } else if ((rc->maxabs0) >= (rc->amin)) {                          \
-                RAC_NZ_GET(rc, ctx, NZ_INT_MANT(rc->pos), &temp)               \
+                RAC_NZ_GET(rc, ctx, NZ_INT_MANT(rc->pos), &temp);              \
                 if (temp)                                                      \
                     rc->have = rc->minabs1;                                    \
+                temp = 0;                                                      \
             }                                                                  \
             else                                                               \
                 rc->have = rc->minabs1;                                        \
@@ -642,7 +688,7 @@ static inline int ff_flif16_rac_process(FLIF16RangeCoder *rc,
 {
     int flag = 0;
     while (!flag) {
-        MSG("low = %d range = %d renorm = %d\n", rc->low, rc->range, rc->renorm);
+        MSG("low = %lu range = %lu renorm = %d\n", rc->low, rc->range, rc->renorm);
         if(rc->renorm) {
             if(!ff_flif16_rac_renorm(rc))
                 return 0; // EAGAIN condition

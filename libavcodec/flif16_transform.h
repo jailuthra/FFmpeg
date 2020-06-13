@@ -123,7 +123,7 @@ static inline void ff_flif16_ranges_snap(FLIF16RangesContext *r_ctx, int p,
     flif16_ranges[r_ctx->r_no]->snap(r_ctx, p, prev_planes, minv, maxv, v);
 }
 
-FLIF16TransformContext *ff_flif16_transform_init(int, FLIF16RangesContext *, FLIF16TransformContext *);
+FLIF16TransformContext *ff_flif16_transform_init(int, FLIF16RangesContext *);
 
 uint8_t ff_flif16_transform_read(FLIF16TransformContext *, FLIF16DecoderContext *,
                                  FLIF16RangesContext *);

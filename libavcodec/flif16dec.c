@@ -152,7 +152,7 @@ static int flif16_read_second_header(AVCodecContext *avctx)
                 s->bpc = (s->bpc == '1') ? 255 : 65535;
             s->i = 0;
             s->range = ff_flif16_ranges_static_init(s->channels, s->bpc);
-            printf("channels : %d & bpc : %d\n", s->channels, s->bpc);
+            MSG("channels : %d & bpc : %d\n", s->channels, s->bpc);
 
         case 1:
             if (s->channels > 3)
@@ -231,7 +231,10 @@ static int flif16_read_second_header(AVCodecContext *avctx)
 static int flif16_read_transforms(AVCodecContext *avctx)
 {
     FLIF16DecoderContext *s = avctx->priv_data;
+    FLIF16RangesContext *prev_range;
     uint8_t temp;
+
+    //return AVERROR_EOF;
     loop:
     switch (s->segment) {
         case 0:
@@ -244,17 +247,22 @@ static int flif16_read_transforms(AVCodecContext *avctx)
 
         case 1:
             RAC_GET(s->rc, NULL, 0, 13, &temp, FLIF16_RAC_UNI_INT);
-            printf("Transform : %d\n", temp);
-            //s->prev_range = ff_flif16_ranges_static_init(s->channels, s->bpc); 
-            s->transforms[s->transform_top] = ff_flif16_transform_init(temp, s->range, s->transforms[s->transform_top]);
+            MSG("Transform : %d\n", temp);
+            if (!flif16_transforms[temp]) {
+                av_log(avctx, AV_LOG_ERROR, "transform %u not implemented\n", temp);
+                return AVERROR_PATCHWELCOME;
+            }
+            //s->prev_range = ff_flif16_ranges_static_init(s->channels, s->bpc);
+            s->transforms[s->transform_top] = ff_flif16_transform_init(temp, s->range);
             //printf("%d\n", s->transforms[s->transform_top]->t_no);
-            ff_flif16_transform_read(s->transforms[s->transform_top], s,
-                                     s->range);
-            s->range = ff_flif16_transform_meta(s->transforms[s->transform_top],
-                                                s->range);
-            printf("Ranges : %d\n", s->range->r_no);
+            ff_flif16_transform_read(s->transforms[s->transform_top], s, s->range);
+
+            // prev_range = s->range;
+            s->range = ff_flif16_transform_meta(s->transforms[s->transform_top], s->range);
+            MSG("Ranges : %d\n", s->range->r_no);
+            av_free(prev_range);
             s->segment = 0;
-            s->transform_top++;
+            ++s->transform_top;
             goto loop;
 
         case 2:
@@ -321,7 +329,7 @@ static int flif16_read_maniac_forest(AVCodecContext *avctx)
     s->state = FLIF16_PIXELDATA;
     return ret;
 }
-
+/*
 FLIF16ColorVal flif16_ni_pixel_predict(Properties &properties,
                                        const ColorRanges *ranges, const Image &image,
                                        const plane_t &plane, const int p, const uint32_t r,
@@ -369,7 +377,7 @@ FLIF16ColorVal flif16_ni_pixel_predict(Properties &properties,
     else properties[index++] = 0;
     return guess;
 }
-
+*/
 /*
 static inline void flif16_compute_grays(FLIF16RangesContext *ranges)
 {
