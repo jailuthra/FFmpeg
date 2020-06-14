@@ -36,8 +36,11 @@
 #include <stdint.h>
 #include <assert.h>
 
-#define __PLN__ printf("At: [%s] %s, %d\n", __func__, __FILE__, __LINE__);
-#define MSG(fmt, ...) printf("[%s] " fmt, __func__, ##__VA_ARGS__)
+//#define __PLN__ printf("At: [%s] %s, %d\n", __func__, __FILE__, __LINE__);
+//#define MSG(fmt, ...) printf("[%s] " fmt, __func__, ##__VA_ARGS__)
+
+#define __PLN__
+#define MSG(fmt,...) while(0)
 
 #define FLIF16_RAC_MAX_RANGE_BITS 24
 #define FLIF16_RAC_MAX_RANGE_BYTES (FLIF16_RAC_MAX_RANGE_BITS / 8)
@@ -48,7 +51,7 @@
 #define CHANCETABLE_DEFAULT_ALPHA (0xFFFFFFFF / 19)
 #define CHANCETABLE_DEFAULT_CUT 2
 
-// #define MULTISCALE_CHANCES_ENABLED
+#define MULTISCALE_CHANCES_ENABLED
 
 #define MULTISCALE_CHANCETABLE_DEFAULT_SIZE 6
 #define MULTISCALE_CHANCETABLE_DEFAULT_CUT  8
@@ -146,7 +149,7 @@ static uint16_t flif16_nz_int_chances[] = {
     2048,        // MANT: 14:   
     2048,        // MANT: 15:   
     2048,        // MANT: 16:   
-    2048         // MANT: 17:   
+    2048,        // MANT: 17:
 };
 
 #define NZ_INT_ZERO (0)
@@ -410,7 +413,7 @@ static inline void ff_flif16_chancetable_put(FLIF16RangeCoder *rc,
                                              FLIF16ChanceContext *ctx,
                                              uint16_t type, uint8_t bit)
 {
-    MSG("type = %d chance = %d\n", type, ctx->data[type]);
+    printf("put: type = %d chance = %d\n", type, ctx->data[type]);
     ctx->data[type] = (!bit) ? rc->ct.zero_state[ctx->data[type]]
                              : rc->ct.one_state[ctx->data[type]];
 }
@@ -462,7 +465,9 @@ static inline void ff_flif16_multiscale_chancetable_put(FLIF16RangeCoder *rc,
 {
     FLIF16MultiscaleChance *c = &ctx->data[type];
     uint64_t sbits, oqual;
+    printf("multiscale_put: type = %d bit = %d || ", type, bit);
     for (int i = 0; i < MULTISCALE_CHANCETABLE_DEFAULT_SIZE; ++i) {
+        printf("%d ", i);
         sbits = 0;
         ff_flif16_chance_estim(rc, c->chances[i], bit, &sbits);
         oqual = c->quality[i]; 
@@ -470,10 +475,10 @@ static inline void ff_flif16_multiscale_chancetable_put(FLIF16RangeCoder *rc,
         c->chances[i] = (bit) ? rc->mct->sub_table[i].one_state[c->chances[i]]
                               : rc->mct->sub_table[i].zero_state[c->chances[i]];
     }
-
     for (int i = 0; i < MULTISCALE_CHANCETABLE_DEFAULT_SIZE; ++i)
         if (c->quality[i] < c->quality[c->best])
             c->best = i;
+    printf("done \n");
 }
 
 static inline int ff_flif16_rac_read_multiscale_symbol(FLIF16RangeCoder *rc,
@@ -581,7 +586,7 @@ static inline int ff_flif16_rac_read_nz ## _name ## _int(FLIF16RangeCoder *rc,  
                                                                                \
         case 2:                                                                \
             for (; (rc->e) < (rc->emax); (rc->e++)) {                          \
-                MSG("rc->sign = %d, en: %d\n", rc->sign, (((rc->e) << 1) + rc->sign));      \
+                printf("rc->sign = %d, en: %d\n", rc->sign, (((rc->e) << 1) + rc->sign));      \
                 RAC_NZ_GET(rc, ctx, NZ_INT_EXP((((rc->e) << 1) + rc->sign)),   \
                            &(temp));                                           \
                 if (temp)                                                      \
@@ -613,6 +618,7 @@ static inline int ff_flif16_rac_read_nz ## _name ## _int(FLIF16RangeCoder *rc,  
                 goto loop; /* continue; */                                     \
             } else if ((rc->maxabs0) >= (rc->amin)) {                          \
                 RAC_NZ_GET(rc, ctx, NZ_INT_MANT(rc->pos), &temp);              \
+                printf("rc->pos = %d, %d\n", rc->pos, NZ_INT_MANT(rc->pos));   \
                 if (temp)                                                      \
                     rc->have = rc->minabs1;                                    \
                 temp = 0;                                                      \
@@ -638,19 +644,20 @@ static inline int ff_flif16_rac_read_gnz ## _name ## _int(FLIF16RangeCoder *rc, 
                                                           int min, int max, int *target) \
 {                                                                                        \
     int ret;                                                                             \
-                                                                                         \
+    printf("gnz: ");                                                                     \
     if (min > 0) {                                                                       \
         ret = ff_flif16_rac_read_nz ## _name ## _int(rc, ctx, 0, max - min, target);     \
         if (ret)                                                                         \
             *target += min;                                                              \
-                                                                                         \
+         printf("(1) ");                                                                 \
     } else if (max < 0) {                                                                \
         ret =  ff_flif16_rac_read_nz ## _name ## _int(rc, ctx, min - max, 0, target);    \
         if (ret)                                                                         \
             *target += max;                                                              \
+        printf("(2) ");                                                                  \
     } else                                                                               \
         ret = ff_flif16_rac_read_nz ## _name ## _int(rc, ctx, min, max, target);         \
-                                                                                         \
+    printf("(done)\n");                                                                  \
     return ret;                                                                          \
 }
 

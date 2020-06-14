@@ -36,11 +36,12 @@
 #include "flif16_rangecoder.h"
 
 // Remove these
-#define __PLN__ printf("At: [%s] %s, %d\n", __func__, __FILE__, __LINE__);
-#define MSG(fmt, ...) printf("[%s] " fmt, __func__, ##__VA_ARGS__)
+//#define __PLN__ printf("At: [%s] %s, %d\n", __func__, __FILE__, __LINE__);
+//#define MSG(fmt, ...) printf("[%s] " fmt, __func__, ##__VA_ARGS__)
+#define __PLN__
+#define MSG(fmt,...) while(0)
 
 #define FF_FLIF16_VARINT_APPEND(a,x) a = (a << 7) | (uint64_t) (x & 127)
-#define RANGE_SET(range, l, h) (range[0] = l, range[1] = h)
 
 #define MAX_PLANES 5
 
@@ -161,11 +162,10 @@ typedef struct FLIF16DecoderContext {
     uint32_t meta;      ///< Size of a meta chunk
 } FLIF16DecoderContext;
 
-void ff_flif16_maniac_ni_prop_ranges_init(int32_t (*prop_ranges)[2],
-                                          unsigned int *prop_ranges_size,
-                                          FLIF16RangesContext *ranges,
-                                          uint8_t property,
-                                          uint8_t channels);
+void  *ff_flif16_maniac_ni_prop_ranges_init(unsigned int *prop_ranges_size,
+                                            FLIF16RangesContext *ranges,
+                                            uint8_t property,
+                                            uint8_t channels);
 
 // Must be included here to resolve circular include
 #include "flif16_transform.h"

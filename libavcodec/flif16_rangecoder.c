@@ -30,7 +30,7 @@
 #include "libavutil/common.h"
 #include "flif16_rangecoder.h"
 #include "flif16.h"
-
+#include <assert.h>
 // TODO write separate function for RAC decoder
 
 // The coder requires a certain number of bytes for initiialization. buf
@@ -205,7 +205,7 @@ int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
             #endif
 
             if (!m->ctx[i]) {
-                __PLN__
+                return AVERROR(ENOMEM);
             }
         }
         m->stack_top = m->tree_top = 0;
@@ -225,12 +225,13 @@ int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
             curr_stack = &m->stack[m->stack_top - 1];
             curr_node  = &tree->data[curr_stack->id];
             p = curr_stack->p;
+            assert(p < prop_ranges_size);
             __PLN__
             if(!curr_stack->visited){
                 switch (curr_stack->mode) {
                     case 1:
-                        RANGE_SET(prop_ranges[p], curr_stack->min,
-                                  curr_stack->max);
+                        prop_ranges[p][0] = curr_stack->min;
+                        prop_ranges[p][1] = curr_stack->max;
                         break;
 
                     case 2:
