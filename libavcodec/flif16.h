@@ -162,10 +162,10 @@ typedef struct FLIF16DecoderContext {
     uint32_t meta;      ///< Size of a meta chunk
 } FLIF16DecoderContext;
 
-void  *ff_flif16_maniac_ni_prop_ranges_init(unsigned int *prop_ranges_size,
+int32_t (*ff_flif16_maniac_ni_prop_ranges_init(unsigned int *prop_ranges_size,
                                             FLIF16RangesContext *ranges,
                                             uint8_t property,
-                                            uint8_t channels);
+                                            uint8_t channels))[2];
 
 // Must be included here to resolve circular include
 #include "flif16_transform.h"

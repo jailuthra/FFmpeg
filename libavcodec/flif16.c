@@ -32,17 +32,17 @@
  * @param[in]  color ranges of each channel
  * @param[in]  channels number of channels
  */
-void  *ff_flif16_maniac_ni_prop_ranges_init(unsigned int *prop_ranges_size,
+int32_t  (*ff_flif16_maniac_ni_prop_ranges_init(unsigned int *prop_ranges_size,
                                             FLIF16RangesContext *ranges,
                                             uint8_t property,
-                                            uint8_t channels)
+                                            uint8_t channels))[2]
 {
     int min = ff_flif16_ranges_min(ranges, property);
     int max = ff_flif16_ranges_max(ranges, property);
     int mind = min - max, maxd = max - min;
     int32_t (*prop_ranges)[2];
     unsigned int top = 0;
-    unsigned int size = (((property < 3) ? 3 : 0) + 2 + 5);
+    unsigned int size = (((property < 3) ? property : 0) + 2 + 5);
     *prop_ranges_size = size;
     prop_ranges = av_mallocz(sizeof(*prop_ranges) * size);
     if (property < 3) {
@@ -50,7 +50,7 @@ void  *ff_flif16_maniac_ni_prop_ranges_init(unsigned int *prop_ranges_size,
             prop_ranges[top][0]   = ff_flif16_ranges_min(ranges, i);
             prop_ranges[top++][1] = ff_flif16_ranges_max(ranges, i);  // pixels on previous planes
         }
-        if (channels > 3)  {
+        if (ranges->num_planes > 3)  {
             prop_ranges[top][0]   = ff_flif16_ranges_min(ranges, 3);
             prop_ranges[top++][1] = ff_flif16_ranges_max(ranges, 3);  // pixel on alpha plane
         }
@@ -61,8 +61,32 @@ void  *ff_flif16_maniac_ni_prop_ranges_init(unsigned int *prop_ranges_size,
     prop_ranges[top++][1] = 2;      // which predictor was it
     for (int i = 0; i < 5; ++i) {
         prop_ranges[top][0] = mind;
-        prop_ranges[top][1] = maxd;
+        prop_ranges[top++][1] = maxd;
     }
     return prop_ranges;
 }
+/*
+ *
+ *     propRanges.clear();
+    int min = ranges.min(p);
+    int max = ranges.max(p);
+    int mind = min - max, maxd = max - min;
+    __PLN__
+    MSG("pval: %d\n", p);
+    if (p < 3) {
+        for (int pp = 0; pp < p; pp++) {
+            propRanges.push_back(std::make_pair(ranges.min(pp), ranges.max(pp)));  // pixels on previous planes
+            __PLN__
+        }
+        if (ranges.numPlanes()>3) propRanges.push_back(std::make_pair(ranges.min(3), ranges.max(3)));  // pixel on alpha plane
+    }
+    propRanges.push_back(std::make_pair(min,max));   // guess (median of 3)
+    propRanges.push_back(std::make_pair(0,2));       // which predictor was it
+    __PLN__
+    propRanges.push_back(std::make_pair(mind,maxd));
+    propRanges.push_back(std::make_pair(mind,maxd));
+    propRanges.push_back(std::make_pair(mind,maxd));
+    propRanges.push_back(std::make_pair(mind,maxd));
+    propRanges.push_back(std::make_pair(mind,maxd));
+    __PLN__*/
 

@@ -247,7 +247,7 @@ static int flif16_read_transforms(AVCodecContext *avctx)
 
         case 1:
             RAC_GET(s->rc, NULL, 0, 13, &temp, FLIF16_RAC_UNI_INT);
-            MSG("Transform : %d\n", temp);
+            printf("Transform : %d\n", temp);
             if (!flif16_transforms[temp]) {
                 av_log(avctx, AV_LOG_ERROR, "transform %u not implemented\n", temp);
                 return AVERROR_PATCHWELCOME;
@@ -276,7 +276,6 @@ static int flif16_read_transforms(AVCodecContext *avctx)
                 RAC_GET(s->rc, NULL, 0, 2, &s->ipp, FLIF16_RAC_UNI_INT);
     }
 
-    return AVERROR_EOF;
     s->state  = FLIF16_MANIAC;
     return 0;
 
@@ -288,7 +287,7 @@ static int flif16_read_maniac_forest(AVCodecContext *avctx)
 {
     int ret;
     FLIF16DecoderContext *s = avctx->priv_data;
-
+    printf("called\n");
     if (!s->maniac_ctx.forest) {
         __PLN__
         s->maniac_ctx.forest = av_mallocz((s->channels) * sizeof(*(s->maniac_ctx.forest)));
@@ -302,11 +301,15 @@ static int flif16_read_maniac_forest(AVCodecContext *avctx)
     switch (s->segment) {
         case 0:
             loop:
+            printf("channel: %d\n", s->i);
             if (s->i >= s->channels)
                 goto end;
             __PLN__
             s->prop_ranges = ff_flif16_maniac_ni_prop_ranges_init(&s->prop_ranges_size, s->range,
                                                                   s->i, s->channels);
+            printf("Prop ranges:\n");
+            for(int i = 0; i < s->prop_ranges_size; ++i)
+                printf("(%d, %d)\n", s->prop_ranges[i][0], s->prop_ranges[i][1]);
             if(!s->prop_ranges)
                 return AVERROR(ENOMEM);
             __PLN__
@@ -319,9 +322,10 @@ static int flif16_read_maniac_forest(AVCodecContext *avctx)
             }*/
             ret = ff_flif16_read_maniac_tree(s->rc, &s->maniac_ctx, s->prop_ranges,
                                              s->prop_ranges_size, s->i);
+            printf("Ret: %d\n", ret);
             if (ret)
-                goto end;
-            av_freep(s->prop_ranges);
+                goto need_more_data;
+            av_free(s->prop_ranges);
             --s->segment;
             __PLN__
             ++s->i;
@@ -330,6 +334,9 @@ static int flif16_read_maniac_forest(AVCodecContext *avctx)
 
     end:
     s->state = FLIF16_PIXELDATA;
+    return ret;
+
+    need_more_data:
     return ret;
 }
 /*
@@ -478,7 +485,8 @@ static int flif16_decode_frame(AVCodecContext *avctx,
         printf("\n");
     }
 
-    if(s->maniac_ctx.forest) {
+   if(s->maniac_ctx.forest) {
+        printf("Tree Size: %d\n", s->maniac_ctx.forest[0]->size);
         printf("MANIAC Tree first node:\n" \
                "property value: %d\n", s->maniac_ctx.forest[0]->data[0].property);
     }
