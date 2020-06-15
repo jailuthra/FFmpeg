@@ -58,7 +58,7 @@ typedef struct transform_priv_channelcompact {
 
 typedef struct transform_priv_bounds {
     FLIF16ColorVal *bounds[2];
-    FLIF16ColorVal min;
+    int min;
     FLIF16ChanceContext *ctx_a;
 } transform_priv_bounds;
 
@@ -964,7 +964,7 @@ static uint8_t transform_bounds_read(FLIF16TransformContext* ctx,
 {
     transform_priv_bounds *data = ctx->priv_data;
     FLIF16Ranges* ranges = flif16_ranges[src_ctx->r_no];
-    FLIF16ColorVal max;
+    int max;
     start:
     printf("ctx->i : %d\n", ctx->i);
     if(ctx->i < dec_ctx->channels){
