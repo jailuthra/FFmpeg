@@ -654,6 +654,11 @@ static uint8_t transform_ycocg_reverse(FLIF16TransformContext *ctx,
     return 0;
 }
 
+static void transform_ycocg_close(FLIF16TransformContext *ctx){
+    transform_priv_ycocg *data = ctx->priv_data;
+    av_freep(data->r_ctx);
+}
+
 /*
  * PermutePlanes
  */
@@ -807,6 +812,12 @@ static uint8_t transform_permuteplanes_reverse(FLIF16TransformContext *ctx,
     return 1;
 }
 
+static void transform_permuteplanes_close(FLIF16TransformContext *ctx){
+    transform_priv_permuteplanes *data = ctx->priv_data;
+    av_freep(data->r_ctx);
+    av_freep(data->ctx_a);
+}
+
 /*
  * ChannelCompact
  */
@@ -925,6 +936,13 @@ static uint8_t transform_channelcompact_reverse(FLIF16TransformContext* ctx,
     return 1;
 }
 
+static void transform_channelcompact_close(FLIF16TransformContext *ctx){
+    transform_priv_channelcompact *data = ctx->priv_data;
+    av_freep(data->CPalette);
+    av_freep(data->CPalette_inv);
+    av_freep(data->ctx_a);
+}
+
 /*
  * Bounds
  */
@@ -1030,13 +1048,21 @@ static FLIF16RangesContext* transform_bounds_meta(FLIF16TransformContext* ctx,
     return r_ctx;
 }
 
+static void transform_bounds_close(FLIF16TransformContext *ctx){
+    transform_priv_bounds *data = ctx->priv_data;
+    av_freep(data->bounds[0]);
+    av_freep(data->bounds[1]);
+    av_freep(data->ctx_a);
+}
+
 FLIF16Transform flif16_transform_channelcompact = {
     .priv_data_size = sizeof(transform_priv_channelcompact),
     .init           = &transform_channelcompact_init,
     .read           = &transform_channelcompact_read,
     .meta           = &transform_channelcompact_meta,
     .forward        = NULL,//&transform_channelcompact_forward,
-    .reverse        = &transform_channelcompact_reverse 
+    .reverse        = &transform_channelcompact_reverse,
+    .close          = &transform_channelcompact_close
 };
 
 FLIF16Transform flif16_transform_ycocg = {
@@ -1045,7 +1071,8 @@ FLIF16Transform flif16_transform_ycocg = {
     .read           = NULL,
     .meta           = &transform_ycocg_meta,
     .forward        = &transform_ycocg_forward,
-    .reverse        = &transform_ycocg_reverse 
+    .reverse        = &transform_ycocg_reverse,
+    .close          = &transform_ycocg_close
 };
 
 FLIF16Transform flif16_transform_permuteplanes = {
@@ -1054,7 +1081,8 @@ FLIF16Transform flif16_transform_permuteplanes = {
     .read           = &transform_permuteplanes_read,
     .meta           = &transform_permuteplanes_meta,
     .forward        = &transform_permuteplanes_forward,
-    .reverse        = &transform_permuteplanes_reverse 
+    .reverse        = &transform_permuteplanes_reverse,
+    .close          = &transform_permuteplanes_close
 };
 
 FLIF16Transform flif16_transform_bounds = {
@@ -1063,7 +1091,8 @@ FLIF16Transform flif16_transform_bounds = {
     .read           = &transform_bounds_read,
     .meta           = &transform_bounds_meta,
     .forward        = NULL,
-    .reverse        = NULL
+    .reverse        = NULL,
+    .close          = &transform_bounds_close
 };
 
 FLIF16Transform *flif16_transforms[13] = {
@@ -1149,7 +1178,9 @@ uint8_t ff_flif16_transform_reverse(FLIF16TransformContext* ctx,
 
 void ff_flif16_transforms_close(FLIF16TransformContext* ctx){
     FLIF16Transform* trans = flif16_transforms[ctx->t_no];
-    if(trans->priv_data_size)
+    if(trans->priv_data_size){
+        trans->close(ctx);
         av_freep(ctx->priv_data);
+    }
     av_freep(ctx);
 }

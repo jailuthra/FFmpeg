@@ -98,6 +98,7 @@ typedef struct FLIF16Transform {
     FLIF16RangesContext* (*meta) (FLIF16TransformContext*, FLIF16RangesContext*);
     uint8_t (*forward) (FLIF16TransformContext*, FLIF16PixelData*);
     uint8_t (*reverse) (FLIF16TransformContext*, FLIF16PixelData*, uint32_t, uint32_t);
+    void (*close) (FLIF16TransformContext*);
 } FLIF16Transform;
 
 typedef struct FLIF16DecoderContext {
