@@ -52,34 +52,6 @@ typedef enum FLIF16RangesTypes{
 extern FLIF16Ranges *flif16_ranges[14];
 extern FLIF16Transform *flif16_transforms[13];
 
-/*
-FLIF16Ranges* ff_get_ranges(FLIF16PixelData *pixel_data,
-                                 FLIF16Ranges *ranges)
-{
-    int i, c, r, width, height;
-    FLIF16ColorVal min, max;
-    int p = pixel_data->ranges.num_planes;
-    ranges->num_planes = p;
-    width = pixel_data->width;
-    height = pixel_data->height;
-    for (i=0; i<p; i++) {
-        min = pixel_data->data[p][0];
-        max = pixel_data->data[p][0];
-        for (r=0; r<height; r++) {
-            for(c=0; c<width; c++) {
-                if (min > pixel_data->data[p][r*width + c])
-                    min = pixel_data->data[p][r*width + c];
-                if(max < pixel_data->data[p][r*width + c])
-                    max = pixel_data->data[p][r*width + c];
-            }
-        }
-        ranges->min(p) = min;
-        ranges->max(p) = max;
-    }
-    return ranges;
-}
-*/
-
 FLIF16RangesContext *ff_flif16_ranges_static_init(unsigned int channels,
                                                   unsigned int bpc);
 
@@ -95,8 +67,6 @@ static inline void ff_flif16_ranges_close(FLIF16RangesContext* r_ctx){
 static inline FLIF16ColorVal ff_flif16_ranges_min(FLIF16RangesContext *r_ctx, int p)
 {
     FLIF16Ranges *ranges = flif16_ranges[r_ctx->r_no];
-    //if(r_ctx == NULL) // See Comment Below
-    //    return 0;
     if(ranges->min)
         return ranges->min(r_ctx, p);
     else
@@ -106,8 +76,6 @@ static inline FLIF16ColorVal ff_flif16_ranges_min(FLIF16RangesContext *r_ctx, in
 static inline FLIF16ColorVal ff_flif16_ranges_max(FLIF16RangesContext *r_ctx, int p)
 {
     FLIF16Ranges* ranges = flif16_ranges[r_ctx->r_no];
-    //if(r_ctx == NULL)
-    //    return 0;
     if(ranges->max)
         return ranges->max(r_ctx, p);
     else

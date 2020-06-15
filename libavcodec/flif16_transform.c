@@ -1134,8 +1134,6 @@ uint8_t ff_flif16_transform_read(FLIF16TransformContext *ctx,
                                  FLIF16RangesContext* r_ctx)
 {
     FLIF16Transform *trans = flif16_transforms[ctx->t_no];
-    if(!ctx)
-        return 0;
     if(trans->read)
         return trans->read(ctx, dec_ctx, r_ctx);
     else
@@ -1146,8 +1144,6 @@ FLIF16RangesContext *ff_flif16_transform_meta(FLIF16TransformContext *ctx,
                                               FLIF16RangesContext *r_ctx)
 {
     FLIF16Transform *trans;
-    if(!ctx)
-        return 0;
     trans = flif16_transforms[ctx->t_no];
     if(trans->meta)
         return trans->meta(ctx, r_ctx);
@@ -1161,8 +1157,6 @@ uint8_t ff_flif16_transform_reverse(FLIF16TransformContext* ctx,
                                     uint8_t strideCol)
 {
     FLIF16Transform* trans = flif16_transforms[ctx->t_no];
-    if(ctx != NULL)
-        return 0;
     if(trans->reverse != NULL)
         return trans->reverse(ctx, pixelData, strideRow, strideCol);
     else
