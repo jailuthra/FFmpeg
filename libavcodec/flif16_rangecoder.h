@@ -34,7 +34,7 @@
 
 #include <stdio.h> // Remove
 #include <stdint.h>
-#include <assert.h>
+#include <assert.h> // Remove
 
 //#define __PLN__ printf("At: [%s] %s, %d\n", __func__, __FILE__, __LINE__);
 //#define MSG(fmt, ...) printf("[%s] " fmt, __func__, ##__VA_ARGS__)
@@ -73,8 +73,8 @@ typedef enum FLIF16RACTypes {
 } FLIF16RACReaders;
 
 typedef struct FLIF16ChanceTable {
-    uint16_t zero_state[4097];
-    uint16_t one_state[4097];
+    uint16_t zero_state[4096];
+    uint16_t one_state[4096];
 } FLIF16ChanceTable;
 
 typedef struct FLIF16MultiscaleChanceTable {
@@ -83,7 +83,7 @@ typedef struct FLIF16MultiscaleChanceTable {
 
 
 typedef struct FLIF16Log4kTable {
-    uint16_t table[4096];
+    uint16_t table[4097];
     int scale;
 } FLIF16Log4kTable;
 
@@ -424,6 +424,8 @@ static inline void ff_flif16_chance_estim(FLIF16RangeCoder *rc,
                                           uint16_t chance, uint8_t bit,
                                           uint64_t *total)
 {
+    assert(chance <= 4096 && chance >= 0);
+    printf("log4k: %d\n", (bit ? chance : 4096 - chance));
     *total += rc->log4k.table[bit ? chance : 4096 - chance];
 }
 
@@ -540,7 +542,6 @@ static inline int ff_flif16_rac_read_nz_int(FLIF16RangeCoder *rc,
         case 0:
             RAC_NZ_GET(rc, ctx, NZ_INT_ZERO, &(temp));
             if (temp) {
-                MSG("nz_int_zero triggered\n");
                 *target = 0;
                 goto end;
             }
@@ -678,7 +679,6 @@ static inline int ff_flif16_rac_read_nz_multiscale_int(FLIF16RangeCoder *rc,
         case 0:
             RAC_NZ_MULTISCALE_GET(rc, ctx, NZ_INT_ZERO, &(temp));
             if (temp) {
-                MSG("nz_int_zero triggered\n");
                 *target = 0;
                 goto end;
             }

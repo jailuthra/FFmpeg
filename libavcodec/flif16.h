@@ -38,6 +38,7 @@
 // Remove these
 //#define __PLN__ printf("At: [%s] %s, %d\n", __func__, __FILE__, __LINE__);
 //#define MSG(fmt, ...) printf("[%s] " fmt, __func__, ##__VA_ARGS__)
+#include <assert.h>
 #define __PLN__
 #define MSG(fmt,...) while(0)
 
@@ -138,8 +139,8 @@ typedef struct FLIF16DecoderContext {
     FLIF16TransformContext *transforms[13];
     uint8_t transform_top;
     FLIF16RangesContext *range; ///< The minimum and maximum values a
-                                 ///  channel's pixels can take. Changes
-                                 ///  depending on transformations applied
+                                ///  channel's pixels can take. Changes
+                                ///  depending on transformations applied
     FLIF16RangesContext *prev_range;
 
     // MANIAC Trees and pixeldata

@@ -95,8 +95,8 @@ static inline void ff_flif16_ranges_close(FLIF16RangesContext* r_ctx){
 static inline FLIF16ColorVal ff_flif16_ranges_min(FLIF16RangesContext *r_ctx, int p)
 {
     FLIF16Ranges *ranges = flif16_ranges[r_ctx->r_no];
-    if(r_ctx = NULL) // See Comment Below
-        return 0;
+    //if(r_ctx == NULL) // See Comment Below
+    //    return 0;
     if(ranges->min)
         return ranges->min(r_ctx, p);
     else
@@ -106,8 +106,8 @@ static inline FLIF16ColorVal ff_flif16_ranges_min(FLIF16RangesContext *r_ctx, in
 static inline FLIF16ColorVal ff_flif16_ranges_max(FLIF16RangesContext *r_ctx, int p)
 {
     FLIF16Ranges* ranges = flif16_ranges[r_ctx->r_no];
-    if(r_ctx = NULL)
-        return 0;
+    //if(r_ctx == NULL)
+    //    return 0;
     if(ranges->max)
         return ranges->max(r_ctx, p);
     else

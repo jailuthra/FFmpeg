@@ -43,6 +43,7 @@ int32_t  (*ff_flif16_maniac_ni_prop_ranges_init(unsigned int *prop_ranges_size,
     int32_t (*prop_ranges)[2];
     unsigned int top = 0;
     unsigned int size = (((property < 3) ? property : 0) + 2 + 5);
+    assert(ranges);
     *prop_ranges_size = size;
     prop_ranges = av_mallocz(sizeof(*prop_ranges) * size);
     if (property < 3) {

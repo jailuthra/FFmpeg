@@ -359,6 +359,8 @@ static FLIF16ColorVal ff_bounds_min(FLIF16RangesContext* r_ctx, int p)
     ranges_priv_bounds* data = r_ctx->priv_data;
     FLIF16Ranges* ranges = flif16_ranges[data->r_ctx->r_no];
     assert(p < r_ctx->num_planes);
+    assert(ranges);
+    assert(&data->bounds[0][p]);
     return FFMAX(ranges->min(data->r_ctx, p), data->bounds[0][p]);
 }
 

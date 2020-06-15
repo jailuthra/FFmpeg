@@ -325,7 +325,7 @@ static int flif16_read_maniac_forest(AVCodecContext *avctx)
             printf("Ret: %d\n", ret);
             if (ret)
                 goto need_more_data;
-            av_free(s->prop_ranges);
+            av_freep(&s->prop_ranges);
             --s->segment;
             __PLN__
             ++s->i;
@@ -474,7 +474,7 @@ static int flif16_decode_frame(AVCodecContext *avctx,
            "ia: %x bpc: %u channels: %u\n"      \
            "alphazero: %u custombc: %u\n"       \
            "cutoff: %u alphadiv: %u \n"         \
-           "loops: %u\n", s->width, s->height, s->frames, s->ia, s->bpc,
+           "loops: %u\nl", s->width, s->height, s->frames, s->ia, s->bpc,
            s->channels, s->alphazero, s->custombc, s->cut,
            s->alpha, s->loops);
 
@@ -497,11 +497,12 @@ static av_cold int flif16_decode_end(AVCodecContext *avctx)
 {
     // TODO complete function
     FLIF16DecoderContext *s = avctx->priv_data;
-    av_free(s->rc);
+    if(s->rc)
+        av_freep(&s->rc);
     if(s->framedelay)
-        av_free(s->framedelay);
+        av_freep(&s->framedelay);
     if (s->prop_ranges)
-        av_free(s->prop_ranges);
+        av_freep(&s->prop_ranges);
     return 0;
 }
 
