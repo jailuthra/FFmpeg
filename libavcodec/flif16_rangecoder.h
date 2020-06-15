@@ -51,7 +51,7 @@
 #define CHANCETABLE_DEFAULT_ALPHA (0xFFFFFFFF / 19)
 #define CHANCETABLE_DEFAULT_CUT 2
 
-#define MULTISCALE_CHANCES_ENABLED
+// #define MULTISCALE_CHANCES_ENABLED
 
 #define MULTISCALE_CHANCETABLE_DEFAULT_SIZE 6
 #define MULTISCALE_CHANCETABLE_DEFAULT_CUT  8
@@ -149,7 +149,7 @@ static uint16_t flif16_nz_int_chances[] = {
     2048,        // MANT: 14:
     2048,        // MANT: 15:
     2048,        // MANT: 16:
-    2048,        // MANT: 17:
+    2048         // MANT: 17:
 };
 
 #define NZ_INT_ZERO (0)
@@ -416,6 +416,8 @@ static inline void ff_flif16_chancetable_put(FLIF16RangeCoder *rc,
                                              uint16_t type, uint8_t bit)
 {
     //printf("put: type = %d chance = %d\n", type, ctx->data[type]);
+    if(ctx->data[type] >= 4096)
+        printf("type: %u data: %u\n", type, ctx->data[type]);
     ctx->data[type] = (!bit) ? rc->ct.zero_state[ctx->data[type]]
                              : rc->ct.one_state[ctx->data[type]];
 }
@@ -424,8 +426,6 @@ static inline void ff_flif16_chance_estim(FLIF16RangeCoder *rc,
                                           uint16_t chance, uint8_t bit,
                                           uint64_t *total)
 {
-    assert(chance <= 4096 && chance >= 0);
-    printf("log4k: %d\n", (bit ? chance : 4096 - chance));
     *total += rc->log4k.table[bit ? chance : 4096 - chance];
 }
 
@@ -439,59 +439,17 @@ static inline uint8_t ff_flif16_rac_read_symbol(FLIF16RangeCoder *rc,
                                                 uint16_t type,
                                                 uint8_t *target)
 {
-    __PLN__
+    printf("type %u, chance: %u\n", type, ctx->data[type]);
     ff_flif16_rac_read_chance(rc, ctx->data[type], target);
     ff_flif16_chancetable_put(rc, ctx, type, *target);
+    printf("%s ", __func__);
+    for(int i = 0; i < sizeof(flif16_nz_int_chances)/sizeof(flif16_nz_int_chances[0]); ++i)
+        printf("%u ", ctx->data[i]);
+    printf("\n");
+    if(ctx->data[type] >= 4096)
+        printf("[ !!! ] Out of bounds type: %u chance: %u\n", type, ctx->data[type]);
     return 1;
 }
-
-#ifdef MULTISCALE_CHANCES_ENABLED
-// Multiscale chance definitions
-
-static inline void ff_flif16_multiscale_chance_set(FLIF16MultiscaleChance *c,
-                                                   uint16_t chance)
-{
-    for (int i = 0; i < MULTISCALE_CHANCETABLE_DEFAULT_SIZE; i++) {
-        c->chances[i] = chance;
-        c->quality[i] = 0;
-    }
-    c->best = 0;
-}
-
-static inline uint16_t ff_flif16_multiscale_chance_get(FLIF16MultiscaleChance c)
-{
-    return c.chances[c.best];
-}
-
-static inline void ff_flif16_multiscale_chancetable_put(FLIF16RangeCoder *rc,
-                                                        FLIF16MultiscaleChanceContext *ctx,
-                                                        uint16_t type, uint8_t bit)
-{
-    FLIF16MultiscaleChance *c = &ctx->data[type];
-    uint64_t sbits, oqual;
-    //printf("multiscale_put: type = %d bit = %d || ", type, bit);
-    for (int i = 0; i < MULTISCALE_CHANCETABLE_DEFAULT_SIZE; ++i) {
-        sbits = 0;
-        ff_flif16_chance_estim(rc, c->chances[i], bit, &sbits);
-        oqual = c->quality[i];
-        c->quality[i] = (oqual * 255 + sbits * 4097 + 128) >> 8;
-        c->chances[i] = (bit) ? rc->mct->sub_table[i].one_state[c->chances[i]]
-                              : rc->mct->sub_table[i].zero_state[c->chances[i]];
-    }
-    for (int i = 0; i < MULTISCALE_CHANCETABLE_DEFAULT_SIZE; ++i)
-        if (c->quality[i] < c->quality[c->best])
-            c->best = i;
-}
-
-static inline int ff_flif16_rac_read_multiscale_symbol(FLIF16RangeCoder *rc,
-                                                       FLIF16MultiscaleChanceContext *ctx,
-                                                       uint16_t type, uint8_t *target)
-{
-    ff_flif16_rac_read_chance(rc, ff_flif16_multiscale_chance_get(ctx->data[type]), target);
-    ff_flif16_multiscale_chancetable_put(rc, ctx, type, *target);
-    return 1;
-}
-#endif
 
 // NearZero Integer Coder
 
@@ -508,7 +466,6 @@ static inline int ff_flif16_rac_nz_read_internal(FLIF16RangeCoder *rc,
                 return 0; // EAGAIN condition
         }
         flag = ff_flif16_rac_read_symbol(rc, ctx, type, target);
-        __PLN__
     }
     return 1;
 }
@@ -634,6 +591,52 @@ static inline int ff_flif16_rac_read_gnz_int(FLIF16RangeCoder *rc,
 }
 
 #ifdef MULTISCALE_CHANCES_ENABLED
+// Multiscale chance definitions
+
+static inline void ff_flif16_multiscale_chance_set(FLIF16MultiscaleChance *c,
+                                                   uint16_t chance)
+{
+    for (int i = 0; i < MULTISCALE_CHANCETABLE_DEFAULT_SIZE; i++) {
+        c->chances[i] = chance;
+        c->quality[i] = 0;
+    }
+    c->best = 0;
+}
+
+static inline uint16_t ff_flif16_multiscale_chance_get(FLIF16MultiscaleChance c)
+{
+    return c.chances[c.best];
+}
+
+static inline void ff_flif16_multiscale_chancetable_put(FLIF16RangeCoder *rc,
+                                                        FLIF16MultiscaleChanceContext *ctx,
+                                                        uint16_t type, uint8_t bit)
+{
+    FLIF16MultiscaleChance *c = &ctx->data[type];
+    uint64_t sbits, oqual;
+    //printf("multiscale_put: type = %d bit = %d || ", type, bit);
+    for (int i = 0; i < MULTISCALE_CHANCETABLE_DEFAULT_SIZE; ++i) {
+        sbits = 0;
+        ff_flif16_chance_estim(rc, c->chances[i], bit, &sbits);
+        oqual = c->quality[i];
+        c->quality[i] = (oqual * 255 + sbits * 4097 + 128) >> 8;
+        c->chances[i] = (bit) ? rc->mct->sub_table[i].one_state[c->chances[i]]
+                              : rc->mct->sub_table[i].zero_state[c->chances[i]];
+    }
+    for (int i = 0; i < MULTISCALE_CHANCETABLE_DEFAULT_SIZE; ++i)
+        if (c->quality[i] < c->quality[c->best])
+            c->best = i;
+}
+
+static inline int ff_flif16_rac_read_multiscale_symbol(FLIF16RangeCoder *rc,
+                                                       FLIF16MultiscaleChanceContext *ctx,
+                                                       uint16_t type, uint8_t *target)
+{
+    ff_flif16_rac_read_chance(rc, ff_flif16_multiscale_chance_get(ctx->data[type]), target);
+    ff_flif16_multiscale_chancetable_put(rc, ctx, type, *target);
+    return 1;
+}
+
 static inline int ff_flif16_rac_nz_read_multiscale_internal(FLIF16RangeCoder *rc,
                                                             FLIF16MultiscaleChanceContext *ctx,
                                                             uint16_t type, uint8_t *target)
@@ -860,8 +863,7 @@ static inline int ff_flif16_rac_process(FLIF16RangeCoder *rc,
 }
 
 #define RAC_GET(rc, ctx, val1, val2, target, type) \
-    if (!ff_flif16_rac_process((rc), (ctx), (val1), (val2), \
-        (void *) (target), (type))) {\
+    if (!ff_flif16_rac_process((rc), (ctx), (val1), (val2), (target), (type))) {\
         goto need_more_data;}
 
 #endif /* FLIF16_RANGECODER_H */
