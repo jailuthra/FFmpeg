@@ -1011,7 +1011,7 @@ static uint8_t transform_bounds_read(FLIF16TransformContext* ctx,
 }
 
 static FLIF16RangesContext* transform_bounds_meta(FLIF16TransformContext* ctx,
-                                                     FLIF16RangesContext* src_ctx)
+                                                  FLIF16RangesContext* src_ctx)
 {
     FLIF16RangesContext* r_ctx;
     transform_priv_bounds* trans_data = ctx->priv_data;

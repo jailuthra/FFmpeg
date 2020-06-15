@@ -184,7 +184,7 @@ int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
     FLIF16MANIACTree  *tree;
     FLIF16MANIACNode  *curr_node;
     FLIF16MANIACStack *curr_stack;
-    int p, oldmin, oldmax, split_val;
+    int oldp, p, oldmin, oldmax, split_val;
 
     if (!(m->forest[channel])) {
         printf("[MANIAC Tree Trace]\npos\tprop\tcount\tsplitv\tchild\toldmin\toldmax\n");
@@ -212,11 +212,12 @@ int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
             }
         }
         m->stack_top = m->tree_top = 0;
-        tree->size = MANIAC_TREE_BASE_SIZE;
+        tree->size    = MANIAC_TREE_BASE_SIZE;
         m->stack_size = MANIAC_TREE_BASE_SIZE;
-        m->stack[m->stack_top].id   = 0;
+        m->stack[m->stack_top].id   = m->tree_top;
         m->stack[m->stack_top].mode = 0;
         ++m->stack_top;
+        ++m->tree_top;
     } else {
         return AVERROR(EINVAL);
     }
@@ -226,22 +227,23 @@ int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
             start:
             if(!m->stack_top)
                 goto end;
+            printf("%u %u ::\n", m->stack_top, m->tree_top);
             curr_stack = &m->stack[m->stack_top - 1];
             curr_node  = &tree->data[curr_stack->id];
-            p = curr_stack->p;
+            oldp = curr_stack->p;
             if(!curr_stack->visited){
                 switch (curr_stack->mode) {
                     case 1:
-                        prop_ranges[p][0] = curr_stack->min;
-                        prop_ranges[p][1] = curr_stack->max;
+                        prop_ranges[oldp][0] = curr_stack->min;
+                        prop_ranges[oldp][1] = curr_stack->max;
                         break;
 
                     case 2:
-                        prop_ranges[p][0] = curr_stack->min;
+                        prop_ranges[oldp][0] = curr_stack->min;
                         break;
                 }
             } else {
-                prop_ranges[p][1] = curr_stack->max2;
+                prop_ranges[oldp][1] = curr_stack->max2;
                 --m->stack_top;
                 goto start;
             }
@@ -250,21 +252,20 @@ int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
 
         case 1:
             // int p = tree[stack[top]].property = coder[0].read_int2(0,nb_properties) - 1;
-            #ifdef MULTISCALE_CHANCES_ENABLED
-            RAC_GET(rc, m->ctx[0], 0, prop_ranges_size, &curr_node->property,
-                    FLIF16_RAC_GNZ_MULTISCALE_INT);
-            #else
+            //#ifdef MULTISCALE_CHANCES_ENABLED
+            //RAC_GET(rc, m->ctx[0], 0, prop_ranges_size, &curr_node->property,
+            //        FLIF16_RAC_GNZ_MULTISCALE_INT);
+            //#else
             RAC_GET(rc, m->ctx[0], 0, prop_ranges_size, &curr_node->property,
                     FLIF16_RAC_GNZ_INT);
-            #endif
+            //#endif
             p = --(curr_node->property);
             if (p == -1) {
                 printf(____PAD "leaf %d\n", curr_stack->id);
-                ++m->tree_top;
                 --m->stack_top;
                 goto start;
             }
-            curr_node->child_id = m->tree_top + 1;
+            curr_node->child_id = m->tree_top;
             oldmin = prop_ranges[p][0];
             oldmax = prop_ranges[p][1];
             if (oldmin >= oldmax) {
@@ -287,17 +288,18 @@ int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
 
         case 3:
             // int splitval = n.splitval = coder[2].read_int2(oldmin, oldmax-1);
-            #ifdef MULTISCALE_CHANCES_ENABLED
-            RAC_GET(rc, m->ctx[2], oldmin, oldmax - 1, &curr_node->split_val,
-                    FLIF16_RAC_GNZ_MULTISCALE_INT);
-            #else
+            //#ifdef MULTISCALE_CHANCES_ENABLED
+            //RAC_GET(rc, m->ctx[2], oldmin, oldmax - 1, &curr_node->split_val,
+            //        FLIF16_RAC_GNZ_MULTISCALE_INT);
+            //#else
             RAC_GET(rc, m->ctx[2], oldmin, oldmax - 1, &curr_node->split_val,
                     FLIF16_RAC_GNZ_INT);
-            #endif
+            //#endif
             split_val = curr_node->split_val;
             ++rc->segment;
 
         case 4:
+            // \npos\tprop\tcount\tsplitv\tchild\toldmin\toldmax\n"
             printf("%u\t%d\t%d\t%d\t%u\t%d\t%d\n", curr_stack->id, curr_node->property,
             curr_node->count, curr_node->split_val, curr_node->child_id, oldmin, oldmax);
 
@@ -324,7 +326,7 @@ int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
             // subrange[p].second = splitval;
             // if (!read_subtree(childID + 1, subrange, tree)) return false;
             // TRAVERSE CURR + 2 (RIGHT CHILD)
-            m->stack[m->stack_top].id      = m->tree_top + 2;
+            m->stack[m->stack_top].id      = m->tree_top + 1;
             m->stack[m->stack_top].p       = p;
             m->stack[m->stack_top].min     = oldmin;
             m->stack[m->stack_top].max     = split_val;
@@ -338,9 +340,9 @@ int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
             // subrange[p].first = splitval+1;
             // if (!read_subtree(childID, subrange, tree)) return false;
             // TRAVERSE CURR + 1 (LEFT CHILD)
-            m->stack[m->stack_top].id      = m->tree_top + 1;
+            m->stack[m->stack_top].id      = m->tree_top;
             m->stack[m->stack_top].p       = p;
-            m->stack[m->stack_top].min     = oldmin;
+            m->stack[m->stack_top].min     = split_val + 1;
             m->stack[m->stack_top].mode    = 2;
             m->stack[m->stack_top].visited = 0;
             ++m->stack_top;
