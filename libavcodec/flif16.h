@@ -71,7 +71,8 @@ typedef struct FLIF16Ranges {
     void (*snap)(FLIF16RangesContext*, const int, FLIF16ColorVal*,
                  FLIF16ColorVal*, FLIF16ColorVal*, FLIF16ColorVal*);
     uint8_t is_static;
-    void (*previous)(FLIF16Ranges*);
+    void (*close)(FLIF16RangesContext*);
+    void (*previous)(FLIF16RangesContext*);
 } FLIF16Ranges;
 
 typedef struct FLIF16PixelData {

@@ -82,13 +82,7 @@ typedef struct ranges_priv_bounds {
 } ranges_priv_bounds;
 
 typedef struct ranges_priv_static {
-    FLIF16ColorVal *bounds[2];   // Try using FLIF16ColorVal (*bounds)[2]
-                                 // Using this type allows us to allocate all
-                                 // Memory in a single malloc. Try changing it
-                                 // above as well
-                                 // (This is an array of(i.e. pointer to) 2
-                                 // element arrays, as opposed to a 2 element
-                                 // array of pointers to bounds
+    FLIF16ColorVal *bounds[2];
 }ranges_priv_static;
 
 
@@ -99,35 +93,8 @@ typedef struct ranges_priv_static {
  */
 
 /*
- * Default
- */
-
-static void ff_default_minmax(FLIF16RangesContext *src_ctx ,const int p,
-                       FLIF16ColorVal* prev_planes,
-                       FLIF16ColorVal* minv, FLIF16ColorVal* maxv)
-{
-    FLIF16Ranges* ranges = flif16_ranges[src_ctx->r_no];
-    *minv = ranges->min(src_ctx, p);
-    *maxv = ranges->max(src_ctx, p);
-}
-
-static void ff_default_snap(FLIF16RangesContext *src_ctx ,const int p,
-                     FLIF16ColorVal* prev_planes,
-                     FLIF16ColorVal* minv, FLIF16ColorVal* maxv, 
-                     FLIF16ColorVal* v)
-{
-    ff_default_minmax(src_ctx, p, prev_planes, minv, maxv);
-    if(*minv > *maxv)
-        *maxv = *minv;
-    *v = av_clip(*v, *minv, *maxv);
-}
-
-
-/*
  * Static
  */
-
-// Maybe you can rename these to default instead of static
 
 static FLIF16ColorVal ff_static_min(FLIF16RangesContext* r_ctx,
                                     int p)
@@ -147,6 +114,32 @@ static FLIF16ColorVal ff_static_max(FLIF16RangesContext* r_ctx,
         return 0;
     assert(p < r_ctx->num_planes);
     return /* data->bounds[p][0] */ data->bounds[1][p];
+}
+
+static void ff_static_minmax(FLIF16RangesContext *src_ctx ,const int p,
+                       FLIF16ColorVal* prev_planes,
+                       FLIF16ColorVal* minv, FLIF16ColorVal* maxv)
+{
+    FLIF16Ranges* ranges = flif16_ranges[src_ctx->r_no];
+    *minv = ranges->min(src_ctx, p);
+    *maxv = ranges->max(src_ctx, p);
+}
+
+static void ff_static_snap(FLIF16RangesContext *src_ctx ,const int p,
+                     FLIF16ColorVal* prev_planes,
+                     FLIF16ColorVal* minv, FLIF16ColorVal* maxv, 
+                     FLIF16ColorVal* v)
+{
+    ff_static_minmax(src_ctx, p, prev_planes, minv, maxv);
+    if(*minv > *maxv)
+        *maxv = *minv;
+    *v = av_clip(*v, *minv, *maxv);
+}
+
+static void ff_static_close(FLIF16RangesContext *r_ctx){
+    ranges_priv_static *data = r_ctx->priv_data;
+    av_freep(data->bounds[0]);
+    av_freep(data->bounds[1]);
 }
 
 /*
@@ -285,6 +278,11 @@ static void ff_ycocg_minmax(FLIF16RangesContext *r_ctx ,const int p,
     }
 }
 
+static void ff_ycocg_close(FLIF16RangesContext *r_ctx){
+    ranges_priv_ycocg *data = r_ctx->priv_data;
+    av_freep(data->r_ctx);
+}
+
 /*
  * PermutePlanesSubtract
  */
@@ -348,6 +346,10 @@ static FLIF16ColorVal ff_permuteplanes_max(FLIF16RangesContext* r_ctx,
     return ranges->max(data->r_ctx, data->permutation[p]);
 }
 
+static void ff_permuteplanes_close(FLIF16RangesContext *r_ctx){
+    ranges_priv_permuteplanes *data = r_ctx->priv_data;
+    av_freep(data->r_ctx);
+}
 /*
  * Bounds
  */
@@ -425,22 +427,21 @@ static void ff_bounds_snap(FLIF16RangesContext* r_ctx,
     }
 }
 
-FLIF16Ranges flif16_ranges_default = {
-    .priv_data_size = 0,
-    .min            = NULL,
-    .max            = NULL,
-    .minmax         = &ff_default_minmax,
-    .snap           = &ff_default_snap,
-    .is_static      = 1,
-};
+static void ff_bounds_close(FLIF16RangesContext *r_ctx){
+    ranges_priv_bounds *data = r_ctx->priv_data;
+    av_freep(data->r_ctx);
+    av_freep(data->bounds[0]);
+    av_freep(data->bounds[1]);
+}
 
 FLIF16Ranges flif16_ranges_static = {
     .priv_data_size = sizeof(ranges_priv_static),
     .min            = &ff_static_min,
     .max            = &ff_static_max,
-    .minmax         = &ff_default_minmax,
-    .snap           = &ff_default_snap,
+    .minmax         = &ff_static_minmax,
+    .snap           = &ff_static_snap,
     .is_static      = 1,
+    .close          = &ff_static_close
 };
 
 FLIF16Ranges flif16_ranges_channelcompact = {
@@ -448,8 +449,9 @@ FLIF16Ranges flif16_ranges_channelcompact = {
     .min            = &ff_channelcompact_min,
     .max            = &ff_channelcompact_max,
     .minmax         = &ff_channelcompact_minmax,
-    .snap           = &ff_default_snap,
+    .snap           = &ff_static_snap,
     .is_static      = 1,
+    .close          = NULL
 };
 
 FLIF16Ranges flif16_ranges_ycocg = {
@@ -457,8 +459,9 @@ FLIF16Ranges flif16_ranges_ycocg = {
     .min            = &ff_ycocg_min,
     .max            = &ff_ycocg_max,
     .minmax         = &ff_ycocg_minmax,
-    .snap           = &ff_default_snap,
+    .snap           = &ff_static_snap,
     .is_static      = 0,
+    .close          = &ff_ycocg_close
 };
 
 FLIF16Ranges flif16_ranges_permuteplanessubtract = {
@@ -466,17 +469,19 @@ FLIF16Ranges flif16_ranges_permuteplanessubtract = {
     .min            = &ff_permuteplanessubtract_min,
     .max            = &ff_permuteplanessubtract_max,
     .minmax         = &ff_permuteplanessubtract_minmax,
-    .snap           = &ff_default_snap,
+    .snap           = &ff_static_snap,
     .is_static      = 0,
+    .close          = &ff_permuteplanes_close
 };
 
 FLIF16Ranges flif16_ranges_permuteplanes = {
     .priv_data_size = sizeof(ranges_priv_permuteplanes),
     .min            = &ff_permuteplanes_min,
     .max            = &ff_permuteplanes_max,
-    .minmax         = &ff_default_minmax,
-    .snap           = &ff_default_snap,
+    .minmax         = &ff_static_minmax,
+    .snap           = &ff_static_snap,
     .is_static      = 0,
+    .close          = &ff_permuteplanes_close
 };
 
 FLIF16Ranges flif16_ranges_bounds = {
@@ -486,10 +491,10 @@ FLIF16Ranges flif16_ranges_bounds = {
     .minmax         = &ff_bounds_minmax,
     .snap           = &ff_bounds_snap,
     .is_static      = 0,
+    .close          = &ff_bounds_close
 };
 
 FLIF16Ranges* flif16_ranges[] = {
-    &flif16_ranges_default,               // FLIF16_RANGES_DEFAULT = 0,
     &flif16_ranges_channelcompact,        // FLIF16_RANGES_CHANNELCOMPACT,
     &flif16_ranges_ycocg,                 // FLIF16_RANGES_YCOCG,
     &flif16_ranges_permuteplanes,         // FLIF16_RANGES_PERMUTEPLANES,
@@ -522,17 +527,14 @@ FLIF16RangesContext *ff_flif16_ranges_static_init(unsigned int channels,
         data->bounds[1][i] = bpc;
     }
     return ctx;
-    // 2 Frees are needed. One for bounds, and other for the private struct
-    // itself.
 }
 
 void ff_flif16_ranges_close(FLIF16RangesContext* r_ctx){
     FLIF16Ranges* ranges = flif16_ranges[r_ctx->r_no];
-    if(ranges->priv_data_size)
+    if(ranges->priv_data_size){
+        ranges->close(r_ctx);
         av_freep(r_ctx->priv_data);
-    // You will need specific close functions if you are allocating data
-    // within the struct. This will leave dangling pointers. A generalised
-    // init function like in the transforms may be better.
+    }
     av_freep(r_ctx);
 }
 
