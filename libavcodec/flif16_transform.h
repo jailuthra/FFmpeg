@@ -83,12 +83,19 @@ FLIF16Ranges* ff_get_ranges(FLIF16PixelData *pixel_data,
 FLIF16RangesContext *ff_flif16_ranges_static_init(unsigned int channels,
                                                   unsigned int bpc);
 
-void ff_flif16_ranges_close(FLIF16RangesContext *);
+static inline void ff_flif16_ranges_close(FLIF16RangesContext* r_ctx){
+    FLIF16Ranges* ranges = flif16_ranges[r_ctx->r_no];
+    if(ranges->priv_data_size){
+        ranges->close(r_ctx);
+        av_freep(r_ctx->priv_data);
+    }
+    av_freep(r_ctx);
+}
 
 static inline FLIF16ColorVal ff_flif16_ranges_min(FLIF16RangesContext *r_ctx, int p)
 {
     FLIF16Ranges *ranges = flif16_ranges[r_ctx->r_no];
-    if(!r_ctx) // See Comment Below
+    if(r_ctx = NULL) // See Comment Below
         return 0;
     if(ranges->min)
         return ranges->min(r_ctx, p);
@@ -99,8 +106,7 @@ static inline FLIF16ColorVal ff_flif16_ranges_min(FLIF16RangesContext *r_ctx, in
 static inline FLIF16ColorVal ff_flif16_ranges_max(FLIF16RangesContext *r_ctx, int p)
 {
     FLIF16Ranges* ranges = flif16_ranges[r_ctx->r_no];
-    if(!r_ctx)  // Remove this. It should segfault if we are calling with a null pointer
-                // Masking it will make bugs hard to detect
+    if(r_ctx = NULL)
         return 0;
     if(ranges->max)
         return ranges->max(r_ctx, p);
