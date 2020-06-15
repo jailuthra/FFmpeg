@@ -442,9 +442,9 @@ static inline uint8_t ff_flif16_rac_read_symbol(FLIF16RangeCoder *rc,
     printf("type %u, chance: %u\n", type, ctx->data[type]);
     ff_flif16_rac_read_chance(rc, ctx->data[type], target);
     ff_flif16_chancetable_put(rc, ctx, type, *target);
-    printf("%s ", __func__);
-    for(int i = 0; i < sizeof(flif16_nz_int_chances)/sizeof(flif16_nz_int_chances[0]); ++i)
-        printf("%u ", ctx->data[i]);
+    //printf("%s ", __func__);
+    //for(int i = 0; i < sizeof(flif16_nz_int_chances)/sizeof(flif16_nz_int_chances[0]); ++i)
+    //    printf("%u ", ctx->data[i]);
     printf("\n");
     if(ctx->data[type] >= 4096)
         printf("[ !!! ] Out of bounds type: %u chance: %u\n", type, ctx->data[type]);
