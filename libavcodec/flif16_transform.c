@@ -655,7 +655,7 @@ static void transform_ycocg_close(FLIF16TransformContext *ctx){
  */
 
 static uint8_t transform_permuteplanes_init(FLIF16TransformContext* ctx, 
-                                               FLIF16RangesContext* r_ctx)
+                                            FLIF16RangesContext* r_ctx)
 {
     transform_priv_permuteplanes *data = ctx->priv_data;
     FLIF16Ranges* ranges = flif16_ranges[r_ctx->r_no];
@@ -673,15 +673,15 @@ static uint8_t transform_permuteplanes_init(FLIF16TransformContext* ctx,
 }
 
 static uint8_t transform_permuteplanes_read(FLIF16TransformContext* ctx,
-                                               FLIF16DecoderContext* dec_ctx,
-                                               FLIF16RangesContext* r_ctx)
+                                            FLIF16DecoderContext* dec_ctx,
+                                            FLIF16RangesContext* r_ctx)
 {
     int p;
     transform_priv_permuteplanes* data = ctx->priv_data;
 
     switch (ctx->segment) {
         case 0:
-            RAC_GET(dec_ctx->rc, &data->ctx_a, 0, 1, &data->subtract,
+            RAC_GET(&dec_ctx->rc, &data->ctx_a, 0, 1, &data->subtract,
                     FLIF16_RAC_NZ_INT);
             //data->subtract = read_nz_int(rac, 0, 1);
             
@@ -691,7 +691,7 @@ static uint8_t transform_permuteplanes_read(FLIF16TransformContext* ctx,
             }
         case 1:
             for (; ctx->i < dec_ctx->channels; ++ctx->i) {
-                RAC_GET(dec_ctx->rc, &data->ctx_a, 0, dec_ctx->channels-1,
+                RAC_GET(&dec_ctx->rc, &data->ctx_a, 0, dec_ctx->channels-1,
                         &data->permutation[ctx->i], 
                         FLIF16_RAC_NZ_INT);
                 //data->permutation[p] = read_nz_int(s->rc, 0, s->channels-1);
@@ -717,7 +717,7 @@ static uint8_t transform_permuteplanes_read(FLIF16TransformContext* ctx,
 }
 
 static FLIF16RangesContext* transform_permuteplanes_meta(FLIF16TransformContext* ctx,
-                                                            FLIF16RangesContext* src_ctx)
+                                                         FLIF16RangesContext* src_ctx)
 {
     FLIF16RangesContext* r_ctx = av_mallocz(sizeof(FLIF16Ranges));
     transform_priv_permuteplanes* data = ctx->priv_data;
@@ -737,7 +737,7 @@ static FLIF16RangesContext* transform_permuteplanes_meta(FLIF16TransformContext*
 }
 
 static uint8_t transform_permuteplanes_forward(FLIF16TransformContext* ctx,
-                                                  FLIF16PixelData* pixel_data)
+                                               FLIF16PixelData* pixel_data)
 {
     FLIF16ColorVal pixel[5];
     int r, c, p;
@@ -840,7 +840,7 @@ static uint8_t transform_channelcompact_read(FLIF16TransformContext * ctx,
     switch (ctx->segment) {
         case 0:
             if(ctx->i < dec_ctx->channels) {
-                RAC_GET(dec_ctx->rc, &data->ctx_a,
+                RAC_GET(&dec_ctx->rc, &data->ctx_a,
                         0, ranges->max(src_ctx, ctx->i) -
                         ranges->min(src_ctx, ctx->i),
                         &nb, FLIF16_RAC_NZ_INT);
@@ -858,7 +858,7 @@ static uint8_t transform_channelcompact_read(FLIF16TransformContext * ctx,
         next_case:
         case 1:
             for (; data->i < nb; ++data->i) {
-                RAC_GET(dec_ctx->rc, &data->ctx_a,
+                RAC_GET(&dec_ctx->rc, &data->ctx_a,
                         0, ranges->max(src_ctx, ctx->i)-data->min-remaining,
                         &data->CPalette[ctx->i][data->i], 
                         FLIF16_RAC_NZ_INT);
@@ -966,14 +966,14 @@ static uint8_t transform_bounds_read(FLIF16TransformContext* ctx,
             case 0:
                 ranges->min(src_ctx, ctx->i);
                 ranges->max(src_ctx, ctx->i);
-                RAC_GET(dec_ctx->rc, &data->ctx_a,
+                RAC_GET(&dec_ctx->rc, &data->ctx_a,
                         ranges->min(src_ctx, ctx->i), 
                         ranges->max(src_ctx, ctx->i),
                         &data->min, FLIF16_RAC_GNZ_INT);
                 ctx->segment++;
         
             case 1:
-                RAC_GET(dec_ctx->rc, &data->ctx_a,
+                RAC_GET(&dec_ctx->rc, &data->ctx_a,
                         data->min, ranges->max(src_ctx, ctx->i),
                         &max, FLIF16_RAC_GNZ_INT);
                 if(data->min > max)

@@ -37,18 +37,15 @@
 
 // The coder requires a certain number of bytes for initiialization. buf
 // provides it. gb is used by the coder functions for actual coding.
-FLIF16RangeCoder *ff_flif16_rac_init(GetByteContext *gb, 
-                                     uint8_t *buf,
-                                     uint8_t buf_size)
+void ff_flif16_rac_init(FLIF16RangeCoder *rc, GetByteContext *gb, uint8_t *buf,
+                        uint8_t buf_size)
 {
-    FLIF16RangeCoder *rc = av_mallocz(sizeof(*rc));
     GetByteContext gbi;
+    if(!rc)
+        return;
 
-    if (!rc)
-        return NULL;
-    
     if(buf_size < FLIF16_RAC_MAX_RANGE_BYTES)
-        return NULL;
+        return;
     
     bytestream2_init(&gbi, buf, buf_size);
 
@@ -60,7 +57,6 @@ FLIF16RangeCoder *ff_flif16_rac_init(GetByteContext *gb,
         rc->low |= bytestream2_get_byte(&gbi);
     }
     MSG("low = %lu\n", rc->low);
-    return rc;
 }
 
 void ff_flif16_rac_free(FLIF16RangeCoder *rc)

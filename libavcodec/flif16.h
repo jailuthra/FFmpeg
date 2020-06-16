@@ -105,7 +105,7 @@ typedef struct FLIF16Transform {
 typedef struct FLIF16DecoderContext {
     GetByteContext gb;
     FLIF16MANIACContext maniac_ctx;
-    FLIF16RangeCoder *rc;
+    FLIF16RangeCoder rc;
 
     // For now, we will use this to store output
     FLIF16PixelData  *out_frames;
