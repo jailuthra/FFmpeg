@@ -233,13 +233,14 @@ static int flif16_read_transforms(AVCodecContext *avctx)
     FLIF16RangesContext *prev_range;
     uint8_t temp;
 
-    //return AVERROR_EOF;
     loop:
     switch (s->segment) {
         case 0:
             RAC_GET(s->rc, NULL, 0, 0, &temp, FLIF16_RAC_BIT);
-            if(!temp)
+            if(!temp){
+                //return AVERROR_EOF;
                 goto end;
+            }
             ++s->segment;
 
         case 1:
