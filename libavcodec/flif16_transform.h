@@ -59,9 +59,9 @@ static inline void ff_flif16_ranges_close(FLIF16RangesContext* r_ctx){
     FLIF16Ranges* ranges = flif16_ranges[r_ctx->r_no];
     if(ranges->priv_data_size){
         ranges->close(r_ctx);
-        av_freep(r_ctx->priv_data);
+        av_free(r_ctx->priv_data);
     }
-    av_freep(r_ctx);
+    av_freep(&r_ctx);
 }
 
 static inline FLIF16ColorVal ff_flif16_ranges_min(FLIF16RangesContext *r_ctx, int p)
