@@ -245,9 +245,9 @@ typedef struct FLIF16MANIACContext {
     FLIF16MANIACTree **forest;
     FLIF16MANIACStack *stack;
 #ifdef MULTISCALE_CHANCES_ENABLED
-    FLIF16MultiscaleChanceContext *ctx[3];
+    FLIF16MultiscaleChanceContext ctx[3];
 #else
-    FLIF16ChanceContext *ctx[3];
+    FLIF16ChanceContext ctx[3];
 #endif
     unsigned int tree_top;
     unsigned int stack_top;
@@ -259,13 +259,9 @@ FLIF16RangeCoder *ff_flif16_rac_init(GetByteContext *gb, uint8_t *buf,
 
 void ff_flif16_rac_free(FLIF16RangeCoder *rc);
 
-FLIF16ChanceContext *ff_flif16_chancecontext_init(void);
+void ff_flif16_chancecontext_init(FLIF16ChanceContext *ctx);
 
 void ff_flif16_chancetable_init(FLIF16ChanceTable *ct, int alpha, int cut);
-
-FLIF16MultiscaleChanceContext *ff_flif16_multiscale_chancecontext_init(void);
-
-FLIF16MultiscaleChanceTable *ff_flif16_multiscale_chancetable_init(void);
 
 void ff_flif16_build_log4k_table(FLIF16Log4kTable *log4k);
 
@@ -276,6 +272,11 @@ int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
                                unsigned int channel);
 
 #ifdef MULTISCALE_CHANCES_ENABLED
+
+void ff_flif16_multiscale_chancecontext_init(FLIF16MultiscaleChanceContext *ctx);
+
+FLIF16MultiscaleChanceTable *ff_flif16_multiscale_chancetable_init(void);
+
 FLIF16MultiscaleChanceContext *ff_flif16_maniac_findleaf(FLIF16MANIACContext *m,
                                                          uint8_t channel,
                                                          int32_t *properties);

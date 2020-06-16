@@ -137,13 +137,11 @@ void ff_flif16_chancetable_init(FLIF16ChanceTable *ct, int alpha, int cut)
     build_table(ct->zero_state, ct->one_state, 4096, alpha, 4096 - cut);
 }
 
-FLIF16ChanceContext *ff_flif16_chancecontext_init(void)
+void ff_flif16_chancecontext_init(FLIF16ChanceContext *ctx)
 {
-    FLIF16ChanceContext *ctx = av_mallocz(sizeof(*ctx));
     if(!ctx)
-        return NULL;
-    memcpy(ctx->data, &flif16_nz_int_chances, sizeof(flif16_nz_int_chances));
-    return ctx;
+        return;
+    memcpy(&ctx->data, &flif16_nz_int_chances, sizeof(flif16_nz_int_chances));
 }
 
 #ifdef MULTISCALE_CHANCES_ENABLED
@@ -163,9 +161,8 @@ FLIF16MultiscaleChanceTable *ff_flif16_multiscale_chancetable_init(void)
 /**
  * Allocate and set all chances according to flif16_nz_int_chances
  */
-FLIF16MultiscaleChanceContext *ff_flif16_multiscale_chancecontext_init(void)
+void ff_flif16_multiscale_chancecontext_init(FLIF16MultiscaleChanceContext *ctx)
 {
-    FLIF16MultiscaleChanceContext *ctx = av_malloc(sizeof(*ctx));
     for (int i = 0; i < sizeof(flif16_nz_int_chances) /
                         sizeof(flif16_nz_int_chances[0]); ++i)
         ff_flif16_multiscale_chance_set(&ctx->data[i], flif16_nz_int_chances[i]);
@@ -199,25 +196,25 @@ int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
         if (!tree->data) {
             return AVERROR(ENOMEM);
         }
-        m->stack = av_malloc(MANIAC_TREE_BASE_SIZE * sizeof(*(m->stack)));
+
+        m->stack = av_mallocz(MANIAC_TREE_BASE_SIZE * sizeof(*(m->stack)));
+
         if (!((tree->data) && (m->stack)))
             return AVERROR(ENOMEM);
+
         for (int i = 0; i < 3; ++i) {
             #ifdef MULTISCALE_CHANCES_ENABLED
-            m->ctx[i] = ff_flif16_multiscale_chancecontext_init();
+            ff_flif16_multiscale_chancecontext_init(&m->ctx[i]);
             #else
-            m->ctx[i] = ff_flif16_chancecontext_init();
+            ff_flif16_chancecontext_init(&m->ctx[i]);
             #endif
-            if((unsigned long int) m->ctx[i] > (unsigned long int)  m->stack &&
-               (unsigned long int) m->ctx[i] < (unsigned long int)  (m->stack +
-                MANIAC_TREE_BASE_SIZE * sizeof(*(m->stack))))
+            if(((unsigned long int) &m->ctx[i] > (unsigned long int)  m->stack) &&
+               ((unsigned long int) &m->ctx[i] < (unsigned long int)  (m->stack +
+                MANIAC_TREE_BASE_SIZE * sizeof(*(m->stack)))))
                printf("[ !!! ] overlapping %lu %lu %lu\n",
-               (unsigned long int) m->ctx[i],
+               (unsigned long int) &m->ctx[i],
                (unsigned long int) m->stack,
                (unsigned long int) (m->stack + MANIAC_TREE_BASE_SIZE * sizeof(*(m->stack))));
-            if (!m->ctx[i]) {
-                return AVERROR(ENOMEM);
-            }
         }
         m->stack_top = m->tree_top = 0;
         tree->size    = MANIAC_TREE_BASE_SIZE;
@@ -259,13 +256,13 @@ int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
 
         case 1:
             // int p = tree[stack[top]].property = coder[0].read_int2(0,nb_properties) - 1;
-            //#ifdef MULTISCALE_CHANCES_ENABLED
-            //RAC_GET(rc, m->ctx[0], 0, prop_ranges_size, &curr_node->property,
-            //        FLIF16_RAC_GNZ_MULTISCALE_INT);
-            //#else
-            RAC_GET(rc, m->ctx[0], 0, prop_ranges_size, &curr_node->property,
+            #ifdef MULTISCALE_CHANCES_ENABLED
+            RAC_GET(rc, &m->ctx[0], 0, prop_ranges_size, &curr_node->property,
+                    FLIF16_RAC_GNZ_MULTISCALE_INT);
+            #else
+            RAC_GET(rc, &m->ctx[0], 0, prop_ranges_size, &curr_node->property,
                     FLIF16_RAC_GNZ_INT);
-            //#endif
+            #endif
             p = --(curr_node->property);
             if (p == -1) {
                 printf(____PAD "leaf %d\n", curr_stack->id);
@@ -285,23 +282,23 @@ int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
             //tree[stack[top]].count = coder[1].read_int2(CONTEXT_TREE_MIN_COUNT,
             //                                            CONTEXT_TREE_MAX_COUNT);
             #ifdef MULTISCALE_CHANCES_ENABLED
-            RAC_GET(rc, m->ctx[1], MANIAC_TREE_MIN_COUNT, MANIAC_TREE_MAX_COUNT,
+            RAC_GET(rc, &m->ctx[1], MANIAC_TREE_MIN_COUNT, MANIAC_TREE_MAX_COUNT,
                     &curr_node->count, FLIF16_RAC_GNZ_MULTISCALE_INT);
             #else
-            RAC_GET(rc, m->ctx[1], MANIAC_TREE_MIN_COUNT, MANIAC_TREE_MAX_COUNT,
+            RAC_GET(rc, &m->ctx[1], MANIAC_TREE_MIN_COUNT, MANIAC_TREE_MAX_COUNT,
                     &curr_node->count, FLIF16_RAC_GNZ_INT);
             #endif
             ++rc->segment;
 
         case 3:
             // int splitval = n.splitval = coder[2].read_int2(oldmin, oldmax-1);
-            //#ifdef MULTISCALE_CHANCES_ENABLED
-            //RAC_GET(rc, m->ctx[2], oldmin, oldmax - 1, &curr_node->split_val,
-            //        FLIF16_RAC_GNZ_MULTISCALE_INT);
-            //#else
-            RAC_GET(rc, m->ctx[2], oldmin, oldmax - 1, &curr_node->split_val,
+            #ifdef MULTISCALE_CHANCES_ENABLED
+            RAC_GET(rc, &m->ctx[2], oldmin, oldmax - 1, &curr_node->split_val,
+                    FLIF16_RAC_GNZ_MULTISCALE_INT);
+            #else
+            RAC_GET(rc, &m->ctx[2], oldmin, oldmax - 1, &curr_node->split_val,
                     FLIF16_RAC_GNZ_INT);
-            //#endif
+            #endif
             split_val = curr_node->split_val;
             ++rc->segment;
 
