@@ -261,7 +261,7 @@ static int flif16_read_transforms(AVCodecContext *avctx)
             s->range = ff_flif16_transform_meta(s->transforms[s->transform_top], s->range);
             printf("Ranges : %d\n", s->range->r_no);
             if (prev_range)
-                av_free(&prev_range);
+                av_freep(&prev_range);
             s->segment = 0;
             ++s->transform_top;
             goto loop;
@@ -304,7 +304,6 @@ static int flif16_read_maniac_forest(AVCodecContext *avctx)
             printf("channel: %d\n", s->i);
             if (s->i >= s->channels)
                 goto end;
-            __PLN__
             s->prop_ranges = ff_flif16_maniac_ni_prop_ranges_init(&s->prop_ranges_size, s->range,
                                                                   s->i, s->channels);
             printf("Prop ranges:\n");
@@ -312,7 +311,6 @@ static int flif16_read_maniac_forest(AVCodecContext *avctx)
                 printf("(%d, %d)\n", s->prop_ranges[i][0], s->prop_ranges[i][1]);
             if(!s->prop_ranges)
                 return AVERROR(ENOMEM);
-            __PLN__
             ++s->segment;
 
         case 1:

@@ -139,7 +139,7 @@ void ff_flif16_chancetable_init(FLIF16ChanceTable *ct, int alpha, int cut)
 
 FLIF16ChanceContext *ff_flif16_chancecontext_init(void)
 {
-    FLIF16ChanceContext *ctx = av_malloc(sizeof(flif16_nz_int_chances));
+    FLIF16ChanceContext *ctx = av_mallocz(sizeof(*ctx));
     if(!ctx)
         return NULL;
     memcpy(ctx->data, &flif16_nz_int_chances, sizeof(flif16_nz_int_chances));
@@ -181,6 +181,8 @@ int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
                                unsigned int prop_ranges_size,
                                unsigned int channel)
 {
+    // There is a problem with "overlapping" mallocs over here. Apparently
+    // Mitigable by a large malloc
     FLIF16MANIACTree  *tree;
     FLIF16MANIACNode  *curr_node;
     FLIF16MANIACStack *curr_stack;
@@ -206,7 +208,13 @@ int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
             #else
             m->ctx[i] = ff_flif16_chancecontext_init();
             #endif
-
+            if((unsigned long int) m->ctx[i] > (unsigned long int)  m->stack &&
+               (unsigned long int) m->ctx[i] < (unsigned long int)  (m->stack +
+                MANIAC_TREE_BASE_SIZE * sizeof(*(m->stack))))
+               printf("[ !!! ] overlapping %lu %lu %lu\n",
+               (unsigned long int) m->ctx[i],
+               (unsigned long int) m->stack,
+               (unsigned long int) (m->stack + MANIAC_TREE_BASE_SIZE * sizeof(*(m->stack))));
             if (!m->ctx[i]) {
                 return AVERROR(ENOMEM);
             }
@@ -227,11 +235,10 @@ int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
             start:
             if(!m->stack_top)
                 goto end;
-            printf("%u %u ::\n", m->stack_top, m->tree_top);
             curr_stack = &m->stack[m->stack_top - 1];
             curr_node  = &tree->data[curr_stack->id];
             oldp = curr_stack->p;
-            if(!curr_stack->visited){
+            if (!curr_stack->visited) {
                 switch (curr_stack->mode) {
                     case 1:
                         prop_ranges[oldp][0] = curr_stack->min;
@@ -358,9 +365,9 @@ int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
     if (!tree->data)
         return AVERROR(ENOMEM);
     tree->size = m->tree_top;
-    av_freep(m->stack);
+    av_freep(&m->stack);
     for (int i = 0; i < 3; ++i)
-        av_free(m->ctx[i]);
+        av_freep(&m->ctx[i]);
     return 0;
 
     need_more_data:
