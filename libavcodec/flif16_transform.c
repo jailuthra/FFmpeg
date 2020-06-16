@@ -58,7 +58,7 @@ typedef struct transform_priv_channelcompact {
 
 typedef struct transform_priv_bounds {
     FLIF16ColorVal *bounds[2];
-    FLIF16ColorVal min;
+    int min;
     FLIF16ChanceContext *ctx_a;
 } transform_priv_bounds;
 
@@ -573,7 +573,7 @@ static FLIF16RangesContext* transform_ycocg_meta(FLIF16TransformContext* ctx,
     transform_priv_ycocg* trans_data = ctx->priv_data;
     int num_planes = src_ctx->num_planes;
     //flif16_ranges[src->ctx]->close()
-    src_ctx = av_mallocz(sizeof(FLIF16Ranges));
+    src_ctx = av_mallocz(sizeof(FLIF16RangesContext));
     src_ctx->r_no = FLIF16_RANGES_YCOCG;
     src_ctx->priv_data = av_mallocz(sizeof(ranges_priv_ycocg));
     data = src_ctx->priv_data;
@@ -964,7 +964,7 @@ static uint8_t transform_bounds_read(FLIF16TransformContext* ctx,
 {
     transform_priv_bounds *data = ctx->priv_data;
     FLIF16Ranges* ranges = flif16_ranges[src_ctx->r_no];
-    FLIF16ColorVal max;
+    int max;
     start:
     printf("ctx->i : %d\n", ctx->i);
     if(ctx->i < dec_ctx->channels){

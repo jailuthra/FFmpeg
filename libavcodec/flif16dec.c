@@ -219,7 +219,6 @@ static int flif16_read_second_header(AVCodecContext *avctx)
     ff_flif16_chancetable_init(&s->rc->ct,
                                CHANCETABLE_DEFAULT_ALPHA,
                                CHANCETABLE_DEFAULT_CUT);
-    // return AVERROR_EOF; // Remove this when testing out transforms.
     return 0;
 
     need_more_data:
@@ -241,8 +240,6 @@ static int flif16_read_transforms(AVCodecContext *avctx)
             RAC_GET(s->rc, NULL, 0, 0, &temp, FLIF16_RAC_BIT);
             if(!temp)
                 goto end;
-            //av_log(avctx, AV_LOG_ERROR, "transforms not implemented\n");
-            //return AVERROR_PATCHWELCOME;
             ++s->segment;
 
         case 1:
@@ -258,7 +255,7 @@ static int flif16_read_transforms(AVCodecContext *avctx)
             ff_flif16_transform_read(s->transforms[s->transform_top], s, s->range);
 
             prev_range = s->range;
-            s->range = ff_flif16_transform_meta(s->transforms[s->transform_top], s->range);
+            s->range = ff_flif16_transform_meta(s->transforms[s->transform_top], prev_range);
             printf("Ranges : %d\n", s->range->r_no);
             if (prev_range)
                 av_freep(&prev_range);
