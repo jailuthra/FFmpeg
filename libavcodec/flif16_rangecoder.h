@@ -39,8 +39,8 @@
 //#define __PLN__ printf("At: [%s] %s, %d\n", __func__, __FILE__, __LINE__);
 //#define MSG(fmt, ...) printf("[%s] " fmt, __func__, ##__VA_ARGS__)
 
-#define __PLN__
-#define MSG(fmt,...) while(0)
+//#define __PLN__
+//#define MSG(fmt,...) while(0)
 
 #define FLIF16_RAC_MAX_RANGE_BITS 24
 #define FLIF16_RAC_MAX_RANGE_BYTES (FLIF16_RAC_MAX_RANGE_BITS / 8)
@@ -392,11 +392,11 @@ static inline int ff_flif16_rac_read_uni_int(FLIF16RangeCoder *rc,
         } else {
             rc->len = med;
         }
-        MSG("min = %d , len = %d\n", rc->min, rc->len);
+        // MSG("min = %d , len = %d\n", rc->min, rc->len);
         return 0;
     } else {
         *target = rc->min;
-        MSG("target = %d\n", rc->min);
+        // MSG("target = %d\n", rc->min);
         rc->active = 0;
         return 1;
     }
@@ -458,7 +458,7 @@ static inline int ff_flif16_rac_nz_read_internal(FLIF16RangeCoder *rc,
                                                  uint16_t type, uint8_t *target)
 {
     int flag = 0;
-    __PLN__
+    // __PLN__
     // Maybe remove the while loop
     while (!flag) {
         if (rc->renorm) {
@@ -480,8 +480,10 @@ static inline int ff_flif16_rac_read_nz_int(FLIF16RangeCoder *rc,
                                             FLIF16ChanceContext *ctx,
                                             int min, int max, int *target)
 {
-    int temp = 0;
-
+    uint8_t temp = 0;
+    // printf("rc: %lu ctx: %lu min: %d max: %d target: %lu\n",
+    //        (long unsigned int) rc, (long unsigned int) ctx, min, max,
+    //        (long unsigned int) target);
     if (min == max) {
         *target = min;
         goto end;
@@ -502,7 +504,7 @@ static inline int ff_flif16_rac_read_nz_int(FLIF16RangeCoder *rc,
                 *target = 0;
                 goto end;
             }
-            ++rc->segment;__PLN__
+            ++rc->segment;
 
         case 1:
             if (min < 0) {
@@ -517,7 +519,7 @@ static inline int ff_flif16_rac_read_nz_int(FLIF16RangeCoder *rc,
             rc->amax = (rc->sign ? max : -min);
             rc->emax = ff_log2(rc->amax);
             rc->e    = ff_log2(rc->amin);
-            ++rc->segment;__PLN__
+            ++rc->segment;
 
         case 2:
             for (; (rc->e) < (rc->emax); (rc->e++)) {
@@ -530,7 +532,7 @@ static inline int ff_flif16_rac_read_nz_int(FLIF16RangeCoder *rc,
             rc->have = (1 << (rc->e));
             rc->left = rc->have - 1;
             rc->pos  = rc->e;
-            ++rc->segment;__PLN__
+            ++rc->segment;
 
          /*
           case 3 and case 4 mimic a for loop.
@@ -545,7 +547,7 @@ static inline int ff_flif16_rac_read_nz_int(FLIF16RangeCoder *rc,
             rc->left >>= 1;
             rc->minabs1 = (rc->have) | (1 << (rc->pos));
             rc->maxabs0 = (rc->have) | (rc->left);
-            ++rc->segment;__PLN__
+            ++rc->segment;
 
         case 4:
             if ((rc->minabs1) > (rc->amax)) {
@@ -854,7 +856,7 @@ static inline int ff_flif16_rac_process(FLIF16RangeCoder *rc,
                 break;
 #endif
             default:
-                MSG("unknown rac reader\n");
+                // MSG("unknown rac reader\n");
                 break;
         }
     }

@@ -38,9 +38,9 @@
 // Remove these
 //#define __PLN__ printf("At: [%s] %s, %d\n", __func__, __FILE__, __LINE__);
 //#define MSG(fmt, ...) printf("[%s] " fmt, __func__, ##__VA_ARGS__)
-#include <assert.h>
-#define __PLN__
-#define MSG(fmt,...) while(0)
+//#include <assert.h>
+//#define __PLN__ #error remove me
+//#define MSG(fmt,...) #error remove me
 
 #define FF_FLIF16_VARINT_APPEND(a,x) a = (a << 7) | (uint64_t) (x & 127)
 

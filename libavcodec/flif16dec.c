@@ -90,13 +90,13 @@ static int flif16_read_header(AVCodecContext *avctx)
         FF_FLIF16_VARINT_APPEND(*vlist[i], temp);
         count = 3;
     }
-    __PLN__
+
     s->width++;
     s->height++;
     (s->ia > 4) ? (s->frames += 2) : (s->frames = 1);
 
     // Handle Metadata Chunk. Currently it discards all data.
-    __PLN__
+
     while ((temp = bytestream2_get_byte(&s->gb)) != 0) {
         bytestream2_seek(&s->gb, 3, SEEK_CUR);
         // Read varint
@@ -126,7 +126,7 @@ static int flif16_read_second_header(AVCodecContext *avctx)
             s->buf_count += bytestream2_get_buffer(&s->gb, s->buf + s->buf_count,
                                                FFMIN(bytestream2_get_bytes_left(&s->gb),
                                                (FLIF16_RAC_MAX_RANGE_BYTES - s->buf_count)));
-            MSG("s->buf_count = %d buf = ", s->buf_count);
+            // MSG("s->buf_count = %d buf = ", s->buf_count);
             for(int i = 0; i < FLIF16_RAC_MAX_RANGE_BYTES; ++i)
                 printf("%x ", s->buf[i]);
             printf("\n");
@@ -149,13 +149,13 @@ static int flif16_read_second_header(AVCodecContext *avctx)
                 s->bpc = (s->bpc == '1') ? 255 : 65535;
             s->i = 0;
             s->range = ff_flif16_ranges_static_init(s->channels, s->bpc);
-            MSG("channels : %d & bpc : %d\n", s->channels, s->bpc);
+            // MSG("channels : %d & bpc : %d\n", s->channels, s->bpc);
 
         case 2:
             if (s->channels > 3)
                 RAC_GET(&s->rc, NULL, 0, 1, (uint32_t *) &s->alphazero,
                         FLIF16_RAC_UNI_INT);
-            ++s->segment; __PLN__
+            ++s->segment;
 
         case 3:
             if (s->frames > 1) {
@@ -166,8 +166,7 @@ static int flif16_read_second_header(AVCodecContext *avctx)
             ++s->segment;
 
         case 4:
-            __PLN__
-            MSG("s->segment = %d\n", s->segment);
+            // MSG("s->segment = %d\n", s->segment);
             if (s->frames > 1) {
                 for (; (s->i) < (s->frames); ++(s->i)) {
                     RAC_GET(&s->rc, NULL, 0, 60000, &(s->framedelay[(s->i)]),
@@ -175,12 +174,12 @@ static int flif16_read_second_header(AVCodecContext *avctx)
                 }
                 s->i = 0;
             }
-            ++s->segment; __PLN__
+            ++s->segment;
 
         case 5:
             // Has custom alpha flag
             RAC_GET(&s->rc, NULL, 0, 1, &s->customalpha, FLIF16_RAC_UNI_INT);
-            MSG("has_custom_cutoff_alpha = %d\n", s->customalpha);
+            // MSG("has_custom_cutoff_alpha = %d\n", s->customalpha);
             ++s->segment;
 
         case 6:
@@ -218,7 +217,7 @@ static int flif16_read_second_header(AVCodecContext *avctx)
     return 0;
 
     need_more_data:
-    MSG("Need more data\n");
+    // MSG("Need more data\n");
     return AVERROR(EAGAIN);
 }
 
@@ -280,7 +279,6 @@ static int flif16_read_maniac_forest(AVCodecContext *avctx)
     FLIF16DecoderContext *s = avctx->priv_data;
     printf("called\n");
     if (!s->maniac_ctx.forest) {
-        __PLN__
         s->maniac_ctx.forest = av_mallocz((s->channels) * sizeof(*(s->maniac_ctx.forest)));
         if (!s->maniac_ctx.forest) {
             av_log(avctx, AV_LOG_ERROR, "could not allocate \n");
@@ -316,7 +314,6 @@ static int flif16_read_maniac_forest(AVCodecContext *avctx)
                 goto need_more_data;
             av_freep(&s->prop_ranges);
             --s->segment;
-            __PLN__
             ++s->i;
             goto loop;
     }
@@ -424,9 +421,9 @@ static int flif16_decode_frame(AVCodecContext *avctx,
     const uint8_t *buf      = avpkt->data;
     int buf_size            = avpkt->size;
     AVFrame *p              = data;
-    MSG("Packet Size = %d\n", buf_size);
+    // MSG("Packet Size = %d\n", buf_size);
     bytestream2_init(&s->gb, buf, buf_size);
-    __PLN__
+
     // Looping is done to change states in between functions.
     // Function will either exit on AVERROR(EAGAIN) or AVERROR_EOF
     do {
@@ -448,7 +445,6 @@ static int flif16_decode_frame(AVCodecContext *avctx,
                 break;
 
             case FLIF16_PIXELDATA:
-                __PLN__
                 ret = flif16_read_pixeldata(avctx, p);
                 break;
 
