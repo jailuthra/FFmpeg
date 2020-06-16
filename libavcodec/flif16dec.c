@@ -255,10 +255,10 @@ static int flif16_read_transforms(AVCodecContext *avctx)
             ff_flif16_transform_read(s->transforms[s->transform_top], s, s->range);
 
             prev_range = s->range;
-            s->range = ff_flif16_transform_meta(s->transforms[s->transform_top], s->range);
+            s->range = ff_flif16_transform_meta(s->transforms[s->transform_top], prev_range);
             printf("Ranges : %d\n", s->range->r_no);
-            if (prev_range)
-                av_free(prev_range);
+            //if (prev_range)
+            //    av_free(prev_range);
             s->segment = 0;
             ++s->transform_top;
             goto loop;

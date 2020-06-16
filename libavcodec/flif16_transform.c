@@ -573,7 +573,7 @@ static FLIF16RangesContext* transform_ycocg_meta(FLIF16TransformContext* ctx,
     transform_priv_ycocg* trans_data = ctx->priv_data;
     int num_planes = src_ctx->num_planes;
     //flif16_ranges[src->ctx]->close()
-    src_ctx = av_mallocz(sizeof(FLIF16Ranges));
+    src_ctx = av_mallocz(sizeof(FLIF16RangesContext));
     src_ctx->r_no = FLIF16_RANGES_YCOCG;
     src_ctx->priv_data = av_mallocz(sizeof(ranges_priv_ycocg));
     data = src_ctx->priv_data;
