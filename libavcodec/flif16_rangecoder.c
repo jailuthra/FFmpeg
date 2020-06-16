@@ -230,6 +230,9 @@ int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
     switch (rc->segment) {
         case 0:
             start:
+            //for(unsigned int i = 0; i < prop_ranges_size; ++i)
+            //    printf("%u: (%d, %d) ", i, prop_ranges[i][0], prop_ranges[i][1]);
+            //printf("\n");
             if(!m->stack_top)
                 goto end;
             curr_stack = &m->stack[m->stack_top - 1];
@@ -238,15 +241,18 @@ int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
             if (!curr_stack->visited) {
                 switch (curr_stack->mode) {
                     case 1:
+                        printf("Right curr: %d pval: %u\n", curr_stack->id, oldp);
                         prop_ranges[oldp][0] = curr_stack->min;
                         prop_ranges[oldp][1] = curr_stack->max;
                         break;
 
                     case 2:
+                        printf("Left curr: %d pval: %u\n", curr_stack->id, oldp);
                         prop_ranges[oldp][0] = curr_stack->min;
                         break;
                 }
             } else {
+                printf("Back curr: %d pval: %u\n", curr_stack->id, oldp);
                 prop_ranges[oldp][1] = curr_stack->max2;
                 --m->stack_top;
                 goto start;
@@ -322,6 +328,7 @@ int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
             m->stack_size *= 2;
             
             // WHEN GOING BACK UP THE TREE
+            curr_stack->p    = p;
             curr_stack->max2 = oldmax;
 
             // PUSH 1
@@ -363,8 +370,8 @@ int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
         return AVERROR(ENOMEM);
     tree->size = m->tree_top;
     av_freep(&m->stack);
-    for (int i = 0; i < 3; ++i)
-        av_freep(&m->ctx[i]);
+    //for (int i = 0; i < 3; ++i)
+    //    av_freep(&m->ctx[i]);
     return 0;
 
     need_more_data:
