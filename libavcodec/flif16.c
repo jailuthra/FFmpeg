@@ -43,7 +43,6 @@ int32_t  (*ff_flif16_maniac_ni_prop_ranges_init(unsigned int *prop_ranges_size,
     int32_t (*prop_ranges)[2];
     unsigned int top = 0;
     unsigned int size = (((property < 3) ? property : 0) + 2 + 5);
-    assert(ranges);
     *prop_ranges_size = size;
     prop_ranges = av_mallocz(sizeof(*prop_ranges) * size);
     if (property < 3) {
@@ -66,28 +65,3 @@ int32_t  (*ff_flif16_maniac_ni_prop_ranges_init(unsigned int *prop_ranges_size,
     }
     return prop_ranges;
 }
-/*
- *
- *     propRanges.clear();
-    int min = ranges.min(p);
-    int max = ranges.max(p);
-    int mind = min - max, maxd = max - min;
-    __PLN__
-    MSG("pval: %d\n", p);
-    if (p < 3) {
-        for (int pp = 0; pp < p; pp++) {
-            propRanges.push_back(std::make_pair(ranges.min(pp), ranges.max(pp)));  // pixels on previous planes
-            __PLN__
-        }
-        if (ranges.numPlanes()>3) propRanges.push_back(std::make_pair(ranges.min(3), ranges.max(3)));  // pixel on alpha plane
-    }
-    propRanges.push_back(std::make_pair(min,max));   // guess (median of 3)
-    propRanges.push_back(std::make_pair(0,2));       // which predictor was it
-    __PLN__
-    propRanges.push_back(std::make_pair(mind,maxd));
-    propRanges.push_back(std::make_pair(mind,maxd));
-    propRanges.push_back(std::make_pair(mind,maxd));
-    propRanges.push_back(std::make_pair(mind,maxd));
-    propRanges.push_back(std::make_pair(mind,maxd));
-    __PLN__*/
-

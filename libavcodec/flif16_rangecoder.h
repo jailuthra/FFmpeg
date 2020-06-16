@@ -56,7 +56,7 @@
 #define MULTISCALE_CHANCETABLE_DEFAULT_SIZE 6
 #define MULTISCALE_CHANCETABLE_DEFAULT_CUT  8
 
-#define MANIAC_TREE_BASE_SIZE 16
+#define MANIAC_TREE_BASE_SIZE 160
 #define MANIAC_TREE_MIN_COUNT 1
 #define MANIAC_TREE_MAX_COUNT 512
 
@@ -159,12 +159,12 @@ static uint16_t flif16_nz_int_chances[] = {
 
 
 typedef struct FLIF16MultiscaleChanceContext {
-    FLIF16MultiscaleChance data[sizeof(flif16_nz_int_chances)];
+    FLIF16MultiscaleChance data[sizeof(flif16_nz_int_chances)/sizeof(flif16_nz_int_chances[0])];
 } FLIF16MultiscaleChanceContext;
 
 // Maybe rename to symbol context
 typedef struct FLIF16ChanceContext {
-    uint16_t data[sizeof(flif16_nz_int_chances)];
+    uint16_t data[sizeof(flif16_nz_int_chances)/sizeof(flif16_nz_int_chances[0])];
 } FLIF16ChanceContext;
 
 // rc->renorm may be useless. Check.
@@ -439,13 +439,12 @@ static inline uint8_t ff_flif16_rac_read_symbol(FLIF16RangeCoder *rc,
                                                 uint16_t type,
                                                 uint8_t *target)
 {
-    printf("type %u, chance: %u\n", type, ctx->data[type]);
     ff_flif16_rac_read_chance(rc, ctx->data[type], target);
     ff_flif16_chancetable_put(rc, ctx, type, *target);
-    printf("%s ", __func__);
-    for(int i = 0; i < sizeof(flif16_nz_int_chances)/sizeof(flif16_nz_int_chances[0]); ++i)
-        printf("%u ", ctx->data[i]);
-    printf("\n");
+    //printf("%s ", __func__);
+    //for(int i = 0; i < sizeof(flif16_nz_int_chances)/sizeof(flif16_nz_int_chances[0]); ++i)
+    //    printf("%u ", ctx->data[i]);
+    //printf("\n");
     if(ctx->data[type] >= 4096)
         printf("[ !!! ] Out of bounds type: %u chance: %u\n", type, ctx->data[type]);
     return 1;
