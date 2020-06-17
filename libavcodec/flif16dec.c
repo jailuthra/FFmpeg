@@ -252,12 +252,15 @@ static int flif16_read_transforms(AVCodecContext *avctx)
                 return AVERROR_PATCHWELCOME;
             }
             s->transforms[s->transform_top] = ff_flif16_transform_init(temp, s->range);
+            if(!s->transforms[s->transform_top])
+                return AVERROR_EXIT;
             //printf("%d\n", s->transforms[s->transform_top]->t_no);
-            ff_flif16_transform_read(s->transforms[s->transform_top], s, s->range);
-
-            // Create prev_range stack for freeing the pointers later.
+            if(!ff_flif16_transform_read(s->transforms[s->transform_top], s, s->range))
+                return AVERROR_EXIT;
             prev_range = s->range;
             s->range = ff_flif16_transform_meta(s->transforms[s->transform_top], prev_range);
+            if(!s->range)
+                return AVERROR_EXIT;
             printf("Ranges : %d\n", s->range->r_no);
             s->segment = 0;
             ++s->transform_top;
