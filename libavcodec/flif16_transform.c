@@ -642,7 +642,7 @@ static uint8_t transform_ycocg_reverse(FLIF16TransformContext *ctx,
             pixel_data->data[2][r*width + c] = B;
         }
     }
-    return 0;
+    return 1;
 }
 
 static void transform_ycocg_close(FLIF16TransformContext *ctx){
@@ -1115,7 +1115,8 @@ FLIF16TransformContext *ff_flif16_transform_init(int t_no, FLIF16RangesContext* 
     ctx->i         = 0;
 
     if (trans->init)
-        trans->init(ctx, r_ctx);
+        if(!trans->init(ctx, r_ctx))
+            return NULL;
     
     return ctx;
 }
