@@ -176,62 +176,62 @@ int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
 {
     // There is a problem with "overlapping" mallocs over here. Apparently
     // Mitigable by a large malloc
-    FLIF16MANIACTree  *tree = NULL;
     int oldp = 0, p = 0, oldmin = 0, oldmax = 0, split_val = 0;
     //printf("rc: %lu \nm: %lu\nprop_ranges: %lu\npsize: %lu \nchannel: %u\n",
     //       (long unsigned int)rc, (long unsigned int)m, (long unsigned int)prop_ranges,
     //       (long unsigned int)prop_ranges_size, channel);
 
-    if (!(m->forest[channel])) {
-        printf("[MANIAC Tree Trace]\npos\tprop\tcount\tsplitv\tchild\toldmin\toldmax\n");
-        m->forest[channel] = av_mallocz(sizeof(*(m->forest[channel])));
-        if (!(m->forest[channel]))
-            return AVERROR(ENOMEM);
-        m->forest[channel]->data  = av_mallocz(MANIAC_TREE_BASE_SIZE *
-                                               sizeof(*(m->forest[channel]->data)));
-        if (!m->forest[channel]->data)
-            return AVERROR(ENOMEM);
+    switch (rc->segment2) {
+        default: case 0:
+            rc->segment2 = 0;
+            if (!(m->forest[channel])) {
+                printf("[MANIAC Tree Trace]\npos\tprop\tcount\tsplitv\tchild\toldmin\toldmax\n");
+                m->forest[channel] = av_mallocz(sizeof(*(m->forest[channel])));
+                if (!(m->forest[channel]))
+                    return AVERROR(ENOMEM);
+                m->forest[channel]->data  = av_mallocz(MANIAC_TREE_BASE_SIZE *
+                                                       sizeof(*(m->forest[channel]->data)));
+                if (!m->forest[channel]->data)
+                    return AVERROR(ENOMEM);
 
-        tree = m->forest[channel];
-        m->stack = av_mallocz(MANIAC_TREE_BASE_SIZE * sizeof(*(m->stack)));
-    
-        if (!(m->stack))
-            return AVERROR(ENOMEM);
+                m->stack = av_mallocz(MANIAC_TREE_BASE_SIZE * sizeof(*(m->stack)));
+            
+                if (!(m->stack))
+                    return AVERROR(ENOMEM);
 
-        for (int i = 0; i < 3; ++i) {
-            #ifdef MULTISCALE_CHANCES_ENABLED
-            ff_flif16_multiscale_chancecontext_init(&m->ctx[i]);
-            #else
-            ff_flif16_chancecontext_init(&m->ctx[i]);
-            #endif
-            if(((unsigned long int) &m->ctx[i] > (unsigned long int)  m->stack) &&
-               ((unsigned long int) &m->ctx[i] < (unsigned long int)  (m->stack +
-                MANIAC_TREE_BASE_SIZE * sizeof(*(m->stack)))))
-               printf("[ !!! ] overlapping %lu %lu %lu\n",
-               (unsigned long int) &m->ctx[i],
-               (unsigned long int) m->stack,
-               (unsigned long int) (m->stack + MANIAC_TREE_BASE_SIZE * sizeof(*(m->stack))));
-        }
-        m->stack_top = m->tree_top = 0;
-        tree->size    = MANIAC_TREE_BASE_SIZE;
-        m->stack_size = MANIAC_TREE_BASE_SIZE;
-        m->stack[m->stack_top].id   = m->tree_top;
-        m->stack[m->stack_top].mode = 0;
-        ++m->stack_top;
-        ++m->tree_top;
-    } else {
-        return AVERROR(EINVAL);
-    }
-
-    switch (rc->segment) {
-        case 0:
+                for (int i = 0; i < 3; ++i) {
+                    #ifdef MULTISCALE_CHANCES_ENABLED
+                    ff_flif16_multiscale_chancecontext_init(&m->ctx[i]);
+                    #else
+                    ff_flif16_chancecontext_init(&m->ctx[i]);
+                    #endif
+                    if(((unsigned long int) &m->ctx[i] > (unsigned long int)  m->stack) &&
+                       ((unsigned long int) &m->ctx[i] < (unsigned long int)  (m->stack +
+                        MANIAC_TREE_BASE_SIZE * sizeof(*(m->stack)))))
+                       printf("[ !!! ] overlapping %lu %lu %lu\n",
+                       (unsigned long int) &m->ctx[i],
+                       (unsigned long int) m->stack,
+                       (unsigned long int) (m->stack + MANIAC_TREE_BASE_SIZE * sizeof(*(m->stack))));
+                }
+                m->stack_top = m->tree_top = 0;
+                m->forest[channel]->size    = MANIAC_TREE_BASE_SIZE;
+                m->stack_size = MANIAC_TREE_BASE_SIZE;
+                m->stack[m->stack_top].id   = m->tree_top;
+                m->stack[m->stack_top].mode = 0;
+                ++m->stack_top;
+                ++m->tree_top;
+            }
+            ++rc->segment2;
+        
+        case 1:
             start:
             //for(unsigned int i = 0; i < prop_ranges_size; ++i)
             //    printf("%u: (%d, %d) ", i, prop_ranges[i][0], prop_ranges[i][1]);
             //printf("\n");
             if(!m->stack_top)
                 goto end;
-            // printf(">>>>>>>>>>>>> %u %lu \n", m->stack[m->stack_top - 1]->id, (long unsigned int) &tree->data[m->stack[m->stack_top - 1]->id]);
+
+            // printf(">>>>>>>>>>>>> %u %lu \n", m->stack[m->stack_top - 1]->id, (long unsigned int) &m->forest[channel]->data[m->stack[m->stack_top - 1]->id]);
             oldp = m->stack[m->stack_top - 1].p;
             if (!m->stack[m->stack_top - 1].visited) {
                 switch (m->stack[m->stack_top - 1].mode) {
@@ -250,33 +250,35 @@ int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
                 printf("Back curr: %d pval: %u\n", m->stack[m->stack_top - 1].id, oldp);
                 prop_ranges[oldp][1] = m->stack[m->stack_top - 1].max2;
                 --m->stack_top;
-                rc->segment = 0;
+                rc->segment2 = 1;
                 goto start;
             }
             m->stack[m->stack_top - 1].visited = 1;
-            ++rc->segment;
+            ++rc->segment2;
 
-        case 1:
+        case 2:
             // int p = tree[stack[top]].property = coder[0].read_int2(0,nb_properties) - 1;
 
             // printf("1: min: %d max: %d target: %lu\n", 0, prop_ranges_size,
-            //       (long unsigned int) &tree->data[curr_stack->id]->property);
+            //       (long unsigned int) &m->forest[channel]->data[curr_stack->id]->property);
             #ifdef MULTISCALE_CHANCES_ENABLED
-            RAC_GET(rc, &m->ctx[0], 0, prop_ranges_size, &tree->data[m->stack[m->stack_top - 1].id].property,
+            RAC_GET(rc, &m->ctx[0], 0, prop_ranges_size,
+                    &m->forest[channel]->data[m->stack[m->stack_top - 1].id].property,
                     FLIF16_RAC_GNZ_MULTISCALE_INT);
             #else
-            RAC_GET(rc, &m->ctx[0], 0, prop_ranges_size, &tree->data[m->stack[m->stack_top - 1].id].property,
+            RAC_GET(rc, &m->ctx[0], 0, prop_ranges_size,
+                    &m->forest[channel]->data[m->stack[m->stack_top - 1].id].property,
                     FLIF16_RAC_GNZ_INT);
             #endif
-            p = --(tree->data[m->stack[m->stack_top - 1].id].property);
+            p = --(m->forest[channel]->data[m->stack[m->stack_top - 1].id].property);
             if (p == -1) {
                 printf(____PAD "leaf %d\n", m->stack[m->stack_top - 1].id);
                 --m->stack_top;
-                rc->segment = 0;
+                rc->segment2 = 1;
                 goto start;
             }
 
-            tree->data[m->stack[m->stack_top - 1].id].child_id = m->tree_top;
+            m->forest[channel]->data[m->stack[m->stack_top - 1].id].child_id = m->tree_top;
             oldmin = prop_ranges[p][0];
             oldmax = prop_ranges[p][1];
             //printf("oldmin,oldmax: %d %d %d %d\n",  oldmin, oldmax, prop_ranges[p][0],
@@ -285,53 +287,58 @@ int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
                 printf("!!! oldmin >= oldmax\n");
                 return AVERROR(EINVAL);
             }
-            ++rc->segment;
+            ++rc->segment2;
 
-        case 2:
+        case 3:
             //tree[stack[top]].count = coder[1].read_int2(CONTEXT_TREE_MIN_COUNT,
             //                                            CONTEXT_TREE_MAX_COUNT);
 
             //printf("2: min: %d max: %d target: %lu\n", MANIAC_TREE_MIN_COUNT,
-            //       MANIAC_TREE_MAX_COUNT, (long unsigned int) &tree->data[curr_stack->id]->count);
+            //       MANIAC_TREE_MAX_COUNT, (long unsigned int) &m->forest[channel]->data[curr_stack->id]->count);
             #ifdef MULTISCALE_CHANCES_ENABLED
             RAC_GET(rc, &m->ctx[1], MANIAC_TREE_MIN_COUNT, MANIAC_TREE_MAX_COUNT,
-                    &tree->data[m->stack[m->stack_top - 1].id].count, FLIF16_RAC_GNZ_MULTISCALE_INT);
+                    &m->forest[channel]->data[m->stack[m->stack_top - 1].id].count,
+                    FLIF16_RAC_GNZ_MULTISCALE_INT);
             #else
             RAC_GET(rc, &m->ctx[1], MANIAC_TREE_MIN_COUNT, MANIAC_TREE_MAX_COUNT,
-                    &tree->data[m->stack[m->stack_top - 1].id].count, FLIF16_RAC_GNZ_INT);
+                    &m->forest[channel]->data[m->stack[m->stack_top - 1].id].count,
+                    FLIF16_RAC_GNZ_INT);
             #endif
-            ++rc->segment;
+            ++rc->segment2;
 
-        case 3:
+        case 4:
             // int splitval = n.splitval = coder[2].read_int2(oldmin, oldmax-1);
 
             // printf("3: min: %d max: %d \n", oldmin, oldmax - 1);
-            // printf("target: %lu \n", (long unsigned int) &tree->data[curr_stack->id]->split_val);
-            // printf("%d\n", tree->data[curr_stack->id]->split_val);
+            // printf("target: %lu \n", (long unsigned int) &m->forest[channel]->data[curr_stack->id]->split_val);
+            // printf("%d\n", m->forest[channel]->data[curr_stack->id]->split_val);
             #ifdef MULTISCALE_CHANCES_ENABLED
-            RAC_GET(rc, &m->ctx[2], oldmin, oldmax - 1, &tree->data[m->stack[m->stack_top - 1].id].split_val,
+            RAC_GET(rc, &m->ctx[2], oldmin, oldmax - 1,
+                    &m->forest[channel]->data[m->stack[m->stack_top - 1].id].split_val,
                     FLIF16_RAC_GNZ_MULTISCALE_INT);
             #else
-            RAC_GET(rc, &m->ctx[2], oldmin, oldmax - 1, &tree->data[m->stack[m->stack_top - 1].id].split_val,
+            RAC_GET(rc, &m->ctx[2], oldmin, oldmax - 1,
+                    &m->forest[channel]->data[m->stack[m->stack_top - 1].id].split_val,
                     FLIF16_RAC_GNZ_INT);
             #endif
-            split_val = tree->data[m->stack[m->stack_top - 1].id].split_val;
-            ++rc->segment;
+            split_val = m->forest[channel]->data[m->stack[m->stack_top - 1].id].split_val;
+            ++rc->segment2;
 
-        case 4:
+        case 5:
             // \npos\tprop\tcount\tsplitv\tchild\toldmin\toldmax\n"
             printf("%u\t%d\t%d\t%d\t%u\t%d\t%d\n",
             m->stack[m->stack_top - 1].id,
-            tree->data[m->stack[m->stack_top - 1].id].property,
-            tree->data[m->stack[m->stack_top - 1].id].count,
-            tree->data[m->stack[m->stack_top - 1].id].split_val,
-            tree->data[m->stack[m->stack_top - 1].id].child_id, oldmin, oldmax);
+            m->forest[channel]->data[m->stack[m->stack_top - 1].id].property,
+            m->forest[channel]->data[m->stack[m->stack_top - 1].id].count,
+            m->forest[channel]->data[m->stack[m->stack_top - 1].id].split_val,
+            m->forest[channel]->data[m->stack[m->stack_top - 1].id].child_id, oldmin, oldmax);
 
-            if ((m->tree_top + 2) >= tree->size) {
-                tree->data = av_realloc(tree->data, (tree->size) * 2 * sizeof(*(tree->data)));
-                if(!(tree->data))
+            if ((m->tree_top + 2) >= m->forest[channel]->size) {
+                m->forest[channel]->data = av_realloc(m->forest[channel]->data,
+                (m->forest[channel]->size) * 2 * sizeof(*(m->forest[channel]->data)));
+                if(!(m->forest[channel]->data))
                     return AVERROR(ENOMEM);
-                tree->size *= 2;
+                m->forest[channel]->size *= 2;
             }
 
             if ((m->stack_top + 2) >= m->stack_size) {
@@ -361,6 +368,7 @@ int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
             ++m->stack_top;
             printf(____PAD "Next right: %d %d %d %d %d %d\n", m->tree_top + 1,
             p, oldmin, split_val, 1, 0);
+
             // PUSH 2
             // > splitval
             // subrange[p].first = splitval+1;
@@ -375,17 +383,19 @@ int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
             printf(____PAD "Next left: %d %d %d %d %d\n", m->tree_top, p, oldmin, 2, 0);
 
             m->tree_top += 2;
-            rc->segment = 0;
+            rc->segment2 = 1;
             goto start;
     }
 
     end:
     printf("end tree_top = %d\n", m->tree_top);
-    av_realloc(tree->data, m->tree_top); // Maybe replace by fast realloc
-    if (!tree->data)
+    av_realloc(m->forest[channel]->data, m->tree_top); // Maybe replace by fast realloc
+    if (!m->forest[channel]->data)
         return AVERROR(ENOMEM);
-    tree->size = m->tree_top;
+    m->forest[channel]->size = m->tree_top;
     av_freep(&m->stack);
+    m->stack_top = 0;
+    rc->segment2 = 0;
     //for (int i = 0; i < 3; ++i)
     //    av_freep(&m->ctx[i]);
     return 0;

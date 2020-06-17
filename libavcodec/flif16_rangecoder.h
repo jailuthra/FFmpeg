@@ -299,7 +299,6 @@ static inline int ff_flif16_rac_renorm(FLIF16RangeCoder *rc)
     uint32_t left = bytestream2_get_bytes_left(rc->gb);
     //MSG("left = %d\n", left);
     if (!left) {
-        printf("need more data\n");
         return 0;
     }
     while (rc->range <= FLIF16_RAC_MIN_RANGE) {
