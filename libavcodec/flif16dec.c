@@ -249,6 +249,7 @@ static int flif16_read_transforms(AVCodecContext *avctx)
             //printf("%d\n", s->transforms[s->transform_top]->t_no);
             ff_flif16_transform_read(s->transforms[s->transform_top], s, s->range);
 
+            // Create prev_range stack for freeing the pointers later.
             prev_range = s->range;
             s->range = ff_flif16_transform_meta(s->transforms[s->transform_top], prev_range);
             printf("Ranges : %d\n", s->range->r_no);
@@ -259,6 +260,11 @@ static int flif16_read_transforms(AVCodecContext *avctx)
         case 2:
             end:
             s->segment = 2;
+            printf("[Resultant Ranges]\n");
+            for(int i = 0; i < 5; ++i)
+                printf("%d: %d, %d\n", i, ff_flif16_ranges_min(s->range, i),
+                ff_flif16_ranges_max(s->range, i));
+                
             // Read invisible pixel predictor
             if ( s->alphazero && s->channels > 3
                 && ff_flif16_ranges_min(s->range, 3) <= 0
