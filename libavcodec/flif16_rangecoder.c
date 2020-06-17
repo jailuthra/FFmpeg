@@ -177,8 +177,6 @@ int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
     // There is a problem with "overlapping" mallocs over here. Apparently
     // Mitigable by a large malloc
     FLIF16MANIACTree  *tree = NULL;
-    FLIF16MANIACNode  *curr_node = NULL;
-    FLIF16MANIACStack *curr_stack = NULL;
     int oldp = 0, p = 0, oldmin = 0, oldmax = 0, split_val = 0;
     //printf("rc: %lu \nm: %lu\nprop_ranges: %lu\npsize: %lu \nchannel: %u\n",
     //       (long unsigned int)rc, (long unsigned int)m, (long unsigned int)prop_ranges,
@@ -233,52 +231,52 @@ int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
             //printf("\n");
             if(!m->stack_top)
                 goto end;
-            curr_stack = &m->stack[m->stack_top - 1];
-            curr_node  = &tree->data[curr_stack->id];
-            // printf(">>>>>>>>>>>>> %u %lu \n", curr_stack->id, (long unsigned int) &tree->data[curr_stack->id]);
-            oldp = curr_stack->p;
-            if (!curr_stack->visited) {
-                switch (curr_stack->mode) {
+            // printf(">>>>>>>>>>>>> %u %lu \n", m->stack[m->stack_top - 1]->id, (long unsigned int) &tree->data[m->stack[m->stack_top - 1]->id]);
+            oldp = m->stack[m->stack_top - 1].p;
+            if (!m->stack[m->stack_top - 1].visited) {
+                switch (m->stack[m->stack_top - 1].mode) {
                     case 1:
-                        printf("Right curr: %d pval: %u\n", curr_stack->id, oldp);
-                        prop_ranges[oldp][0] = curr_stack->min;
-                        prop_ranges[oldp][1] = curr_stack->max;
+                        printf("Right curr: %d pval: %u\n", m->stack[m->stack_top - 1].id, oldp);
+                        prop_ranges[oldp][0] = m->stack[m->stack_top - 1].min;
+                        prop_ranges[oldp][1] = m->stack[m->stack_top - 1].max;
                         break;
 
                     case 2:
-                        printf("Left curr: %d pval: %u\n", curr_stack->id, oldp);
-                        prop_ranges[oldp][0] = curr_stack->min;
+                        printf("Left curr: %d pval: %u\n", m->stack[m->stack_top - 1].id, oldp);
+                        prop_ranges[oldp][0] = m->stack[m->stack_top - 1].min;
                         break;
                 }
             } else {
-                printf("Back curr: %d pval: %u\n", curr_stack->id, oldp);
-                prop_ranges[oldp][1] = curr_stack->max2;
+                printf("Back curr: %d pval: %u\n", m->stack[m->stack_top - 1].id, oldp);
+                prop_ranges[oldp][1] = m->stack[m->stack_top - 1].max2;
                 --m->stack_top;
+                rc->segment = 0;
                 goto start;
             }
-            curr_stack->visited = 1;
+            m->stack[m->stack_top - 1].visited = 1;
             ++rc->segment;
 
         case 1:
             // int p = tree[stack[top]].property = coder[0].read_int2(0,nb_properties) - 1;
 
             // printf("1: min: %d max: %d target: %lu\n", 0, prop_ranges_size,
-            //       (long unsigned int) &curr_node->property);
+            //       (long unsigned int) &tree->data[curr_stack->id]->property);
             #ifdef MULTISCALE_CHANCES_ENABLED
-            RAC_GET(rc, &m->ctx[0], 0, prop_ranges_size, &curr_node->property,
+            RAC_GET(rc, &m->ctx[0], 0, prop_ranges_size, &tree->data[m->stack[m->stack_top - 1].id].property,
                     FLIF16_RAC_GNZ_MULTISCALE_INT);
             #else
-            RAC_GET(rc, &m->ctx[0], 0, prop_ranges_size, &curr_node->property,
+            RAC_GET(rc, &m->ctx[0], 0, prop_ranges_size, &tree->data[m->stack[m->stack_top - 1].id].property,
                     FLIF16_RAC_GNZ_INT);
             #endif
-            p = --(curr_node->property);
+            p = --(tree->data[m->stack[m->stack_top - 1].id].property);
             if (p == -1) {
-                printf(____PAD "leaf %d\n", curr_stack->id);
+                printf(____PAD "leaf %d\n", m->stack[m->stack_top - 1].id);
                 --m->stack_top;
+                rc->segment = 0;
                 goto start;
             }
 
-            curr_node->child_id = m->tree_top;
+            tree->data[m->stack[m->stack_top - 1].id].child_id = m->tree_top;
             oldmin = prop_ranges[p][0];
             oldmax = prop_ranges[p][1];
             //printf("oldmin,oldmax: %d %d %d %d\n",  oldmin, oldmax, prop_ranges[p][0],
@@ -294,13 +292,13 @@ int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
             //                                            CONTEXT_TREE_MAX_COUNT);
 
             //printf("2: min: %d max: %d target: %lu\n", MANIAC_TREE_MIN_COUNT,
-            //       MANIAC_TREE_MAX_COUNT, (long unsigned int) &curr_node->count);
+            //       MANIAC_TREE_MAX_COUNT, (long unsigned int) &tree->data[curr_stack->id]->count);
             #ifdef MULTISCALE_CHANCES_ENABLED
             RAC_GET(rc, &m->ctx[1], MANIAC_TREE_MIN_COUNT, MANIAC_TREE_MAX_COUNT,
-                    &curr_node->count, FLIF16_RAC_GNZ_MULTISCALE_INT);
+                    &tree->data[m->stack[m->stack_top - 1].id].count, FLIF16_RAC_GNZ_MULTISCALE_INT);
             #else
             RAC_GET(rc, &m->ctx[1], MANIAC_TREE_MIN_COUNT, MANIAC_TREE_MAX_COUNT,
-                    &curr_node->count, FLIF16_RAC_GNZ_INT);
+                    &tree->data[m->stack[m->stack_top - 1].id].count, FLIF16_RAC_GNZ_INT);
             #endif
             ++rc->segment;
 
@@ -308,40 +306,45 @@ int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
             // int splitval = n.splitval = coder[2].read_int2(oldmin, oldmax-1);
 
             // printf("3: min: %d max: %d \n", oldmin, oldmax - 1);
-            // printf("target: %lu \n", (long unsigned int) &curr_node->split_val);
-            // printf("%d\n", curr_node->split_val);
+            // printf("target: %lu \n", (long unsigned int) &tree->data[curr_stack->id]->split_val);
+            // printf("%d\n", tree->data[curr_stack->id]->split_val);
             #ifdef MULTISCALE_CHANCES_ENABLED
-            RAC_GET(rc, &m->ctx[2], oldmin, oldmax - 1, &curr_node->split_val,
+            RAC_GET(rc, &m->ctx[2], oldmin, oldmax - 1, &tree->data[m->stack[m->stack_top - 1].id].split_val,
                     FLIF16_RAC_GNZ_MULTISCALE_INT);
             #else
-            RAC_GET(rc, &m->ctx[2], oldmin, oldmax - 1, &curr_node->split_val,
+            RAC_GET(rc, &m->ctx[2], oldmin, oldmax - 1, &tree->data[m->stack[m->stack_top - 1].id].split_val,
                     FLIF16_RAC_GNZ_INT);
             #endif
-            split_val = curr_node->split_val;
+            split_val = tree->data[m->stack[m->stack_top - 1].id].split_val;
             ++rc->segment;
 
         case 4:
             // \npos\tprop\tcount\tsplitv\tchild\toldmin\toldmax\n"
-            printf("%u\t%d\t%d\t%d\t%u\t%d\t%d\n", curr_stack->id, curr_node->property,
-            curr_node->count, curr_node->split_val, curr_node->child_id, oldmin, oldmax);
+            printf("%u\t%d\t%d\t%d\t%u\t%d\t%d\n",
+            m->stack[m->stack_top - 1].id,
+            tree->data[m->stack[m->stack_top - 1].id].property,
+            tree->data[m->stack[m->stack_top - 1].id].count,
+            tree->data[m->stack[m->stack_top - 1].id].split_val,
+            tree->data[m->stack[m->stack_top - 1].id].child_id, oldmin, oldmax);
 
             if ((m->tree_top + 2) >= tree->size) {
-                tree->data = av_realloc(tree->data, (tree->size) * 2);
+                tree->data = av_realloc(tree->data, (tree->size) * 2 * sizeof(*(tree->data)));
                 if(!(tree->data))
                     return AVERROR(ENOMEM);
+                tree->size *= 2;
             }
-            tree->size *= 2;
 
             if ((m->stack_top + 2) >= m->stack_size) {
-                m->stack = av_realloc(m->stack, (m->stack_size) * 2);
+                m->stack = av_realloc(m->stack, (m->stack_size) * 2 * sizeof(*(m->stack)));
                 if(!(m->stack))
                     return AVERROR(ENOMEM);
+                m->stack_size *= 2;
             }
-            m->stack_size *= 2;
+            
             
             // WHEN GOING BACK UP THE TREE
-            curr_stack->p    = p;
-            curr_stack->max2 = oldmax;
+            m->stack[m->stack_top - 1].p    = p;
+            m->stack[m->stack_top - 1].max2 = oldmax;
 
             // PUSH 1
             // <= splitval
@@ -372,6 +375,7 @@ int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
             printf(____PAD "Next left: %d %d %d %d %d\n", m->tree_top, p, oldmin, 2, 0);
 
             m->tree_top += 2;
+            rc->segment = 0;
             goto start;
     }
 
