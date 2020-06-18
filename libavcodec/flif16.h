@@ -78,7 +78,8 @@ typedef struct FLIF16Ranges {
 
 typedef struct FLIF16PixelData {
     uint8_t initialized;            //FLAG : initialized or not. // See initialisation with NULL check instead
-    int height, width;
+    uint32_t height, width;
+    
     FLIF16ColorVal *data[MAX_PLANES]; // Remove the static array 
     int num_planes;
 } FLIF16PixelData;
@@ -169,6 +170,14 @@ int32_t (*ff_flif16_maniac_ni_prop_ranges_init(unsigned int *prop_ranges_size,
                                             FLIF16RangesContext *ranges,
                                             uint8_t property,
                                             uint8_t channels))[2];
+
+static inline void ff_flif16_pixel_set(FLIF16PixelData *frame, uint8_t plane,
+                                       uint32_t row, uint32_t col,
+                                       FLIF16ColorVal value)
+{
+    image->data[plane * image->height * image->width +
+                image->height * row + col] = value;
+}
 
 // Must be included here to resolve circular include
 #include "flif16_transform.h"

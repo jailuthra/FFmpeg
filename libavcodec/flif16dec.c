@@ -43,6 +43,18 @@
 static const int properties_ni_rgb_size[] = {7, 8, 9, 7, 7};
 static const int properties_ni_rgba_size[] = {8, 9, 10, 7, 7};
 
+
+// The order in which the planes are encoded.
+// FRA (Lookback) (animations-only, value refers to a previous frame) has
+// to be first, because all other planes are not encoded if lookback != 0
+// Alpha has to be next, because for fully transparent A=0 pixels, the other
+// planes are not encoded
+// Y (luma) is next (the first channel for still opaque images), because it is
+// perceptually most important
+// Co and Cg are in that order because Co is perceptually slightly more
+// important than Cg [citation needed]
+const int plane_ordering[] = {4,3,0,1,2}; // FRA (lookback), A, Y, Co, Cg
+
 enum FLIF16States {
     FLIF16_HEADER = 1,
     FLIF16_SECONDHEADER,
@@ -59,6 +71,9 @@ static int flif16_read_header(AVCodecContext *avctx)
     // TODO Make do without this array
     uint32_t *vlist[] = { &s->width, &s->height, &s->frames };
     // Minimum size has empirically found to be 8 bytes.
+
+    s->cutoff = CHANCETABLE_DEFAULT_CUT;
+    s->alpha  = CHANCETABLE_DEFAULT_ALPHA;
 
     if (bytestream2_size(&s->gb) < 8) {
         av_log(avctx, AV_LOG_ERROR, "buf size too small (%d)\n",
@@ -194,8 +209,10 @@ static int flif16_read_second_header(AVCodecContext *avctx)
             ++s->segment;
 
         case 7:
-            if (s->customalpha)
+            if (s->customalpha) {
                 RAC_GET(&s->rc, NULL, 2, 128, &s->alpha, FLIF16_RAC_UNI_INT);
+                s->alpha = 0xFFFFFFFF / s->alpha;
+            }
             ++s->segment;
 
         case 8:
@@ -342,20 +359,28 @@ static int flif16_read_maniac_forest(AVCodecContext *avctx)
 }
 
 /*
-FLIF16ColorVal flif16_ni_pixel_predict(Properties &properties,
-                                       const ColorRanges *ranges, const Image &image,
-                                       const plane_t &plane, const int p, const uint32_t r,
-                                       const uint32_t c, ColorVal &min, ColorVal &max,
-                                       const ColorVal fallback)
+FLIF16ColorVal flif16_ni_pixel_predict(FLIF16DecoderContext *s,
+                                       FLIF16ColorVal *properties,
+                                       FLIF16ColorRanges *ranges,
+                                       uint32_t frame_no,
+                                       uint32_t *channel,
+                                       int32_t  p
+                                       uint32_t r,
+                                       uint32_t c,
+                                       FLIF16ColorVal *min,
+                                       FLIF16ColorVal *max,
+                                       FLIF16ColorVal fallback
+                                       uint8_t nobordercases)
 {
-    ColorVal guess;
+    FLIF16ColorVal guess;
     int which = 0;
-    int index=0;
+    int index = 0;
     if (p < 3) {
         for (int pp = 0; pp < p; pp++) {
             properties[index++] = image(pp,r,c);
         }
-        if (image.numPlanes()>3) properties[index++] = image(3,r,c);
+        if (image.numPlanes()>3)
+            properties[index++] = image(3,r,c);
     }
     FLIF16ColorVal left = (nobordercases || c > 0 ? plane.get(r, c - 1) : (r > 0 ? plane.get(r - 1, c) : fallback));
     FLIF16ColorVal top = (nobordercases || r > 0 ? plane.get(r - 1, c) : left);
@@ -512,29 +537,88 @@ static inline FLIF16ColorVal *flif16_compute_grays(FLIF16RangesContext *ranges)
 }
 */
 
-/*
+
 static int flif16_read_ni_image(AVCodecContext *avctx)
 {
     FLIF16DecoderContext *s = avctx->priv_data;
+    FLIF16ColorVal *grays;
 
 
     switch(s->segment) {
-        // Set images to gray
-        for (int p = 0; p < s->ranges->num_planes; p++) {
-            if (ff_flif16_ranges_min(s->ranges, p) < ranges->max(p))
-                for (int fr = 0; fr < s->frames; fr++) {
-                    for (uint32_t r = 0; r < s->height; r++) { // Handle the 2 pixels per frame stuff here.
-                        for (uint32_t c = 0; c < s->width; c++) {
-                            s->out_frames[fr].set(p, r, c, (s->ranges->min(p) + s->ranges->max(p)) / 2);
+        case 0:
+            // Set images to gray
+            for (int p = 0; p < s->ranges->num_planes; p++) {
+                if (ff_flif16_ranges_min(s->ranges, p) < ranges->max(p))
+                    for (int fr = 0; fr < s->frames; fr++) {
+                        for (uint32_t r = 0; r < s->height; r++) { // Handle the 2 pixels per frame stuff here.
+                            for (uint32_t c = 0; c < s->width; c++) {
+                                s->out_frames[fr].set(p, r, c, (s->ranges->min(p) + s->ranges->max(p)) / 2);
+                            }
                         }
                     }
-                }
+            }
+
+            grays = flif16_compute_grays(s->ranges);
+            ++s->segment;
+
+        case 1:
+        /*
+    for (int k=0,i=0; k < 5; k++) {
+        int p=PLANE_ORDERING[k];
+        if (p>=nump) continue;
+        i++;
+        Properties properties((nump>3?NB_PROPERTIES_scanlinesA[p]:NB_PROPERTIES_scanlines[p]));
+        if ((100*pixels_done > options.quality*pixels_todo)) {
+            v_printf(5,"%lu subpixels done, %lu subpixels todo, quality target %i%% reached (%i%%)\n",(long unsigned)pixels_done,(long unsigned)pixels_todo,(int)options.quality,(int)(100*pixels_done/pixels_todo));
+            return false;
         }
+        if (ranges->min(p) < ranges->max(p)) {
+            const ColorVal minP = ranges->min(p);
+            v_printf_tty(2,"\r%i%% done [%i/%i] DEC[%ux%u]    ",(int)(100*pixels_done/pixels_todo),i,nump,images[0].cols(),images[0].rows());
+            v_printf_tty(4,"\n");
+            pixels_done += images[0].cols()*images[0].rows();
+            for (uint32_t r = 0; r < images[0].rows(); r++) {
+                if (images[0].cols() == 0) return false; // decode aborted
+                for (int fr=0; fr< (int)images.size(); fr++) {
+                    Image &image = images[fr];
+                    GeneralPlane &plane = image.getPlane(p);
+                    ConstantPlane null_alpha(1);
+                    GeneralPlane &alpha = nump > 3 ? image.getPlane(3) : null_alpha;
+                    if (alpha.is_constant()) {
+                        scanline_plane_decoder<Coder,ConstantPlane> decoder(coders[p],images,ranges,properties,alpha,p,fr,r,greys[p],minP,alphazero,FRA);
+                        plane.accept_visitor(decoder);
+                    } else if (image.getDepth() <= 8) {
+                        scanline_plane_decoder<Coder,Plane<ColorVal_intern_8>> decoder(coders[p],images,ranges,properties,alpha,p,fr,r,greys[p],minP,alphazero,FRA);
+                        plane.accept_visitor(decoder);
+#ifdef SUPPORT_HDR
+                    } else {
+                        scanline_plane_decoder<Coder,Plane<ColorVal_intern_16u>> decoder(coders[p],images,ranges,properties,alpha,p,fr,r,greys[p],minP,alphazero,FRA);
+                        plane.accept_visitor(decoder);
+#endif
+                    }
+                }
+            }
+            int qual = 10000*pixels_done/pixels_todo;
+            if (callback && p != 4 && qual >= progressive_qual_target) {
+                auto populatePartialImages = [&] () {
+                    for (unsigned int n=0; n < images.size(); n++) partial_images[n] = images[n].clone(); // make a copy to work with
+                    for (int i=transforms.size()-1; i>=0; i--) if (transforms[i]->undo_redo_during_decode()) transforms[i]->invData(partial_images);
+                    if (options.fit) {
+                        downsample(partial_images[0].cols(), partial_images[0].rows(), options.resize_width, options.resize_height, partial_images);
+                    }
+                };
+                progressive_qual_shown = qual;
+                progressive_qual_target = issue_callback(callback, user_data, qual, io.ftell(), qual == 10000, populatePartialImages);
+                if (qual >= progressive_qual_target) return false;
+            }
+        }
+    }
+    */
     }
 
     return 0;
 }
-*/
+
 
 static int flif16_read_pixeldata(AVCodecContext *avctx, AVFrame *p)
 {
@@ -545,6 +629,12 @@ static int flif16_read_pixeldata(AVCodecContext *avctx, AVFrame *p)
     else
     */
         return AVERROR_EOF;
+}
+
+static void flif16_write_frame(AVCodecContext *avctx, AVFrame *out_frame,`
+                               uint32_t frame_no)
+{
+    
 }
 
 static int flif16_read_checksum(AVCodecContext *avctx)
