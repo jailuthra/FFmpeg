@@ -76,12 +76,20 @@ typedef struct FLIF16Ranges {
     void (*previous)(FLIF16RangesContext*);
 } FLIF16Ranges;
 
+
+// Each FLIF16PixelData Struct will contain a single frame
+// This will work similarly to AVFrame.
+// **data will carry an array of planes
+// Bounds of these planes will be defined by width and height
+// If required, linesize[], similar to AVFrame can be defined.
+// If Width, height, and number of planes of each frame is Constant, then
+// having numplanes, width, height is redundant. Check.
 typedef struct FLIF16PixelData {
     uint8_t initialized;            //FLAG : initialized or not. // See initialisation with NULL check instead
+    uint8_t num_planes;
     uint32_t height, width;
     
-    FLIF16ColorVal *data[MAX_PLANES]; // Remove the static array 
-    int num_planes;
+    FLIF16ColorVal **data; // Remove the static array 
 } FLIF16PixelData;
 
 typedef struct FLIF16TransformContext{
