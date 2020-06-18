@@ -558,7 +558,6 @@ static int flif16_read_ni_image(AVCodecContext *avctx)
     // To read MANIAC integers, do:
     // ff_flif16_maniac_read_int(s->rc, s->maniac_ctx, properties, plane, min, max, &target)
     // Or something like that. Check out the definition in flif16_rangecoder.c
-    
 
     // Set images to gray
     for (int p = 0; p < s->ranges->num_planes; p++) {
@@ -624,7 +623,15 @@ static int flif16_read_pixeldata(AVCodecContext *avctx, AVFrame *p)
 static void flif16_write_frame(AVCodecContext *avctx, AVFrame *out_frame,`
                                uint32_t frame_no)
 {
-    
+    // Refer to libavcodec/bmp.c for an example.
+    // ff_set_dimensions(avctx, width, height );
+    // avctx->pix_fmt = ...
+    // if ((ret = ff_get_buffer(avctx, p, 0)) < 0)
+    //     return ret;
+    // p->pict_type = AV_PICTURE_TYPE_I;
+    // p->key_frame = 1;
+    // for(...)
+    //     p->data[...] = ...
 }
 
 static int flif16_read_checksum(AVCodecContext *avctx)
