@@ -449,7 +449,7 @@ FLIF16ColorVal predict_and_calcProps_scanlines_plane(FLIF16ColorVal *properties,
                                                const FLIF16ColorVal fallback,
                                                uint8_t nobordercases)
 {
-    FLIF16ColorVal guess;
+    FLIF16ColorVal guess, left, top, topleft, gradientTL;
     int width = pixel->width, height = pixel->height;
     FLIF16Ranges *ranges = flif16_ranges[ranges_ctx->r_no];
     int which = 0;
@@ -460,10 +460,10 @@ FLIF16ColorVal predict_and_calcProps_scanlines_plane(FLIF16ColorVal *properties,
         }
         if (ranges_ctx->num_planes>3) properties[index++] = pixel->data[3][r*width + c]; //image(3,r,c);
     }
-    FLIF16ColorVal left = (nobordercases || c>0 ? pixel->data[p][r*width + (c-1)] : (r > 0 ? pixel->data[p][(r-1)*width + c] : fallback));
-    FLIF16ColorVal top = (nobordercases || r>0 ? pixel->data[p][(r-1)*width + c] : left);
-    FLIF16ColorVal topleft = (nobordercases || (r>0 && c>0) ? pixel->data[p][(r-1)*width + (c-1)] : (r > 0 ? top : left));
-    FLIF16ColorVal gradientTL = left + top - topleft;
+    left = (nobordercases || c>0 ? pixel->data[p][r*width + (c-1)] : (r > 0 ? pixel->data[p][(r-1)*width + c] : fallback));
+    top = (nobordercases || r>0 ? pixel->data[p][(r-1)*width + c] : left);
+    topleft = (nobordercases || (r>0 && c>0) ? pixel->data[p][(r-1)*width + (c-1)] : (r > 0 ? top : left));
+    gradientTL = left + top - topleft;
     guess = MEDIAN3(gradientTL, left, top);
     ranges->snap(ranges_ctx, p, properties, min, max, guess);
     assert(min >= ranges->min(ranges_ctx, p));
