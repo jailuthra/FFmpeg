@@ -397,7 +397,7 @@ FLIF16ColorVal flif16_ni_pixel_predict(FLIF16DecoderContext *s,
     FLIF16ColorVal top = (nobordercases || r > 0 ? plane.get(r - 1, c) : left);
     FLIF16ColorVal topleft = (nobordercases || (r > 0 && c > 0) ? plane.get(r - 1, c - 1) : (r > 0 ? top : left));
     FLIF16ColorVal gradientTL = left + top - topleft;
-    guess = median3(gradientTL, left, top);
+    guess = MEDIAN3(gradientTL, left, top);
     ranges->snap(p,properties,min,max,guess);
     if (guess == gradientTL)
         which = 0;
@@ -425,6 +425,16 @@ FLIF16ColorVal flif16_ni_pixel_predict(FLIF16DecoderContext *s,
     else properties[index++] = 0;
     return guess;
 }
+
+
+inline ColorVal predictScanlines_plane(const plane_t &plane, uint32_t r, uint32_t c, ColorVal grey)
+{
+    ColorVal left = (c>0 ? plane.get(r,c-1) : (r > 0 ? plane.get(r-1, c) : grey));
+    ColorVal top = (r>0 ? plane.get(r-1,c) : left);
+    ColorVal topleft = (r>0 && c>0 ? plane.get(r-1,c-1) : top);
+    ColorVal gradientTL = left + top - topleft;
+    return MEDIAN3(gradientTL, left, top);
+}
 */
 
 
@@ -436,8 +446,7 @@ void flif16_read_ni_plane(FLIF16DecoderContext *s,
                           uint32_t fr,
                           uint32_t r,
                           const FLIF16ColorVal grey,
-                          const FLIF16ColorVal minP, const bool alphazero,
-                          const bool FRA)
+                          const FLIF16ColorVal minP)
 {
     FLIF16ColorVal min, max;
     uint32_t begin = 0, end = s->width;

@@ -206,6 +206,9 @@ static inline void ff_flif16_copy_rows(FLIF16PixelData *dest,
         ff_flif16_pixel_set(dest, plane, row, col, ff_flif16_pixel_get(src, plane, row, col));
 }
 
+
+#define MEDIAN3(a, b, c) (((a) < (b)) ? (((b) < (c)) ? (b) : ((a) < (c) ? (c) : (a))) : (((a) < (c)) ? (a) : ((b) < (c) ? (c) : (b))))
+
 // Must be included here to resolve circular include
 #include "flif16_transform.h"
 
