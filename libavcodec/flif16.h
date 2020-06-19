@@ -89,6 +89,7 @@ typedef struct FLIF16PixelData {
     uint8_t num_planes;
     uint32_t height, width;
     uint8_t *is_constant;
+    uint8_t seen_before;
     void **data;
 } FLIF16PixelData;
 
