@@ -195,12 +195,15 @@ static inline FLIF16ColorVal ff_flif16_pixel_get(FLIF16PixelData *frame, uint8_t
         return (FLIF16ColorVal) *frame->data[plane][image->height * row + col];
 }
 
-static inline void ff_flif16_copy_row(FLIF16PixelData *dest,
-                                      FLIF16PixelData *src,
-                                      uint8_t plane,
-                                      uint32_t row)
+static inline void ff_flif16_copy_rows(FLIF16PixelData *dest,
+                                       FLIF16PixelData *src,
+                                       uint8_t plane,
+                                       uint32_t row,
+                                       uint32_t col_start,
+                                       uint32_t col_end)
 {
-
+    for(uint32_t col = col_start; col < col_end; ++col)
+        ff_flif16_pixel_set(dest, plane, row, col, ff_flif16_pixel_get(src, plane, row, col));
 }
 
 // Must be included here to resolve circular include
