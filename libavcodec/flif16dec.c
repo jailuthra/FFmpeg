@@ -28,6 +28,7 @@
 
 #include "flif16.h"
 #include "flif16_rangecoder.h"
+#include "flif16_image.h"
 
 #include "avcodec.h"
 #include "libavutil/common.h"
@@ -62,6 +63,16 @@ enum FLIF16States {
     FLIF16_MANIAC,
     FLIF16_PIXELDATA,
     FLIF16_CHECKSUM
+};
+
+Plane plane = {
+    .init = ff_plane_init,
+    .clear = ff_plane_clear,
+    .set = ff_plane_set,
+    .get = ff_plane_get,
+    .prepare_zoomlevel = ff_plane_prepare_zoomlevel,
+    .get_fast = ff_plane_get_fast,
+    .set_fast = ff_plane_set_fast
 };
 
 static int flif16_read_header(AVCodecContext *avctx)
@@ -444,7 +455,7 @@ void flif16_read_ni_plane(FLIF16DecoderContext *s,
         // copy pixels from the previous frame
         begin = image.col_begin[r];
         end=image.col_end[r];
-        if (alphazero && p < 3) {
+        if (s->alphazero && p < 3) {
             for (uint32_t c = 0; c < begin; c++)
                 if (alpha.get(r,c) == 0)
                     plane.set(r,c,predictScanlines_plane(plane,r,c, grey));
