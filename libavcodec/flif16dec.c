@@ -65,16 +65,6 @@ enum FLIF16States {
     FLIF16_CHECKSUM
 };
 
-Plane plane = {
-    .init = ff_plane_init,
-    .clear = ff_plane_clear,
-    .set = ff_plane_set,
-    .get = ff_plane_get,
-    .prepare_zoomlevel = ff_plane_prepare_zoomlevel,
-    .get_fast = ff_plane_get_fast,
-    .set_fast = ff_plane_set_fast
-};
-
 static int flif16_read_header(AVCodecContext *avctx)
 {
     uint8_t temp, count = 3;
@@ -370,84 +360,16 @@ static int flif16_read_maniac_forest(AVCodecContext *avctx)
     return ret;
 }
 
-/*
-FLIF16ColorVal flif16_ni_pixel_predict(FLIF16DecoderContext *s,
-                                       FLIF16ColorVal *properties,
-                                       FLIF16ColorRanges *ranges,
-                                       uint32_t frame_no,
-                                       uint32_t *channel,
-                                       int32_t  p
-                                       uint32_t r,
-                                       uint32_t c,
-                                       FLIF16ColorVal *min,
-                                       FLIF16ColorVal *max,
-                                       FLIF16ColorVal fallback
-                                       uint8_t nobordercases)
-{
-    FLIF16ColorVal guess;
-    int which = 0;
-    int index = 0;
-    if (p < 3) {
-        for (int pp = 0; pp < p; pp++) {
-            properties[index++] = image(pp,r,c);
-        }
-        if (image.numPlanes()>3)
-            properties[index++] = image(3,r,c);
-    }
-    FLIF16ColorVal left = (nobordercases || c > 0 ? plane.get(r, c - 1) : (r > 0 ? plane.get(r - 1, c) : fallback));
-    FLIF16ColorVal top = (nobordercases || r > 0 ? plane.get(r - 1, c) : left);
-    FLIF16ColorVal topleft = (nobordercases || (r > 0 && c > 0) ? plane.get(r - 1, c - 1) : (r > 0 ? top : left));
-    FLIF16ColorVal gradientTL = left + top - topleft;
-    guess = MEDIAN3(gradientTL, left, top);
-    ranges->snap(p,properties,min,max,guess);
-    if (guess == gradientTL)
-        which = 0;
-    else if (guess == left)
-        which = 1;
-    else if (guess == top)
-        which = 2;
-
-    properties[index++] = guess;
-    properties[index++] = which;
-
-    if (nobordercases || (c > 0 && r > 0)) {
-        properties[index++] = left - topleft;
-        properties[index++] = topleft - top;
-    } else   {
-        properties[index++] = 0;
-        properties[index++] = 0;
-    }
-
-    if (nobordercases || (c+1 < image.cols() && r > 0)) properties[index++] = top - plane.get(r-1,c+1); // top - topright
-    else   properties[index++] = 0;
-    if (nobordercases || r > 1) properties[index++] = plane.get(r-2,c)-top;    // toptop - top
-    else properties[index++] = 0;
-    if (nobordercases || c > 1) properties[index++] = plane.get(r,c-2)-left;    // leftleft - left
-    else properties[index++] = 0;
-    return guess;
-}
-
-
-inline ColorVal predictScanlines_plane(const plane_t &plane, uint32_t r, uint32_t c, ColorVal grey)
-{
-    ColorVal left = (c>0 ? plane.get(r,c-1) : (r > 0 ? plane.get(r-1, c) : grey));
-    ColorVal top = (r>0 ? plane.get(r-1,c) : left);
-    ColorVal topleft = (r>0 && c>0 ? plane.get(r-1,c-1) : top);
-    ColorVal gradientTL = left + top - topleft;
-    return MEDIAN3(gradientTL, left, top);
-}
-*/
-
-FLIF16ColorVal predict_and_calcProps_scanlines_plane(FLIF16ColorVal *properties,
-                                               const FLIF16RangesContext *ranges_ctx,
-                                               const FLIF16PixelData *pixel,
-                                               const int p,
-                                               const uint32_t r,
-                                               const uint32_t c,
-                                               FLIF16ColorVal *min,
-                                               FLIF16ColorVal *max,
-                                               const FLIF16ColorVal fallback,
-                                               uint8_t nobordercases)
+static FLIF16ColorVal flif16_ni_predict_calcprops(FLIF16ColorVal *properties,
+                                                  const FLIF16RangesContext *ranges_ctx,
+                                                  const FLIF16PixelData *pixel,
+                                                  const int p,
+                                                  const uint32_t r,
+                                                  const uint32_t c,
+                                                  FLIF16ColorVal *min,
+                                                  FLIF16ColorVal *max,
+                                                  const FLIF16ColorVal fallback,
+                                                  uint8_t nobordercases)
 {
     FLIF16ColorVal guess, left, top, topleft, gradientTL;
     int width = pixel->width, height = pixel->height;
@@ -504,10 +426,18 @@ FLIF16ColorVal predict_and_calcProps_scanlines_plane(FLIF16ColorVal *properties,
     return guess;
 }
 
+inline FLIF16ColorVal predictScanlines_plane(FLIF16PixelData *pixel, uint32_t p, uint32_t r, uint32_t c, FLIF16ColorVal grey) {
+    FLIF16ColorVal left = (c>0 ? ff_flif16_pixel_get(pixel, p, r, c-1) : (r > 0 ? ff_flif16_pixel_get(pixel, p, r-1, c) : grey));
+    FLIF16ColorVal top = (r>0 ? ff_flif16_pixel_get(pixel, p, r-1, c) : left);
+    FLIF16ColorVal topleft = (r>0 && c>0 ? ff_flif16_pixel_get(pixel, p, r-1, c-1) : top);
+    FLIF16ColorVal gradientTL = left + top - topleft;
+    return MEDIAN3(gradientTL, left, top);
+}
+
 static int flif16_read_ni_plane(FLIF16DecoderContext *s,
-                                FLIF16Ranges *ranges,
-                                alpha_t &alpha,
-                                Properties &properties,
+                                FLIF16RangesContext *ranges_ctx,
+                                FLIF16PixelData *pixel,
+                                FLIF16ColorVal *properties,
                                 uint8_t p,
                                 uint32_t fr,
                                 uint32_t r,
@@ -523,7 +453,7 @@ static int flif16_read_ni_plane(FLIF16DecoderContext *s,
         case 0:
             // if this is a duplicate frame, copy the row from the frame being duplicated
             if (image.seen_before >= 0) {
-                ff_flif16_copy_rows(s->out_frames[fr], s->out_frames[fr - 1], p, r, 0, s->width);
+                ff_flif16_copy_rows(&s->out_frames[fr], &s->out_frames[fr - 1], p, r, 0, s->width);
                 return;
             }
             // if this is not the first or only frame, fill the beginning of the row
@@ -535,13 +465,13 @@ static int flif16_read_ni_plane(FLIF16DecoderContext *s,
                 // end = image.col_end[r];
                 if (s->alphazero && p < 3) {
                     for (uint32_t c = 0; c < begin; c++)
-                        if (alpha.get(r,c) == 0)
-                            ff_flif16_pixel_set(s->out_frames[fr], p, r, c, predictScanlines_plane(plane,r,c, grey));
+                        if (ff_flif16_pixel_get(pixel, 3, r, c) == 0)
+                            ff_flif16_pixel_set(&s->out_frames[fr], p, r, c, predictScanlines_plane(pixel, p, r, c, grey));
                         else
-                            ff_flif16_pixel_set(s->out_frames[fr], p, r, c,
-                                                ff_flif16_pixel_get(s->out_frames[fr - 1], p, r, c)); 
+                            ff_flif16_pixel_set(&s->out_frames[fr], p, r, c,
+                                                ff_flif16_pixel_get(&s->out_frames[fr - 1], p, r, c)); 
                 } else if (p!=4) {
-                    ff_flif16_copy_rows(s->out_frames[fr], s->out_frames[fr - 1], p, r, 0, begin);
+                    ff_flif16_copy_rows(&s->out_frames[fr], &s->out_frames[fr - 1], p, r, 0, begin);
                 }
             }
             ++s->segment;
@@ -552,48 +482,45 @@ static int flif16_read_ni_plane(FLIF16DecoderContext *s,
         //decode actual pixel data
             uint32_t c = begin;
             for (; c < 2; c++) {
-                if (s->alphazero && p<3 && alpha.get(r,c) == 0) {
-                    ff_flif16_pixel_set(s->outframes[fr], r, c, predictScanlines_plane(plane,r,c, grey));
+                if (s->alphazero && p<3 && ff_flif16_pixel_get(pixel, 3, r, c) == 0) {
+                    ff_flif16_pixel_set(&s->out_frames[fr], p, r, c, predictScanlines_plane(pixel, p, r, c, grey));
                     continue;
                 }
-                FLIF16ColorVal guess = predict_and_calcProps_scanlines_plane<plane_t,false>
-                                 (properties,ranges,image,plane,p,r,c,min,max, minP);
+                FLIF16ColorVal guess = flif16_ni_predict_calcprops(properties, ranges_ctx, pixel, p, r, c, min, max, minP, 0);
                  ++s->segment2;
         case 2:
                 FLIF16ColorVal curr = coder.read_int(properties, min - guess, max - guess) + guess;
-                ff_flif16_pixel_set(s->out_frames[fr], p, r, c, curr);
+                ff_flif16_pixel_set(&s->out_frames[fr], p, r, c, curr);
                 --s->segment2;
             }
             s->segment2 += 2;
 
         case 3:
             for (; c < end-1; c++) {
-                if (s->alphazero && p<3 && alpha.get(r,c) == 0) {
-                    ff_flif16_pixel_set(s->out_frames[fr], p, r, c, predictScanlines_plane(plane,r,c, grey));
+                if (s->alphazero && p<3 && ff_flif16_pixel_get(pixel, 3, r, c) == 0) {
+                    ff_flif16_pixel_set(&s->out_frames[fr], p, r, c, predictScanlines_plane(pixel, p, r, c, grey));
                     continue;
                 }
-                FLIF16ColorVal guess = predict_and_calcProps_scanlines_plane<plane_t,true>
-                                (properties,ranges,image,plane,p,r,c,min,max, minP);
+                FLIF16ColorVal guess = flif16_ni_predict_calcprops(properties, ranges_ctx, pixel, p, r, c, min, max, minP, 1);
                  ++s->segment2;
         case 4:
                 FLIF16ColorVal curr = coder.read_int(properties, min - guess, max - guess) + guess;
-                ff_flif16_pixel_set(s->out_frames[fr], p, r, c, curr);
+                ff_flif16_pixel_set(&s->out_frames[fr], p, r, c, curr);
                  --s->segment2;
             }
             s->segment2 += 2;
 
         case 5:
             for (; c < end; c++) {
-                if (s->alphazero && p<3 && alpha.get(r,c) == 0) {
-                    ff_flif16_pixel_set(r,c,predictScanlines_plane(plane,r,c, grey));
+                if (s->alphazero && p<3 && ff_flif16_pixel_get(pixel, 3, r, c) == 0) {
+                    ff_flif16_pixel_set(&s->out_frames[fr], p, r, c, predictScanlines_plane(pixel, p, r, c, grey));
                     continue;
                 }
-                FLIF16ColorVal guess = predict_and_calcProps_scanlines_plane<plane_t,false>
-                                 (properties,ranges,image,plane,p,r,c,min,max, minP);
+                FLIF16ColorVal guess = predict_and_calcProps_scanlines_plane(properties, ranges_ctx, pixel, p, r, c, min, max, minP, 0);
                 ++s->segment2;
         case 6:
                 FLIF16ColorVal curr = coder.read_int(properties, min - guess, max - guess) + guess;
-                ff_flif16_pixel_set(s->out_frames[fr], p, r, c, curr);
+                ff_flif16_pixel_set(&s->out_frames[fr], p, r, c, curr);
                 --s->segment2;
             }
             s->segment2 += 2;
@@ -604,27 +531,29 @@ static int flif16_read_ni_plane(FLIF16DecoderContext *s,
             s->segment2 = 7;
             for (uint32_t c = begin; c < end; c++) {
                 //predict pixel for alphazero and get a previous pixel for FRA
-                if (s->alphazero && p<3 && alpha.get(r,c) == 0) {
-                    ff_flif16_pixel_set(s->outframes[fr], p, r, c, predictScanlines_plane(plane,r,c, grey));
+                if (s->alphazero && p<3 && ff_flif16_pixel_get(pixel, 3, r, c) == 0) {
+                    ff_flif16_pixel_set(&s->out_frames[fr], p, r, c, predictScanlines_plane(pixel, p, r, c, grey));
                     continue;
                 }
 
                 if (FRA && p<4 && image.getFRA(r,c) > 0) {
                     assert(fr >= image.getFRA(r,c));
-                    ff_flif16_pixel_set(r, c,
-                                        ff_flif16_pixel_get((s->out_frames[fr -
-                                                            ff_flif16_pixel_get((s->out_frames[fr], 4, r, c)], p, r, c));
+                    ff_flif16_pixel_set(&s->out_frames[fr], p, r, c,
+                    ff_flif16_pixel_get((&s->out_frames[fr - ff_flif16_pixel_get(&s->out_frames[fr], 4, r, c)]), p, r, c));
+                    //Remove these comments after testing
+                    //Above line 541-542 emulating line 544                                       
+                    //plane.set(r,c,images[fr-image.getFRA(r,c)](p,r,c));
                     continue;
                 }
 
                 //calculate properties and use them to decode the next pixel
-                FLIF16ColorVal guess = /*predict_and_calcProps_scanlines_plane*/
+                FLIF16ColorVal guess = predict_and_calcProps_scanlines_plane(properties, ranges_ctx, pixel, p, r, c, min, max, minP, 0);
                 if (FRA && p == 4 && max > fr)
                     max = fr;
                 ++s->segment2;
         case 8:
                 FLIF16ColorVal curr = coder.read_int(properties, min - guess, max - guess) + guess;
-                ff_flif16_pixel_set(s->out_frames[fr], p, r, c, curr);
+                ff_flif16_pixel_set(&s->out_frames[fr], p, r, c, curr);
                 --s->segment2;
             }
         } /* end if */
@@ -633,13 +562,13 @@ static int flif16_read_ni_plane(FLIF16DecoderContext *s,
         if (fr > 0) {
             //if alphazero is on, fill with a predicted value, otherwise copy pixels from the previous frame
             if (s->alphazero && p < 3) {
-                for (uint32_t c = end; c < image.cols(); c++)
-                    if (alpha.get(r,c) == 0)
-                        ff_flif16_pixel_set((s->out_frames[fr], p, r, c, predictScanlines_plane(plane,r,c, grey));
+                for (uint32_t c = end; c < pixel->width; c++)
+                    if (ff_flif16_pixel_get(pixel, 3, r, c) == 0)
+                        ff_flif16_pixel_set(&s->out_frames[fr], p, r, c, predictScanlines_plane(pixel, p, r, c, grey));
                     else
-                        ff_flif16_pixel_set((s->out_frames[fr], p, r, c, ff_flif16_pixel_get(fr - 1, p, r, c));
+                        ff_flif16_pixel_set(&s->out_frames[fr], p, r, c, ff_flif16_pixel_get(&pixel[fr - 1], p, r, c));
             } else if(p != 4) {
-                 ff_flif16_copy_rows(s->out_frames[fr], s->out_frames[fr - 1], p, r, end, s->width);
+                 ff_flif16_copy_rows(&s->out_frames[fr], &s->out_frames[fr - 1], p, r, end, s->width);
             }
         }
     }
