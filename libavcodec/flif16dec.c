@@ -633,12 +633,15 @@ static int flif16_read_ni_image(AVCodecContext *avctx)
 
 static int flif16_read_pixeldata(AVCodecContext *avctx, AVFrame *p)
 {
-    /*
     FLIF16DecoderContext *s = avctx->priv_data;
+    s->out_frames = ff_flif16_frames_init(s->frames, s->channels, 32,
+                                          s->width, s->height);
+    if (!s->out_frames)
+        return AVERROR(ENOMEM);
+
     if(s->ia % 2)
         flif16_read_ni_image(avctx);
     else
-    */
         return AVERROR_EOF;
 }
 

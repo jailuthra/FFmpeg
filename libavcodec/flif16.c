@@ -67,31 +67,30 @@ int32_t  (*ff_flif16_maniac_ni_prop_ranges_init(unsigned int *prop_ranges_size,
 }
 
 
-void ff_flif16_plane_alloc(FLIF16PixelData *frame, uint8_t num_planes,
-                           uint32_t depth, uint32_t width, uint32_t height) // depth = log2(bpc)
+static void ff_flif16_plane_alloc(FLIF16PixelData *frame, uint8_t num_planes,
+                                  uint32_t depth, uint32_t width, uint32_t height) // depth = log2(bpc)
 {
     frame->data = av_mallocz(sizeof(*frame->data) * num_planes);
     // TODO if constant, allocate a single integer for the plane.
     // And set is_constant for that plane
     if (depth <= 8) {
         if (p > 0)
-            frame->data[0] = av_malloc(sizeof(uint8_t) * width * height);
+            frame->data[0] = av_mallocz(sizeof(uint8_t) * width * height);
         if (p > 1)
-            frame->data[1] = av_malloc(sizeof(uint16_t) * width * height);
+            frame->data[1] = av_mallocz(sizeof(uint16_t) * width * height);
         if (p > 2)
-            frame->data[2] = av_malloc(sizeof(uint16_t) * width * height);
+            frame->data[2] = av_mallocz(sizeof(uint16_t) * width * height);
         if (p > 3)
-            frame->data[3] = av_malloc(sizeof(uint8_t) * width * height);
+            frame->data[3] = av_mallocz(sizeof(uint8_t) * width * height);
     } else {
-        frame->data = av_mallocz(sizeof(*frame->data) * something)
         if (p > 0)
-            frame->data[0] = av_malloc(sizeof(uint16_t) * width * height);
+            frame->data[0] = av_mallocz(sizeof(uint16_t) * width * height);
         if (p > 1)
-            frame->data[1] = av_malloc(sizeof(uint32_t) * width * height)
+            frame->data[1] = av_mallocz(sizeof(uint32_t) * width * height)
         if (p > 2)
-            frame->data[2] = av_malloc(sizeof(uint32_t) * width * height)
+            frame->data[2] = av_mallocz(sizeof(uint32_t) * width * height)
         if (p > 3)
-            frame->data[3] = av_malloc(sizeof(uint16_t) * width * height);
+            frame->data[3] = av_mallocz(sizeof(uint16_t) * width * height);
     }
     if (p > 4)
         frame->data[4] = av_malloc(sizeof(uint8_t) * width * height);
@@ -103,4 +102,21 @@ void ff_flif16_plane_free(FLIF16PixelData *frame, uint8_t num_planes)
     for(uint8_t i = 0; i < num_planes; ++i)
         av_free(frame->data[i]);
     av_free(frame->data);
+}
+
+FLIF16PixelData *ff_flif16_frames_init(uint32_t num_frames, uint8_t num_planes,
+                                       uint32_t depth, uint32_t width, uint32_t height)
+{
+    frames = av_mallocz(sizeof(*frames) * num_frames)
+    if(!frames)
+        return NULL;
+    for(int i = 0; i < num_frames; ++i)
+        ff_flif16_plane_alloc(frames[i], num_planes, depth, width, height);
+}
+
+void ff_flif16_frames_free(FLIF16PixelData *frames, uint32_t num_frames,
+                           uint32_t num_planes)
+{
+    for(int i = 0; i < num_frames; ++i)
+        ff_flif16_plane_free(frames[i], num_planes);
 }

@@ -449,8 +449,8 @@ FLIF16ChanceContext *ff_flif16_maniac_findleaf(FLIF16MANIACContext *m,
         } else { // count == 0
             --nodes[pos].count;
             if ((tree->leaves_top) >= tree->leaves_size) {
-                av_realloc(m->forest[channel]->leaves,
-                           m->forest[channel]->leaves_size * 2);
+                m->forest[channel]->leaves = av_realloc(m->forest[channel]->leaves,
+                                                        sizeof(*leaves) * m->forest[channel]->leaves_size * 2);
                 if (!m->forest[channel]->leaves)
                     return NULL;
                 m->forest[channel]->leaves_size *= 2;
