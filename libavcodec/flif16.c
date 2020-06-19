@@ -65,3 +65,6 @@ int32_t  (*ff_flif16_maniac_ni_prop_ranges_init(unsigned int *prop_ranges_size,
     }
     return prop_ranges;
 }
+
+
+ff_flif16_plane_alloc

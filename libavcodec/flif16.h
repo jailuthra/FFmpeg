@@ -183,8 +183,16 @@ static inline void ff_flif16_pixel_set(FLIF16PixelData *frame, uint8_t plane,
                                        uint32_t row, uint32_t col,
                                        FLIF16ColorVal value)
 {
-    image->data[plane * image->height * image->width +
-                image->height * row + col] = value;
+    frame->data[plane][image->height * row + col] = value;
+}
+
+static inline FLIF16ColorVal ff_flif16_pixel_get(FLIF16PixelData *frame, uint8_t plane,
+                                                 uint32_t row, uint32_t col)
+{
+    if(frame->isconstant[plane])
+        return (FLIF16ColorVal) *frame->data
+    else
+        return (FLIF16ColorVal) *frame->data[plane][image->height * row + col];
 }
 
 // Must be included here to resolve circular include
