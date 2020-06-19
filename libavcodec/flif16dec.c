@@ -458,11 +458,14 @@ FLIF16ColorVal predict_and_calcProps_scanlines_plane(FLIF16ColorVal *properties,
         for (int pp = 0; pp < p; pp++) {
             properties[index++] = pixel->data[pp][r*width + c]; //image(pp,r,c);
         }
-        if (ranges_ctx->num_planes>3) properties[index++] = pixel->data[3][r*width + c]; //image(3,r,c);
+        if (ranges_ctx->num_planes>3)
+            properties[index++] = pixel->data[3][r*width + c]; //image(3,r,c);
     }
-    left = (nobordercases || c>0 ? pixel->data[p][r*width + (c-1)] : (r > 0 ? pixel->data[p][(r-1)*width + c] : fallback));
+    left = (nobordercases || c>0 ? pixel->data[p][r*width + (c-1)] : 
+           (r > 0 ? pixel->data[p][(r-1)*width + c] : fallback));
     top = (nobordercases || r>0 ? pixel->data[p][(r-1)*width + c] : left);
-    topleft = (nobordercases || (r>0 && c>0) ? pixel->data[p][(r-1)*width + (c-1)] : (r > 0 ? top : left));
+    topleft = (nobordercases || (r>0 && c>0) ? 
+              pixel->data[p][(r-1)*width + (c-1)] : (r > 0 ? top : left));
     gradientTL = left + top - topleft;
     guess = MEDIAN3(gradientTL, left, top);
     ranges->snap(ranges_ctx, p, properties, min, max, guess);
@@ -477,15 +480,27 @@ FLIF16ColorVal predict_and_calcProps_scanlines_plane(FLIF16ColorVal *properties,
     properties[index++] = guess;
     properties[index++] = which;
 
-    if (nobordercases || (c > 0 && r > 0)) { properties[index++] = left - topleft; properties[index++] = topleft - top; }
-    else   { properties[index++] = 0; properties[index++] = 0;  }
+    if (nobordercases || (c > 0 && r > 0)){ 
+        properties[index++] = left - topleft;
+        properties[index++] = topleft - top;
+    }
+    else{ 
+        properties[index++] = 0;
+        properties[index++] = 0; 
+    }
 
-    if (nobordercases || (c+1 < width && r > 0)) properties[index++] = top - pixel->data[p][(r-1)*width + (c+1)]; // top - topright
-    else   properties[index++] = 0;
-    if (nobordercases || r > 1) properties[index++] = pixel->data[p][(r-2)*width + c] - top;    // toptop - top
-    else properties[index++] = 0;
-    if (nobordercases || c > 1) properties[index++] = pixel->data[p][r*width + (c-2)]-left;    // leftleft - left
-    else properties[index++] = 0;
+    if (nobordercases || (c+1 < width && r > 0))
+        properties[index++] = top - pixel->data[p][(r-1)*width + (c+1)]; // top - topright
+    else
+        properties[index++] = 0;
+    if (nobordercases || r > 1)
+        properties[index++] = pixel->data[p][(r-2)*width + c] - top;    // toptop - top
+    else 
+        properties[index++] = 0;
+    if (nobordercases || c > 1)
+        properties[index++] = pixel->data[p][r*width + (c-2)]-left;    // leftleft - left
+    else 
+        properties[index++] = 0;
     return guess;
 }
 
