@@ -453,7 +453,7 @@ static int flif16_read_ni_plane(FLIF16DecoderContext *s,
     switch (s->segment2) {
         case 0:
             // if this is a duplicate frame, copy the row from the frame being duplicated
-            if (s->outframes[fr].seen_before >= 0) {
+            if (s->out_frames[fr].seen_before >= 0) {
                 ff_flif16_copy_rows(&s->out_frames[fr], &s->out_frames[fr - 1], p, r, 0, s->width);
                 return;
             }
@@ -482,15 +482,15 @@ static int flif16_read_ni_plane(FLIF16DecoderContext *s,
         //decode actual pixel data
             uint32_t c = begin;
             for (; c < 2; c++) {
-                if (s->alphazero && p<3 && ff_flif16_pixel_get(s->out_frames[fr], 3, r, c) == 0) {
+                if (s->alphazero && p<3 && ff_flif16_pixel_get(&s->out_frames[fr], 3, r, c) == 0) {
                     ff_flif16_pixel_set(&s->out_frames[fr], p, r, c, predictScanlines_plane(pixel, p, r, c, grey));
                     continue;
                 }
-                FLIF16ColorVal guess = flif16_ni_predict_calcprops(properties, ranges_ctx, pixel, p, r, c, min, max, minP, 0);
+                FLIF16ColorVal guess = flif16_ni_predict_calcprops(properties, ranges_ctx, pixel, p, r, c, &min, &max, minP, 0);
                  ++s->segment2;
         case 2:
                 // FLIF16ColorVal curr = coder.read_int(properties, min - guess, max - guess) + guess;
-                MANIAC_GET(s->rc, s->m, properties, min - guess, max - guess, &curr);
+                MANIAC_GET(&s->rc, &s->maniac_ctx, properties, p, min - guess, max - guess, &curr);
                 curr += guess;
                 ff_flif16_pixel_set(&s->out_frames[fr], p, r, c, curr);
                 --s->segment2;
@@ -499,7 +499,7 @@ static int flif16_read_ni_plane(FLIF16DecoderContext *s,
 
         case 3:
             for (; c < end-1; c++) {
-                if (s->alphazero && p < 3 && ff_flif16_pixel_get(s->outframes[fr], 3, r, c) == 0) {
+                if (s->alphazero && p < 3 && ff_flif16_pixel_get(&s->out_frames[fr], 3, r, c) == 0) {
                     ff_flif16_pixel_set(&s->out_frames[fr], p, r, c, predictScanlines_plane(pixel, p, r, c, grey));
                     continue;
                 }
@@ -507,7 +507,7 @@ static int flif16_read_ni_plane(FLIF16DecoderContext *s,
                  ++s->segment2;
         case 4:
                 // FLIF16ColorVal curr = coder.read_int(properties, min - guess, max - guess) + guess;
-                MANIAC_GET(s->rc, s->m, properties, min - guess, max - guess, &curr);
+                MANIAC_GET(&s->rc, &s->maniac_ctx, properties, p, min - guess, max - guess, &curr);
                 curr += guess;
                 ff_flif16_pixel_set(&s->out_frames[fr], p, r, c, curr);
                  --s->segment2;
@@ -516,16 +516,16 @@ static int flif16_read_ni_plane(FLIF16DecoderContext *s,
 
         case 5:
             for (; c < end; c++) {
-                if (s->alphazero && p < 3 && ff_flif16_pixel_get(s->outframes[fr], 3, r, c) == 0) {
+                if (s->alphazero && p < 3 && ff_flif16_pixel_get(&s->out_frames[fr], 3, r, c) == 0) {
                     ff_flif16_pixel_set(&s->out_frames[fr], p, r, c, predictScanlines_plane(pixel, p, r, c, grey));
                     continue;
                 }
-                FLIF16ColorVal guess = predict_and_calcProps_scanlines_plane(properties, ranges_ctx, pixel, p, r, c, min, max, minP, 0);
+                FLIF16ColorVal guess = flif16_ni_predict_calcprops(properties, ranges_ctx, pixel, p, r, c, &min, &max, minP, 0);
                 ++s->segment2;
         case 6:
                 // FLIF16ColorVal curr = coder.read_int(properties, min - guess, max - guess) + guess;
-                MANIAC_GET(s->rc, s->m, properties, min - guess, max - guess, &curr);
-                curr += guess
+                MANIAC_GET(&s->rc, &s->maniac_ctx, properties, p, min - guess, max - guess, &curr);
+                curr += guess;
                 ff_flif16_pixel_set(&s->out_frames[fr], p, r, c, curr);
                 --s->segment2;
             }
@@ -537,13 +537,13 @@ static int flif16_read_ni_plane(FLIF16DecoderContext *s,
             s->segment2 = 7;
             for (uint32_t c = begin; c < end; c++) {
                 //predict pixel for alphazero and get a previous pixel for FRA
-                if (s->alphazero && p < 3 && ff_flif16_pixel_get(&s->outframes[fr], 3, r, c) == 0) {
+                if (s->alphazero && p < 3 && ff_flif16_pixel_get(&s->out_frames[fr], 3, r, c) == 0) {
                     ff_flif16_pixel_set(&s->out_frames[fr], p, r, c, predictScanlines_plane(pixel, p, r, c, grey));
                     continue;
                 }
 
-                if (lookback && p < 4 && ff_flif16_pixel_get(s->outframes[fr], 4, r, c) > 0) {
-                    assert(fr >= image.getFRA(r,c));
+                if (lookback && p < 4 && ff_flif16_pixel_get(&s->out_frames[fr], 4, r, c) > 0) {
+                    assert(fr >= ff_flif16_pixel_get(&s->out_frames[fr], 4, r, c));
                     ff_flif16_pixel_set(&s->out_frames[fr], p, r, c,
                     ff_flif16_pixel_get((&s->out_frames[fr - ff_flif16_pixel_get(&s->out_frames[fr], 4, r, c)]), p, r, c));
                     //Remove these comments after testing
@@ -551,13 +551,13 @@ static int flif16_read_ni_plane(FLIF16DecoderContext *s,
                     //plane.set(r,c,images[fr-image.getFRA(r,c)](p,r,c));
 
                 //calculate properties and use them to decode the next pixel
-                FLIF16ColorVal guess = predict_and_calcProps_scanlines_plane(properties, ranges_ctx, pixel, p, r, c, min, max, minP, 0);
+                FLIF16ColorVal guess = flif16_ni_predict_calcprops(properties, ranges_ctx, pixel, p, r, c, &min, &max, minP, 0);
                 if (lookback && p == 4 && max > fr)
                     max = fr;
                 ++s->segment2;
         case 8:
-                MANIAC_GET(s->rc, s->m, properties, min - guess, max - guess, &curr);
-                curr += guess
+                MANIAC_GET(&s->rc, &s->maniac_ctx, properties, p, min - guess, max - guess, &curr);
+                curr += guess;
                 ff_flif16_pixel_set(&s->out_frames[fr], p, r, c, curr);
                 --s->segment2;
             }
@@ -714,7 +714,7 @@ static int flif16_decode_frame(AVCodecContext *avctx,
     // Function will either exit on AVERROR(EAGAIN) or AVERROR_EOF
     do {
         switch(s->state) {
-            case 0: case FLIF16_HEADER:
+            case FLIF16_HEADER:
                 ret = flif16_read_header(avctx);
                 break;
 
