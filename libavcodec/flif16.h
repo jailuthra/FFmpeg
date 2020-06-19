@@ -123,7 +123,10 @@ typedef struct FLIF16DecoderContext {
     uint8_t buf_count;    ///< Count for initial RAC buffer
     int state;            ///< The section of the file the parser is in currently.
     unsigned int segment; ///< The "segment" the code is supposed to jump to
+    unsigned int segment2;///< The "segment" the code is supposed to jump to
     int i;                ///< A generic iterator used to save states between for loops.
+    int i2;
+    int i3;
     // Primary Header     
     uint8_t ia;           ///< Is image interlaced or/and animated or not
     uint32_t bpc;         ///< 2 ^ Bytes per channel
@@ -152,11 +155,15 @@ typedef struct FLIF16DecoderContext {
                                 ///  depending on transformations applied
     FLIF16RangesContext *prev_range;
 
-    // MANIAC Trees and pixeldata
+    // MANIAC Trees
     int32_t (*prop_ranges)[2]; ///< Property Ranges
     uint32_t prop_ranges_size;
-
-
+    
+    // Pixeldata
+    uint8_t curr_plane;        ///< State variable Current plane under processing
+    FLIF16ColorVal *grays;
+    FLIF16ColorVal *properties;
+    
     // Image Properties
     /*
      * 3 output pixel formats are to be supported:
