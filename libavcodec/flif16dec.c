@@ -550,7 +550,7 @@ static int flif16_read_ni_image(AVCodecContext *avctx)
         coders.emplace_back(rac, propRanges, forest[p], 0, options.cutoff, options.alpha);
     }*/
 
-    // The FinalPropertySymbolCoder does not use the propranges at anny point of time.
+    // The FinalPropertySymbolCoder does not use the propranges at any point of time.
     // Only the size of propranges is used, which can by calculated in a single
     // line copypasted from flif16.c. Not even that is necessary. Therefore this
     // is completely useless.
