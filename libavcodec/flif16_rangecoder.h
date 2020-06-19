@@ -292,6 +292,11 @@ int ff_flif16_maniac_read_int(FLIF16RangeCoder *rc,
                               uint8_t channel,
                               int min, int max, int *target);
 
+#define MANIAC_GET(rc, m, prop, channel, min, max, target) \
+    if (!ff_flif16_maniac_read_int((rc), (m), (prop), (channel), (min), (max), (target))) {\
+        goto need_more_data; \
+    }
+
 // Functions
 
 static inline int ff_flif16_rac_renorm(FLIF16RangeCoder *rc)
@@ -865,6 +870,7 @@ static inline int ff_flif16_rac_process(FLIF16RangeCoder *rc,
 
 #define RAC_GET(rc, ctx, val1, val2, target, type) \
     if (!ff_flif16_rac_process((rc), (ctx), (val1), (val2), (target), (type))) {\
-        goto need_more_data;}
+        goto need_more_data; \
+    }
 
 #endif /* FLIF16_RANGECODER_H */

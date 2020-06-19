@@ -501,9 +501,10 @@ static int flif16_read_ni_plane(FLIF16DecoderContext *s,
 {
     // TODO write in a position independent manner
     FLIF16ColorVal min, max;
+    FLIF16ColorVal curr;
     uint32_t begin = 0, end = s->width;
 
-    switch (s->segment) {
+    switch (s->segment2) {
         case 0:
             // if this is a duplicate frame, copy the row from the frame being duplicated
             if (image.seen_before >= 0) {
@@ -528,6 +529,7 @@ static int flif16_read_ni_plane(FLIF16DecoderContext *s,
                     ff_flif16_copy_rows(s->out_frames[fr], s->out_frames[fr - 1], p, r, 0, begin);
                 }
             }
+            ++s->segment;
 
         // Yes, switches can work like this.
         if (r > 1 && !FRA && begin == 0 && end > 3) {
@@ -541,11 +543,15 @@ static int flif16_read_ni_plane(FLIF16DecoderContext *s,
                 }
                 FLIF16ColorVal guess = predict_and_calcProps_scanlines_plane<plane_t,false>
                                  (properties,ranges,image,plane,p,r,c,min,max, minP);
+                 ++s->segment2;
+        case 2:
                 FLIF16ColorVal curr = coder.read_int(properties, min - guess, max - guess) + guess;
                 ff_flif16_pixel_set(s->out_frames[fr], p, r, c, curr);
+                --s->segment2;
             }
+            s->segment2 += 2;
 
-        case 2:
+        case 3:
             for (; c < end-1; c++) {
                 if (s->alphazero && p<3 && alpha.get(r,c) == 0) {
                     ff_flif16_pixel_set(s->out_frames[fr], p, r, c, predictScanlines_plane(plane,r,c, grey));
@@ -553,11 +559,15 @@ static int flif16_read_ni_plane(FLIF16DecoderContext *s,
                 }
                 FLIF16ColorVal guess = predict_and_calcProps_scanlines_plane<plane_t,true>
                                 (properties,ranges,image,plane,p,r,c,min,max, minP);
+                 ++s->segment2;
+        case 4:
                 FLIF16ColorVal curr = coder.read_int(properties, min - guess, max - guess) + guess;
                 ff_flif16_pixel_set(s->out_frames[fr], p, r, c, curr);
+                 --s->segment2;
             }
+            s->segment2 += 2;
 
-        case 3:
+        case 5:
             for (; c < end; c++) {
                 if (s->alphazero && p<3 && alpha.get(r,c) == 0) {
                     ff_flif16_pixel_set(r,c,predictScanlines_plane(plane,r,c, grey));
@@ -565,13 +575,18 @@ static int flif16_read_ni_plane(FLIF16DecoderContext *s,
                 }
                 FLIF16ColorVal guess = predict_and_calcProps_scanlines_plane<plane_t,false>
                                  (properties,ranges,image,plane,p,r,c,min,max, minP);
+                ++s->segment2;
+        case 6:
                 FLIF16ColorVal curr = coder.read_int(properties, min - guess, max - guess) + guess;
                 ff_flif16_pixel_set(s->out_frames[fr], p, r, c, curr);
+                --s->segment2;
             }
+            s->segment2 += 2;
 
         } else {
 
-        case 4:
+        case 7:
+            s->segment2 = 7;
             for (uint32_t c = begin; c < end; c++) {
                 //predict pixel for alphazero and get a previous pixel for FRA
                 if (s->alphazero && p<3 && alpha.get(r,c) == 0) {
@@ -591,8 +606,11 @@ static int flif16_read_ni_plane(FLIF16DecoderContext *s,
                 FLIF16ColorVal guess = /*predict_and_calcProps_scanlines_plane*/
                 if (FRA && p == 4 && max > fr)
                     max = fr;
+                ++s->segment2;
+        case 8:
                 FLIF16ColorVal curr = coder.read_int(properties, min - guess, max - guess) + guess;
                 ff_flif16_pixel_set(s->out_frames[fr], p, r, c, curr);
+                --s->segment2;
             }
         } /* end if */
 
