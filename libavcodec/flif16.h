@@ -199,16 +199,16 @@ static inline void ff_flif16_pixel_set(FLIF16PixelData *frame, uint8_t plane,
                                        uint32_t row, uint32_t col,
                                        FLIF16ColorVal value)
 {
-    frame->data[plane][image->height * row + col] = value;
+    frame->data[plane][frame->width * row + col] = value;
 }
 
 static inline FLIF16ColorVal ff_flif16_pixel_get(FLIF16PixelData *frame, uint8_t plane,
                                                  uint32_t row, uint32_t col)
 {
     if(frame->is_constant[plane])
-        return (FLIF16ColorVal) *frame->data
+        return (FLIF16ColorVal) **frame->data;
     else
-        return (FLIF16ColorVal) *frame->data[plane][image->height * row + col];
+        return (FLIF16ColorVal) frame->data[plane][frame->width * row + col];
 }
 
 static inline void ff_flif16_copy_rows(FLIF16PixelData *dest,

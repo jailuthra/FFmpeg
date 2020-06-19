@@ -595,17 +595,17 @@ static uint8_t transform_ycocg_forward(FLIF16TransformContext* ctx,
 
     for (r=0; r<height; r++) {
         for (c=0; c<width; c++) {
-            R = pixel_data->data[0][r*width + c];
-            G = pixel_data->data[1][r*width + c];
-            B = pixel_data->data[2][r*width + c];
+            R = ff_flif16_pixel_get(pixel_data, 0, r, c);
+            G = ff_flif16_pixel_get(pixel_data, 1, r, c);
+            B = ff_flif16_pixel_get(pixel_data, 2, r, c);
 
             Y = (((R + B)>>1) + G)>>1;
             Co = R - B;
             Cg = G - ((R + B)>>1);
 
-            pixel_data->data[0][r*width + c] = Y;
-            pixel_data->data[1][r*width + c] = Co;
-            pixel_data->data[2][r*width + c] = Cg;
+            ff_flif16_pixel_set(pixel_data, 0, r, c, Y);
+            ff_flif16_pixel_set(pixel_data, 1, r, c, Co);
+            ff_flif16_pixel_set(pixel_data, 2, r, c, Cg);
         }
     }
     return 1;
@@ -625,9 +625,9 @@ static uint8_t transform_ycocg_reverse(FLIF16TransformContext *ctx,
 
     for (r=0; r<height; r+=stride_row) {
         for (c=0; c<width; c+=stride_col) {
-            Y  = pixel_data->data[0][r*width + c];
-            Co = pixel_data->data[1][r*width + c];
-            Cg = pixel_data->data[2][r*width + c];
+            Y  = ff_flif16_pixel_get(pixel_data, 0, r, c);
+            Co = ff_flif16_pixel_get(pixel_data, 1, r, c);
+            Cg = ff_flif16_pixel_get(pixel_data, 0, r, c);
   
             R = Co + Y + ((1-Cg)>>1) - (Co>>1);
             G = Y - ((-Cg)>>1);
@@ -637,9 +637,9 @@ static uint8_t transform_ycocg_reverse(FLIF16TransformContext *ctx,
             G = av_clip(G, 0, ranges->max(data->r_ctx, 1));
             B = av_clip(B, 0, ranges->max(data->r_ctx, 2));
 
-            pixel_data->data[0][r*width + c] = R;
-            pixel_data->data[1][r*width + c] = G;
-            pixel_data->data[2][r*width + c] = B;
+            ff_flif16_pixel_set(pixel_data, 0, r, c, R);
+            ff_flif16_pixel_set(pixel_data, 1, r, c, G);
+            ff_flif16_pixel_set(pixel_data, 2, r, c, B);
         }
     }
     return 1;
@@ -749,18 +749,18 @@ static uint8_t transform_permuteplanes_forward(FLIF16TransformContext* ctx,
     for (r=0; r<height; r++) {
         for (c=0; c<width; c++) {
             for (p=0; p<data->r_ctx->num_planes; p++)
-                pixel[p] = pixel_data->data[p][r*width + c];
-            pixel_data->data[0][r*width + c] = pixel[data->permutation[0]];
+                pixel[p] = ff_flif16_pixel_get(pixel_data, 0, r, c);
+            ff_flif16_pixel_set(pixel_data, 0, r, c, pixel[data->permutation[0]]);
             if (!data->subtract){
                 for (p=1; p<data->r_ctx->num_planes; p++)
-                    pixel_data->data[p][r*width + c] = pixel[data->permutation[p]];
+                    ff_flif16_pixel_set(pixel_data, p, r, c, pixel[data->permutation[p]]);
             }
             else{ 
                 for(p=1; p<3 && p<data->r_ctx->num_planes; p++)
-                    pixel_data->data[p][r*width + c] = 
-                    pixel[data->permutation[p]] - pixel[data->permutation[0]];
+                    ff_flif16_pixel_set(pixel_data, p, r, c, 
+                    pixel[data->permutation[p]] - pixel[data->permutation[0]]);
                 for(p=3; p<data->r_ctx->num_planes; p++)
-                    pixel_data->data[p][r*width + c] = pixel[data->permutation[p]];
+                    ff_flif16_pixel_set(pixel_data, p, r, c, pixel[data->permutation[p]]);
             }
         }
     }
@@ -781,22 +781,22 @@ static uint8_t transform_permuteplanes_reverse(FLIF16TransformContext *ctx,
     for (r=0; r<height; r+=stride_row) {
         for (c=0; c<width; c+=stride_col) {
             for (p=0; p<data->r_ctx->num_planes; p++)
-                pixel[p] = pixels->data[p][r*width + c];
+                pixel[p] =  ff_flif16_pixel_get(pixels, p, r, c);
             for (p=0; p<data->r_ctx->num_planes; p++)
-                pixels->data[data->permutation[p]][r*width + c] = pixel[p];
+                ff_flif16_pixel_set(pixels, data->permutation[p], r, c, pixel[p]);
             
-            pixels->data[data->permutation[0]][r*width + c] = pixel[0];
+            ff_flif16_pixel_set(pixels, data->permutation[0], r, c, pixel[0]);
             if (!data->subtract) {
                 for (p=1; p<data->r_ctx->num_planes; p++)
-                    pixels->data[data->permutation[p]][r*width + c] = pixel[p];
+                    ff_flif16_pixel_set(pixels, data->permutation[p], r, c, pixel[p]);
             } else {
                 for (p=1; p<3 && p<data->r_ctx->num_planes; p++)
-                    pixels->data[data->permutation[p]][r*width + c] =
+                    ff_flif16_pixel_set(pixels, data->permutation[p], r, c,
                     av_clip(pixel[p] + pixel[0],
                          ranges->min(data->r_ctx, data->permutation[p]),
-                         ranges->max(data->r_ctx, data->permutation[p]));
+                         ranges->max(data->r_ctx, data->permutation[p])));
                 for (p=3; p<data->r_ctx->num_planes; p++)
-                    pixels->data[data->permutation[p]][r*width + c] = pixel[p];
+                    ff_flif16_pixel_set(pixels, data->permutation[p], r, c, pixel[p]);
             }
         }
     }
@@ -915,11 +915,11 @@ static uint8_t transform_channelcompact_reverse(FLIF16TransformContext* ctx,
 
         for(r=0; r < pixels->height; r++){
             for(c=0; c < pixels->width; c++){
-                P = pixels->data[p][r*pixels->width + c];
+                P = ff_flif16_pixel_get(pixels, p, r, c);
                 if (P < 0 || P >= (int) palette_size)
                     P = 0;
                 assert(P < (int) palette_size);
-                pixels->data[p][r*pixels->width + c] = palette[P];
+                ff_flif16_pixel_set(pixels, p, r, c, palette[P]);
             }
         }
     }

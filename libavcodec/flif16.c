@@ -107,16 +107,17 @@ void ff_flif16_plane_free(FLIF16PixelData *frame, uint8_t num_planes)
 FLIF16PixelData *ff_flif16_frames_init(uint32_t num_frames, uint8_t num_planes,
                                        uint32_t depth, uint32_t width, uint32_t height)
 {
-    frames = av_mallocz(sizeof(*frames) * num_frames)
+    FLIF16PixelData *frames = av_mallocz(sizeof(*frames) * num_frames);
     if(!frames)
         return NULL;
     for(int i = 0; i < num_frames; ++i)
-        ff_flif16_plane_alloc(frames[i], num_planes, depth, width, height);
+        ff_flif16_plane_alloc(&frames[i], num_planes, depth, width, height);
+    return frames;
 }
 
 void ff_flif16_frames_free(FLIF16PixelData *frames, uint32_t num_frames,
                            uint32_t num_planes)
 {
     for(int i = 0; i < num_frames; ++i)
-        ff_flif16_plane_free(frames[i], num_planes);
+        ff_flif16_plane_free(&frames[i], num_planes);
 }

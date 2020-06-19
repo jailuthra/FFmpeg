@@ -28,7 +28,6 @@
 
 #include "flif16.h"
 #include "flif16_rangecoder.h"
-#include "flif16_image.h"
 
 #include "avcodec.h"
 #include "libavutil/common.h"
