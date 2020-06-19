@@ -88,8 +88,8 @@ typedef struct FLIF16PixelData {
     uint8_t initialized;            //FLAG : initialized or not. // See initialisation with NULL check instead
     uint8_t num_planes;
     uint32_t height, width;
-    
-    FLIF16ColorVal **data; // Remove the static array 
+    uint8_t *is_constant;
+    void **data;
 } FLIF16PixelData;
 
 typedef struct FLIF16TransformContext{
@@ -189,10 +189,18 @@ static inline void ff_flif16_pixel_set(FLIF16PixelData *frame, uint8_t plane,
 static inline FLIF16ColorVal ff_flif16_pixel_get(FLIF16PixelData *frame, uint8_t plane,
                                                  uint32_t row, uint32_t col)
 {
-    if(frame->isconstant[plane])
+    if(frame->is_constant[plane])
         return (FLIF16ColorVal) *frame->data
     else
         return (FLIF16ColorVal) *frame->data[plane][image->height * row + col];
+}
+
+static inline void ff_flif16_copy_row(FLIF16PixelData *dest,
+                                      FLIF16PixelData *src,
+                                      uint8_t plane,
+                                      uint32_t row)
+{
+
 }
 
 // Must be included here to resolve circular include

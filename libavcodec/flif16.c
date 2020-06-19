@@ -33,9 +33,9 @@
  * @param[in]  channels number of channels
  */
 int32_t  (*ff_flif16_maniac_ni_prop_ranges_init(unsigned int *prop_ranges_size,
-                                            FLIF16RangesContext *ranges,
-                                            uint8_t property,
-                                            uint8_t channels))[2]
+                                                FLIF16RangesContext *ranges,
+                                                uint8_t property,
+                                                uint8_t channels))[2]
 {
     int min = ff_flif16_ranges_min(ranges, property);
     int max = ff_flif16_ranges_max(ranges, property);
@@ -67,4 +67,24 @@ int32_t  (*ff_flif16_maniac_ni_prop_ranges_init(unsigned int *prop_ranges_size,
 }
 
 
-ff_flif16_plane_alloc
+void ff_flif16_plane_alloc(FLIF16PixelData *frame)
+{
+/*
+if (depth <= 8) {
+    frame->data = av_mallocz(sizeof(*frame->data) * something);
+    if (p>0) planes[0] = make_unique<Plane<ColorVal_intern_8>>(width, height, 0, scale); // R,Y
+    if (p>1) planes[1] = make_unique<Plane<ColorVal_intern_16>>(width, height, 0, scale); // G,I
+    if (p>2) planes[2] = make_unique<Plane<ColorVal_intern_16>>(width, height, 0, scale); // B,Q
+    if (p>3) planes[3] = make_unique<Plane<ColorVal_intern_8>>(width, height, 0, scale); // A
+#ifdef SUPPORT_HDR
+} else {
+    frame->data = av_mallocz(sizeof(*frame->data) * something)
+    if (p>0) planes[0] = make_unique<Plane<ColorVal_intern_16u>>(width, height, 0, scale); // R,Y
+    if (p>1) planes[1] = make_unique<Plane<ColorVal_intern_32>>(width, height, 0, scale); // G,I
+    if (p>2) planes[2] = make_unique<Plane<ColorVal_intern_32>>(width, height, 0, scale); // B,Q
+    if (p>3) planes[3] = make_unique<Plane<ColorVal_intern_16u>>(width, height, 0, scale); // A
+#endif
+}
+if (p>4) planes[4] = make_unique<Plane<ColorVal_intern_8>>(width, height, 0, scale); // FRA
+*/
+}
