@@ -438,16 +438,17 @@ inline ColorVal predictScanlines_plane(const plane_t &plane, uint32_t r, uint32_
 */
 
 
-void flif16_read_ni_plane(FLIF16DecoderContext *s,
-                          FLIF16Ranges *ranges,
-                          alpha_t &alpha,
-                          Properties &properties,
-                          uint8_t p,
-                          uint32_t fr,
-                          uint32_t r,
-                          const FLIF16ColorVal grey,
-                          const FLIF16ColorVal minP)
+static int flif16_read_ni_plane(FLIF16DecoderContext *s,
+                                FLIF16Ranges *ranges,
+                                alpha_t &alpha,
+                                Properties &properties,
+                                uint8_t p,
+                                uint32_t fr,
+                                uint32_t r,
+                                const FLIF16ColorVal grey,
+                                const FLIF16ColorVal minP)
 {
+    // TODO write in a position independent manner
     FLIF16ColorVal min, max;
     uint32_t begin = 0, end = s->width;
 
@@ -546,6 +547,11 @@ void flif16_read_ni_plane(FLIF16DecoderContext *s,
              ff_flif16_copy_rows(s->out_frames[fr], s->out_frames[fr - 1], p, r, end, s->width);
         }
     }
+
+    return 0;
+
+    need_more_data:
+    return AVERROR(EAGAIN);
 }
 
 
@@ -565,6 +571,7 @@ static int flif16_read_ni_image(AVCodecContext *avctx)
     FLIF16DecoderContext *s = avctx->priv_data;
     FLIF16ColorVal *grays;
     FLIF16ColorVal *properties;
+    int ret;
     /*
     for (int p = 0; p < images[0].numPlanes(); p++) {
         Ranges propRanges;
@@ -620,14 +627,16 @@ static int flif16_read_ni_image(AVCodecContext *avctx)
                         scanline_plane_decoder<Coder,Plane<ColorVal_intern_16u>> decoder(coders[p],images,ranges,properties,alpha,p,fr,r,greys[p],minP,alphazero,FRA);
                         plane.accept_visitor(decoder);
                     } */
-                    flif16_read_ni_plane(s, p, properties, grays, min_p);
+                    ret = flif16_read_ni_plane(s, p, properties, grays[p], min_p);
+                    // TODO manage read_more_data_condition
+                    if (ret)
+                        goto end;
                 }
             }
         }
         av_freep(&properties);
     }
-
-    return 0;
+    return ret;
 }
 
 
