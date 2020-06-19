@@ -127,6 +127,7 @@ typedef struct FLIF16DecoderContext {
     int i;                ///< A generic iterator used to save states between for loops.
     int i2;
     int i3;
+
     // Primary Header     
     uint8_t ia;           ///< Is image interlaced or/and animated or not
     uint32_t bpc;         ///< 2 ^ Bytes per channel
