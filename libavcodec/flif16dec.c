@@ -438,6 +438,56 @@ inline ColorVal predictScanlines_plane(const plane_t &plane, uint32_t r, uint32_
 }
 */
 
+FLIF16ColorVal predict_and_calcProps_scanlines_plane(FLIF16ColorVal *properties,
+                                               const FLIF16RangesContext *ranges_ctx,
+                                               const FLIF16PixelData *pixel,
+                                               const int p,
+                                               const uint32_t r,
+                                               const uint32_t c,
+                                               FLIF16ColorVal *min,
+                                               FLIF16ColorVal *max,
+                                               const FLIF16ColorVal fallback,
+                                               uint8_t nobordercases)
+{
+    FLIF16ColorVal guess;
+    int width = pixel->width, height = pixel->height;
+    FLIF16Ranges *ranges = flif16_ranges[ranges_ctx->r_no];
+    int which = 0;
+    int index=0;
+    if (p < 3) {
+        for (int pp = 0; pp < p; pp++) {
+            properties[index++] = pixel->data[pp][r*width + c]; //image(pp,r,c);
+        }
+        if (ranges_ctx->num_planes>3) properties[index++] = pixel->data[3][r*width + c]; //image(3,r,c);
+    }
+    FLIF16ColorVal left = (nobordercases || c>0 ? pixel->data[p][r*width + (c-1)] : (r > 0 ? pixel->data[p][(r-1)*width + c] : fallback));
+    FLIF16ColorVal top = (nobordercases || r>0 ? pixel->data[p][(r-1)*width + c] : left);
+    FLIF16ColorVal topleft = (nobordercases || (r>0 && c>0) ? pixel->data[p][(r-1)*width + (c-1)] : (r > 0 ? top : left));
+    FLIF16ColorVal gradientTL = left + top - topleft;
+    guess = MEDIAN3(gradientTL, left, top);
+    ranges->snap(ranges_ctx, p, properties, min, max, guess);
+    assert(min >= ranges->min(ranges_ctx, p));
+    assert(max <= ranges->max(ranges_ctx, p));
+    assert(guess >= min);
+    assert(guess <= max);
+    if (guess == gradientTL) which = 0;
+    else if (guess == left) which = 1;
+    else if (guess == top) which = 2;
+
+    properties[index++] = guess;
+    properties[index++] = which;
+
+    if (nobordercases || (c > 0 && r > 0)) { properties[index++] = left - topleft; properties[index++] = topleft - top; }
+    else   { properties[index++] = 0; properties[index++] = 0;  }
+
+    if (nobordercases || (c+1 < width && r > 0)) properties[index++] = top - pixel->data[p][(r-1)*width + (c+1)]; // top - topright
+    else   properties[index++] = 0;
+    if (nobordercases || r > 1) properties[index++] = pixel->data[p][(r-2)*width + c] - top;    // toptop - top
+    else properties[index++] = 0;
+    if (nobordercases || c > 1) properties[index++] = pixel->data[p][r*width + (c-2)]-left;    // leftleft - left
+    else properties[index++] = 0;
+    return guess;
+}
 
 static int flif16_read_ni_plane(FLIF16DecoderContext *s,
                                 FLIF16Ranges *ranges,
