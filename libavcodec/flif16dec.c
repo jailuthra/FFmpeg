@@ -456,16 +456,16 @@ FLIF16ColorVal predict_and_calcProps_scanlines_plane(FLIF16ColorVal *properties,
     int index=0;
     if (p < 3) {
         for (int pp = 0; pp < p; pp++) {
-            properties[index++] = pixel->data[pp][r*width + c]; //image(pp,r,c);
+            properties[index++] = ff_flif16_pixel_get(pixel, pp, r, c); //image(pp,r,c);
         }
         if (ranges_ctx->num_planes>3)
-            properties[index++] = pixel->data[3][r*width + c]; //image(3,r,c);
+            properties[index++] = ff_flif16_pixel_get(pixel, 3, r, c); //image(3,r,c);
     }
-    left = (nobordercases || c>0 ? pixel->data[p][r*width + (c-1)] : 
-           (r > 0 ? pixel->data[p][(r-1)*width + c] : fallback));
-    top = (nobordercases || r>0 ? pixel->data[p][(r-1)*width + c] : left);
+    left = (nobordercases || c>0 ? ff_flif16_pixel_get(pixel, p, r, c-1) : 
+           (r > 0 ? ff_flif16_pixel_get(pixel, p, r-1, c) : fallback));
+    top = (nobordercases || r>0 ? ff_flif16_pixel_get(pixel, p, r-1, c) : left);
     topleft = (nobordercases || (r>0 && c>0) ? 
-              pixel->data[p][(r-1)*width + (c-1)] : (r > 0 ? top : left));
+              ff_flif16_pixel_get(pixel, p, r-1, c-1) : (r > 0 ? top : left));
     gradientTL = left + top - topleft;
     guess = MEDIAN3(gradientTL, left, top);
     ranges->snap(ranges_ctx, p, properties, min, max, guess);
@@ -490,15 +490,15 @@ FLIF16ColorVal predict_and_calcProps_scanlines_plane(FLIF16ColorVal *properties,
     }
 
     if (nobordercases || (c+1 < width && r > 0))
-        properties[index++] = top - pixel->data[p][(r-1)*width + (c+1)]; // top - topright
+        properties[index++] = top - ff_flif16_pixel_get(pixel, p, r-1, c+1); // top - topright 
     else
         properties[index++] = 0;
     if (nobordercases || r > 1)
-        properties[index++] = pixel->data[p][(r-2)*width + c] - top;    // toptop - top
+        properties[index++] = ff_flif16_pixel_get(pixel, p, r-2, c) - top;  // toptop - top
     else 
         properties[index++] = 0;
     if (nobordercases || c > 1)
-        properties[index++] = pixel->data[p][r*width + (c-2)]-left;    // leftleft - left
+        properties[index++] = ff_flif16_pixel_get(pixel, p, r, c-2) - left;  // leftleft - left
     else 
         properties[index++] = 0;
     return guess;
