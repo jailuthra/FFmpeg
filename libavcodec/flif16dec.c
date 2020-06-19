@@ -28,6 +28,7 @@
 
 #include "flif16.h"
 #include "flif16_rangecoder.h"
+#include "flif16_image.h"
 
 #include "avcodec.h"
 #include "libavutil/common.h"
@@ -62,6 +63,16 @@ enum FLIF16States {
     FLIF16_MANIAC,
     FLIF16_PIXELDATA,
     FLIF16_CHECKSUM
+};
+
+Plane plane = {
+    .init = ff_plane_init,
+    .clear = ff_plane_clear,
+    .set = ff_plane_set,
+    .get = ff_plane_get,
+    .prepare_zoomlevel = ff_plane_prepare_zoomlevel,
+    .get_fast = ff_plane_get_fast,
+    .set_fast = ff_plane_set_fast
 };
 
 static int flif16_read_header(AVCodecContext *avctx)
@@ -424,8 +435,8 @@ void flif16_read_ni_plane(FLIF16DecoderContext *s,
                           uint8_t p,
                           uint32_t fr,
                           uint32_t r,
-                          const ColorVal grey,
-                          const ColorVal minP, const bool alphazero,
+                          const FLIF16ColorVal grey,
+                          const FLIF16ColorVal minP, const bool alphazero,
                           const bool FRA)
 {
     FLIF16ColorVal min, max;
@@ -444,7 +455,7 @@ void flif16_read_ni_plane(FLIF16DecoderContext *s,
         // copy pixels from the previous frame
         begin = image.col_begin[r];
         end=image.col_end[r];
-        if (alphazero && p < 3) {
+        if (s->alphazero && p < 3) {
             for (uint32_t c = 0; c < begin; c++)
                 if (alpha.get(r,c) == 0)
                     plane.set(r,c,predictScanlines_plane(plane,r,c, grey));
@@ -459,39 +470,39 @@ void flif16_read_ni_plane(FLIF16DecoderContext *s,
     if (r > 1 && !FRA && begin == 0 && end > 3) {
         uint32_t c = begin;
         for (; c < 2; c++) {
-            if (alphazero && p<3 && alpha.get(r,c) == 0) {
+            if (s->alphazero && p<3 && alpha.get(r,c) == 0) {
                 ff_flif16_pixel_set(s->outframes[fr], r, c, predictScanlines_plane(plane,r,c, grey));
                 continue;
             }
-            ColorVal guess = predict_and_calcProps_scanlines_plane<plane_t,false>
+            FLIF16ColorVal guess = predict_and_calcProps_scanlines_plane<plane_t,false>
                              (properties,ranges,image,plane,p,r,c,min,max, minP);
-            ColorVal curr = coder.read_int(properties, min - guess, max - guess) + guess;
+            FLIF16ColorVal curr = coder.read_int(properties, min - guess, max - guess) + guess;
             ff_flif16_pixel_set(s->outframes[fr], r, c, curr);
         }
         for (; c < end-1; c++) {
-            if (alphazero && p<3 && alpha.get(r,c) == 0) {
+            if (s->alphazero && p<3 && alpha.get(r,c) == 0) {
                 plane.set(r,c,predictScanlines_plane(plane,r,c, grey));
                 continue;
             }
-            ColorVal guess = predict_and_calcProps_scanlines_plane<plane_t,true>
+            FLIF16ColorVal guess = predict_and_calcProps_scanlines_plane<plane_t,true>
                             (properties,ranges,image,plane,p,r,c,min,max, minP);
-            ColorVal curr = coder.read_int(properties, min - guess, max - guess) + guess;
+            FLIF16ColorVal curr = coder.read_int(properties, min - guess, max - guess) + guess;
             ff_flif16_pixel_set(s->outframes[fr], r, c, curr);
         }
         for (; c < end; c++) {
-            if (alphazero && p<3 && alpha.get(r,c) == 0) {
+            if (s->alphazero && p<3 && alpha.get(r,c) == 0) {
                 plane.set(r,c,predictScanlines_plane(plane,r,c, grey));
                 continue;
             }
-            ColorVal guess = predict_and_calcProps_scanlines_plane<plane_t,false>
+            FLIF16ColorVal guess = predict_and_calcProps_scanlines_plane<plane_t,false>
                              (properties,ranges,image,plane,p,r,c,min,max, minP);
-            ColorVal curr = coder.read_int(properties, min - guess, max - guess) + guess;
+            FLIF16ColorVal curr = coder.read_int(properties, min - guess, max - guess) + guess;
             plane.set(r,c, curr);
         }
     } else {
         for (uint32_t c = begin; c < end; c++) {
             //predict pixel for alphazero and get a previous pixel for FRA
-            if (alphazero && p<3 && alpha.get(r,c) == 0) {
+            if (s->alphazero && p<3 && alpha.get(r,c) == 0) {
                 plane.set(r,c,predictScanlines_plane(plane,r,c, grey));
                 continue;
             }
@@ -503,10 +514,10 @@ void flif16_read_ni_plane(FLIF16DecoderContext *s,
             }
 
             //calculate properties and use them to decode the next pixel
-            ColorVal guess = /*predict_and_calcProps_scanlines_plane*/
+            FLIF16ColorVal guess = /*predict_and_calcProps_scanlines_plane*/
             if (FRA && p == 4 && max > fr)
                 max = fr;
-            ColorVal curr = coder.read_int(properties, min - guess, max - guess) + guess;
+            FLIF16ColorVal curr = coder.read_int(properties, min - guess, max - guess) + guess;
             plane.set(r,c, curr);
         }
     }
@@ -514,7 +525,7 @@ void flif16_read_ni_plane(FLIF16DecoderContext *s,
     //if this is not the first or only frame, fill the end of the row after the actual pixel data
     if (fr > 0) {
         //if alphazero is on, fill with a predicted value, otherwise copy pixels from the previous frame
-        if (alphazero && p < 3) {
+        if (s->alphazero && p < 3) {
             for (uint32_t c = end; c < image.cols(); c++)
                 if (alpha.get(r,c) == 0)
                     plane.set(r,c,predictScanlines_plane(plane,r,c, grey));
@@ -532,7 +543,7 @@ static inline FLIF16ColorVal *flif16_compute_grays(FLIF16RangesContext *ranges)
     FLIF16ColorVal *grays; // a pixel with values in the middle of the bounds
     grays = av_malloc(ranges->num_planes * sizeof(*grays));
     for (int p = 0; p < ranges->num_planes; p++)
-        grays[i] = (ranges->min(p) + ranges->max(p)) / 2;
+        grays[p] = (ff_flif16_ranges_min(ranges, p) + ff_flif16_ranges_max(ranges, p)) / 2;
     return grays;
 }
 
@@ -560,28 +571,28 @@ static int flif16_read_ni_image(AVCodecContext *avctx)
     // Or something like that. Check out the definition in flif16_rangecoder.c
 
     // Set images to gray
-    for (int p = 0; p < s->ranges->num_planes; p++) {
-        if (ff_flif16_ranges_min(s->ranges, p) < ranges->max(p))
+    for (int p = 0; p < s->range->num_planes; p++) {
+        if (ff_flif16_ranges_min(s->range, p) < ff_flif16_ranges_max(s->range, p))
             for (uint32_t fr = 0; fr < s->frames; fr++) {
                 for (uint32_t r = 0; r < s->height; r++) { // Handle the 2 pixels per frame stuff here.
                     for (uint32_t c = 0; c < s->width; c++) {
-                        ff_flif16_pixel_set(s->out_frames[fr], p, r, c, (s->ranges->min(p) + s->ranges->max(p)) / 2);
+                        ff_flif16_pixel_set(s->out_frames[fr], p, r, c, (ff_flif16_ranges_min(s->range, p) + ff_flif16_ranges_max(s->range, p)) / 2);
                     }
                 }
             }
     }
 
-    grays = flif16_compute_grays(s->ranges); // free later
+    grays = flif16_compute_grays(s->range); // free later
     ++s->segment;
 
     for (int k = 0; k < 5; ++k) {
-        uint8_t p = PLANE_ORDERING[k];
+        uint8_t p = plane_ordering[k];
         if (p >= s->channels)
             continue;
         properties = av_mallocz((s->channels > 3 ? properties_ni_rgba_size[p]:
                                                    properties_ni_rgb_size[p]));
-        if (ranges->min(p) < ranges->max(p)) { // Check constant plane
-            FLIF16ColorVal min_p = ranges->min(p);
+        if (ff_flif16_ranges_min(s->range, p) < ff_flif16_ranges_max(s->range, p)) { // Check constant plane
+            FLIF16ColorVal min_p = ff_flif16_ranges_min(s->range, p);
             for (uint32_t r = 0; r < s->height; r++) {
                 for (int fr = 0; fr < s->frames; fr++) {
                     /*Image &image = images[fr];
@@ -620,7 +631,7 @@ static int flif16_read_pixeldata(AVCodecContext *avctx, AVFrame *p)
         return AVERROR_EOF;
 }
 
-static void flif16_write_frame(AVCodecContext *avctx, AVFrame *out_frame,`
+static void flif16_write_frame(AVCodecContext *avctx, AVFrame *out_frame,
                                uint32_t frame_no)
 {
     // Refer to libavcodec/bmp.c for an example.
