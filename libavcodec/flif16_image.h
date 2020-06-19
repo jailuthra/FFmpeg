@@ -1,6 +1,6 @@
 /*
  * FLIF16 Image Format Definitions
- * Copyright (c) 2020 AKartik K. Khullar <kartikkhullar840@gmail.com>
+ * Copyright (c) 2020 Kartik K. Khullar <kartikkhullar840@gmail.com>
  *
  * This file is part of FFmpeg.
  *
