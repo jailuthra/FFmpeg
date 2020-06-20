@@ -88,8 +88,8 @@ typedef struct FLIF16PixelData {
     uint8_t initialized;            //FLAG : initialized or not. // See initialisation with NULL check instead
     uint8_t num_planes;
     uint32_t height, width;
-    uint8_t *is_constant;
-    uint8_t seen_before;
+    uint8_t constant_alpha;
+    int8_t seen_before;
     void **data;
 } FLIF16PixelData;
 
@@ -199,14 +199,16 @@ static inline void ff_flif16_pixel_set(FLIF16PixelData *frame, uint8_t plane,
                                        uint32_t row, uint32_t col,
                                        FLIF16ColorVal value)
 {
+    printf("[%s] plane = %u row = %u col = %u value = %d\n", __func__, plane, row, col, value);
     ((FLIF16ColorVal *) frame->data[plane])[frame->width * row + col] = value;
 }
 
 static inline FLIF16ColorVal ff_flif16_pixel_get(FLIF16PixelData *frame, uint8_t plane,
                                                  uint32_t row, uint32_t col)
 {
-    if(frame->is_constant[plane])
-        return   ((FLIF16ColorVal *) frame->data[plane])[0];
+    printf("[%s] plane = %u row = %u col = %u\n", __func__, plane, row, col);
+    if(frame->constant_alpha && (plane == 3))
+        return ((FLIF16ColorVal *) frame->data[3])[0];
     else
         return ((FLIF16ColorVal *) frame->data[plane])[frame->width * row + col];
 }
@@ -216,8 +218,10 @@ static inline void ff_flif16_copy_rows(FLIF16PixelData *dest,
                                        uint32_t row, uint32_t col_start,
                                        uint32_t col_end)
 {
-    for(uint32_t col = col_start; col < col_end; ++col)
+    for(uint32_t col = col_start; col < col_end; ++col) {
+        printf("[%s] col_start = %u col_end = %u plane = %u row = %u\n", __func__, col_start, col_end, plane, row);
         ff_flif16_pixel_set(dest, plane, row, col, ff_flif16_pixel_get(src, plane, row, col));
+    }
 }
 
 
