@@ -56,7 +56,7 @@ static const int properties_ni_rgba_size[] = {8, 9, 10, 7, 7};
 const int plane_ordering[] = {4,3,0,1,2}; // FRA (lookback), A, Y, Co, Cg
 
 enum FLIF16States {
-    FLIF16_HEADER = 1,
+    FLIF16_HEADER = 0,
     FLIF16_SECONDHEADER,
     FLIF16_TRANSFORM,
     FLIF16_MANIAC,
@@ -71,15 +71,17 @@ static int flif16_read_header(AVCodecContext *avctx)
     // TODO Make do without this array
     uint32_t *vlist[] = { &s->width, &s->height, &s->frames };
     // Minimum size has empirically found to be 8 bytes.
-
+    printf("At: [%s] %s, %d\n", __func__, __FILE__, __LINE__);
     s->cut   = CHANCETABLE_DEFAULT_CUT;
     s->alpha = CHANCETABLE_DEFAULT_ALPHA;
+    printf(">>> %u %u\n", s->cut, s->alpha);
 
     if (bytestream2_size(&s->gb) < 8) {
         av_log(avctx, AV_LOG_ERROR, "buf size too small (%d)\n",
                bytestream2_size(&s->gb));
         return AVERROR(EINVAL);
     }
+    printf("At: [%s] %s, %d\n", __func__, __FILE__, __LINE__);
 
     if (bytestream2_get_le32(&s->gb) != (*((uint32_t *) flif16_header))) {
         av_log(avctx, AV_LOG_ERROR, "bad magic number\n");
@@ -91,11 +93,13 @@ static int flif16_read_header(AVCodecContext *avctx)
     temp = bytestream2_get_byte(&s->gb);
     s->ia       = temp >> 4;
     s->channels = (0x0F & temp);
+    printf("At: [%s] %s, %d\n", __func__, __FILE__, __LINE__);
 
     if (!(s->ia % 2)) {
         av_log(avctx, AV_LOG_ERROR, "interlaced images not supported\n");
         return AVERROR_PATCHWELCOME;
     }
+    printf("At: [%s] %s, %d\n", __func__, __FILE__, __LINE__);
     
     s->bpc      = bytestream2_get_byte(&s->gb);
 
@@ -111,7 +115,7 @@ static int flif16_read_header(AVCodecContext *avctx)
         FF_FLIF16_VARINT_APPEND(*vlist[i], temp);
         count = 3;
     }
-
+    printf("At: [%s] %s, %d\n", __func__, __FILE__, __LINE__);
     s->width++;
     s->height++;
     (s->ia > 4) ? (s->frames += 2) : (s->frames = 1);
@@ -200,12 +204,14 @@ static int flif16_read_second_header(AVCodecContext *avctx)
         case 5:
             // Has custom alpha flag
             RAC_GET(&s->rc, NULL, 0, 1, &s->customalpha, FLIF16_RAC_UNI_INT);
-            // MSG("has_custom_cutoff_alpha = %d\n", s->customalpha);
+            printf("has_custom_cutoff_alpha = %d\n", s->customalpha);
             ++s->segment;
 
         case 6:
-            if (s->customalpha)
+            if (s->customalpha) {
+                printf("custom cut\m");
                 RAC_GET(&s->rc, NULL, 1, 128, &s->cut, FLIF16_RAC_UNI_INT);
+            }
             ++s->segment;
 
         case 7:
@@ -353,7 +359,7 @@ static int flif16_read_maniac_forest(AVCodecContext *avctx)
     end:
     s->state = FLIF16_PIXELDATA;
     s->segment = 0;
-    return ret;
+    return 0;
 
     need_more_data:
     return ret;
@@ -677,8 +683,8 @@ static int flif16_read_pixeldata(AVCodecContext *avctx, AVFrame *p)
                                           s->width, s->height);
     if (!s->out_frames)
         return AVERROR(ENOMEM);
-
-    if(s->ia % 2)
+    printf("At:as [%s] %s, %d\n", __func__, __FILE__, __LINE__);
+    if((s->ia % 2))
         return flif16_read_ni_image(avctx);
     else
         return AVERROR_EOF;
@@ -714,9 +720,10 @@ static int flif16_decode_frame(AVCodecContext *avctx,
     AVFrame *p              = data;
     // MSG("Packet Size = %d\n", buf_size);
     bytestream2_init(&s->gb, buf, buf_size);
-
+    printf("At:as [%s] %s, %d\n", __func__, __FILE__, __LINE__);
     // Looping is done to change states in between functions.
     // Function will either exit on AVERROR(EAGAIN) or AVERROR_EOF
+    printf("[Decode] s->state = %d\n", s->state);
     do {
         switch(s->state) {
             case FLIF16_HEADER:
@@ -744,7 +751,7 @@ static int flif16_decode_frame(AVCodecContext *avctx,
                 break;
         }
     } while (!ret);
-
+    printf("[Decode] Ret: %d\n", ret);
     printf("[Decode Result]\n"                  \
            "Width: %u, Height: %u, Frames: %u\n"\
            "ia: %x bpc: %u channels: %u\n"      \

@@ -141,8 +141,8 @@ typedef struct FLIF16DecoderContext {
     uint8_t custombc;     ///< Custom Bitchance Flag
     uint8_t customalpha;  ///< Custom alphadiv & cutoff flag
 
-    uint8_t cut;          ///< Chancetable custom cutoff
-    uint32_t alpha;        ///< Chancetable custom alphadivisor
+    uint32_t cut;         ///< Chancetable custom cutoff
+    uint32_t alpha;       ///< Chancetable custom alphadivisor
     uint8_t ipp;          ///< Invisible pixel predictor
 
     uint8_t loops;        ///< Number of times animation loops
