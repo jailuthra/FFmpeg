@@ -199,14 +199,14 @@ static inline void ff_flif16_pixel_set(FLIF16PixelData *frame, uint8_t plane,
                                        uint32_t row, uint32_t col,
                                        FLIF16ColorVal value)
 {
-    printf("[%s] plane = %u row = %u col = %u value = %d\n", __func__, plane, row, col, value);
+    //printf("[%s] plane = %u row = %u col = %u value = %d\n", __func__, plane, row, col, value);
     ((FLIF16ColorVal *) frame->data[plane])[frame->width * row + col] = value;
 }
 
 static inline FLIF16ColorVal ff_flif16_pixel_get(FLIF16PixelData *frame, uint8_t plane,
                                                  uint32_t row, uint32_t col)
 {
-    printf("[%s] plane = %u row = %u col = %u\n", __func__, plane, row, col);
+    //printf("[%s] plane = %u row = %u col = %u\n", __func__, plane, row, col);
     if(frame->constant_alpha && (plane == 3))
         return ((FLIF16ColorVal *) frame->data[3])[0];
     else

@@ -427,15 +427,19 @@ FLIF16ChanceContext *ff_flif16_maniac_findleaf(FLIF16MANIACContext *m,
     FLIF16ChanceContext *leaves;
     #endif
 
-    if (m->forest[channel]->leaves) {
-        m->forest[channel]->leaves = av_mallocz(MANIAC_TREE_BASE_SIZE *
-                                                sizeof(*m->forest[channel]->leaves));
+    if (!m->forest[channel]->leaves) {
+        printf("At: [%s] %s, %d\n", __func__, __FILE__, __LINE__);
+        m->forest[channel]->leaves = av_mallocz(MANIAC_TREE_BASE_SIZE * sizeof(*m->forest[channel]->leaves));
         m->forest[channel]->leaves_size = MANIAC_TREE_BASE_SIZE;
+        if(!m->forest[channel]->leaves)
+            return NULL;
+        ff_flif16_chancecontext_init(&m->forest[channel]->leaves[0]);
     }
     
     leaves = m->forest[channel]->leaves;
 
     while (nodes[pos].property != -1) {
+        printf("At: [%s] %s, %d\n", __func__, __FILE__, __LINE__);
         if (nodes[pos].count < 0) {
             if (properties[nodes[pos].property] > nodes[pos].split_val)
                 pos = nodes[pos].child_id;
@@ -470,7 +474,8 @@ FLIF16ChanceContext *ff_flif16_maniac_findleaf(FLIF16MANIACContext *m,
                 return &leaves[new_leaf];
         }
     }
-    return &leaves[nodes[pos].leaf_id];
+    printf(">>>>>><> %u %lu \n", m->forest[channel]->data[pos].leaf_id, (unsigned long int) &m->forest[channel]->data[pos]);
+    return &m->forest[channel]->leaves[m->forest[channel]->data[pos].leaf_id];
 }
 
 int ff_flif16_maniac_read_int(FLIF16RangeCoder *rc,
@@ -485,8 +490,10 @@ int ff_flif16_maniac_read_int(FLIF16RangeCoder *rc,
     switch(rc->segment2) {
         case 0:
             rc->maniac_ctx = ff_flif16_maniac_findleaf(m, channel, properties);
-            if(!rc->maniac_ctx)
+            if(!rc->maniac_ctx) {
+                printf(">>>>> ! NULL\n");
                 return AVERROR(ENOMEM);
+            }
             ++rc->segment2;
 
         case 1:
@@ -502,5 +509,6 @@ int ff_flif16_maniac_read_int(FLIF16RangeCoder *rc,
     return 1;
 
     need_more_data:
+        printf("need_more_data\n");
         return 0;
 }
