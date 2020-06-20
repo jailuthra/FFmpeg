@@ -142,7 +142,7 @@ typedef struct FLIF16DecoderContext {
     uint8_t customalpha;  ///< Custom alphadiv & cutoff flag
 
     uint8_t cut;          ///< Chancetable custom cutoff
-    uint8_t alpha;        ///< Chancetable custom alphadivisor
+    uint32_t alpha;        ///< Chancetable custom alphadivisor
     uint8_t ipp;          ///< Invisible pixel predictor
 
     uint8_t loops;        ///< Number of times animation loops
@@ -162,9 +162,10 @@ typedef struct FLIF16DecoderContext {
     uint32_t prop_ranges_size;
     
     // Pixeldata
-    uint8_t curr_plane;        ///< State variable Current plane under processing
+    uint8_t curr_plane;        ///< State variable. Current plane under processing
     FLIF16ColorVal *grays;
     FLIF16ColorVal *properties;
+    uint32_t c;                ///< State variable for current column
     
     // Image Properties
     /*
@@ -188,9 +189,8 @@ int32_t (*ff_flif16_maniac_ni_prop_ranges_init(unsigned int *prop_ranges_size,
                                             uint8_t property,
                                             uint8_t channels))[2];
 
-int ff_flif16_frames_init(FLIF16PixelData *frames,
-                          uint32_t num_frames, uint8_t num_planes,
-                          uint32_t depth, uint32_t width, uint32_t height);
+FLIF16PixelData *ff_flif16_frames_init(uint32_t num_frames, uint8_t num_planes,
+                                       uint32_t depth, uint32_t width, uint32_t height);
 
 void ff_flif16_frames_free(FLIF16PixelData *frames, uint32_t num_frames,
                            uint32_t num_planes);
@@ -199,16 +199,16 @@ static inline void ff_flif16_pixel_set(FLIF16PixelData *frame, uint8_t plane,
                                        uint32_t row, uint32_t col,
                                        FLIF16ColorVal value)
 {
-    frame->data[plane][frame->width * row + col] = value;
+    ((FLIF16ColorVal *) frame->data[plane])[frame->width * row + col] = value;
 }
 
 static inline FLIF16ColorVal ff_flif16_pixel_get(FLIF16PixelData *frame, uint8_t plane,
                                                  uint32_t row, uint32_t col)
 {
     if(frame->is_constant[plane])
-        return (FLIF16ColorVal) **frame->data;
+        return   ((FLIF16ColorVal *) frame->data[plane])[0];
     else
-        return (FLIF16ColorVal) frame->data[plane][frame->width * row + col];
+        return ((FLIF16ColorVal *) frame->data[plane])[frame->width * row + col];
 }
 
 static inline void ff_flif16_copy_rows(FLIF16PixelData *dest,
