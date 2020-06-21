@@ -395,8 +395,8 @@ static FLIF16ColorVal flif16_ni_predict_calcprops(FLIF16PixelData *pixel,
     gradientTL = left + top - topleft;
     guess = MEDIAN3(gradientTL, left, top);
     ff_flif16_ranges_snap(ranges_ctx, p, properties, min, max, &guess);
-    assert(min >= ranges->min(ranges_ctx, p));
-    assert(max <= ranges->max(ranges_ctx, p));
+    assert(min >= ff_flif16_ranges_min(ranges_ctx, p));
+    assert(max <= ff_flif16_ranges_max(ranges_ctx, p));
     assert(guess >= min);
     assert(guess <= max);
     if (guess == gradientTL) which = 0;

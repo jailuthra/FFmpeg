@@ -875,6 +875,12 @@ static uint8_t transform_channelcompact_read(FLIF16TransformContext * ctx,
     }
     
     end:
+        printf("Channel Compact Read : \n");
+        for(int j=0; j<dec_ctx->channels; j++){
+            for(int i=0; i<data->CPalette_size[j]; i++)
+                printf("%d ", data->CPalette[j][i]);
+            printf("\n");
+        }
         ctx->segment = 0;
         return 1;
 
