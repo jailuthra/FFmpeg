@@ -389,7 +389,7 @@ int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
 
     end:
     printf("end tree_top = %d\n", m->tree_top);
-    m->forest[channel]->data = av_realloc(m->forest[channel]->data, m->tree_top); // Maybe replace by fast realloc
+    m->forest[channel]->data = av_realloc(m->forest[channel]->data, m->tree_top * sizeof(*m->forest[channel]->data)); // Maybe replace by fast realloc
     if (!m->forest[channel]->data)
         return AVERROR(ENOMEM);
     m->forest[channel]->size = m->tree_top;
@@ -439,7 +439,6 @@ FLIF16ChanceContext *ff_flif16_maniac_findleaf(FLIF16MANIACContext *m,
     leaves = m->forest[channel]->leaves;
 
     while (nodes[pos].property != -1) {
-        printf("At: [%s] %s, %d\n", __func__, __FILE__, __LINE__);
         if (nodes[pos].count < 0) {
             if (properties[nodes[pos].property] > nodes[pos].split_val)
                 pos = nodes[pos].child_id;
@@ -474,8 +473,6 @@ FLIF16ChanceContext *ff_flif16_maniac_findleaf(FLIF16MANIACContext *m,
                 return &leaves[new_leaf];
         }
     }
-    printf(">>>>>><> %u %lu \n", m->forest[channel]->data[pos].leaf_id,
-           (unsigned long int) &m->forest[channel]->data[pos]);
     return &m->forest[channel]->leaves[m->forest[channel]->data[pos].leaf_id];
 }
 

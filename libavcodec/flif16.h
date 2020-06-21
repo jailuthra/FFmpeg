@@ -219,7 +219,7 @@ static inline void ff_flif16_copy_rows(FLIF16PixelData *dest,
                                        uint32_t col_end)
 {
     for(uint32_t col = col_start; col < col_end; ++col) {
-        printf("[%s] col_start = %u col_end = %u plane = %u row = %u\n", __func__, col_start, col_end, plane, row);
+        //printf("[%s] col_start = %u col_end = %u plane = %u row = %u\n", __func__, col_start, col_end, plane, row);
         ff_flif16_pixel_set(dest, plane, row, col, ff_flif16_pixel_get(src, plane, row, col));
     }
 }
