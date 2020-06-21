@@ -439,7 +439,6 @@ FLIF16ChanceContext *ff_flif16_maniac_findleaf(FLIF16MANIACContext *m,
     leaves = m->forest[channel]->leaves;
 
     while (nodes[pos].property != -1) {
-        printf("At: [%s] %s, %d\n", __func__, __FILE__, __LINE__);
         if (nodes[pos].count < 0) {
             if (properties[nodes[pos].property] > nodes[pos].split_val)
                 pos = nodes[pos].child_id;
@@ -474,8 +473,6 @@ FLIF16ChanceContext *ff_flif16_maniac_findleaf(FLIF16MANIACContext *m,
                 return &leaves[new_leaf];
         }
     }
-    printf(">>>>>><> %u %lu \n", m->forest[channel]->data[pos].leaf_id,
-           (unsigned long int) &m->forest[channel]->data[pos]);
     return &m->forest[channel]->leaves[m->forest[channel]->data[pos].leaf_id];
 }
 

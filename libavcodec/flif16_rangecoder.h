@@ -307,11 +307,11 @@ static inline int ff_flif16_rac_renorm(FLIF16RangeCoder *rc)
         if (!left) {
             return 0;
         }
-        printf("Renorm left = %d %lu %u\n", left, rc->range, FLIF16_RAC_MIN_RANGE);
+        // printf("Renorm left = %d %lu %u\n", left, rc->range, FLIF16_RAC_MIN_RANGE);
         rc->low <<= 8;
         rc->range <<= 8;
         rc->low |= bytestream2_get_byte(rc->gb);
-        printf("Renorm low = %lu range = %lu\n", rc->low, rc->range);
+        // printf("Renorm low = %lu range = %lu\n", rc->low, rc->range);
         if(!left)
             return 0;
         else
@@ -328,7 +328,7 @@ static inline uint8_t ff_flif16_rac_get(FLIF16RangeCoder *rc, uint32_t chance,
         printf("Triggered\n");
         return 0;
     }
-    printf("low = %lu range = %lu chance = %u renorm = %d\n", rc->low, rc->range, chance, rc->renorm);
+    // printf("low = %lu range = %lu chance = %u renorm = %d\n", rc->low, rc->range, chance, rc->renorm);
     if (rc->low >= rc->range - chance) {
         rc->low -= rc->range - chance;
         rc->range = chance;
@@ -491,7 +491,7 @@ static inline int ff_flif16_rac_read_nz_int(FLIF16RangeCoder *rc,
     //        (long unsigned int) rc, (long unsigned int) ctx, min, max,
     //        (long unsigned int) target);
     if (min == max) {
-        printf("At: [%s] %s, %d\n", __func__, __FILE__, __LINE__);
+        // printf("At: [%s] %s, %d\n", __func__, __FILE__, __LINE__);
         *target = min;
         goto end;
     }
@@ -508,7 +508,7 @@ static inline int ff_flif16_rac_read_nz_int(FLIF16RangeCoder *rc,
         case 0:
             RAC_NZ_GET(rc, ctx, NZ_INT_ZERO, &(temp));
             if (temp) {
-                printf("At: [%s] %s, %d\n", __func__, __FILE__, __LINE__);
+                // printf("At: [%s] %s, %d\n", __func__, __FILE__, __LINE__);
                 *target = 0;
                 goto end;
             }
@@ -517,7 +517,7 @@ static inline int ff_flif16_rac_read_nz_int(FLIF16RangeCoder *rc,
         case 1:
             if (min < 0) {
                 if (max > 0) {
-                    printf("At: [%s] %s, %d\n", __func__, __FILE__, __LINE__);
+                    // printf("At: [%s] %s, %d\n", __func__, __FILE__, __LINE__);
                     RAC_NZ_GET(rc, ctx, NZ_INT_SIGN, &(rc->sign));
                 } else {
                     rc->sign = 0;
@@ -532,7 +532,7 @@ static inline int ff_flif16_rac_read_nz_int(FLIF16RangeCoder *rc,
 
         case 2:
             for (; (rc->e) < (rc->emax); (rc->e++)) {
-                printf("At: [%s] %s, %d\n", __func__, __FILE__, __LINE__);
+                // printf("At: [%s] %s, %d\n", __func__, __FILE__, __LINE__);
                 RAC_NZ_GET(rc, ctx, NZ_INT_EXP((((rc->e) << 1) + rc->sign)),
                            &(temp));
                 if (temp)
@@ -563,7 +563,7 @@ static inline int ff_flif16_rac_read_nz_int(FLIF16RangeCoder *rc,
             if ((rc->minabs1) > (rc->amax)) {
                 goto loop; /* continue; */
             } else if ((rc->maxabs0) >= (rc->amin)) {
-                printf("At: [%s] %s, %d\n", __func__, __FILE__, __LINE__);
+                // printf("At: [%s] %s, %d\n", __func__, __FILE__, __LINE__);
                 RAC_NZ_GET(rc, ctx, NZ_INT_MANT(rc->pos), &temp);
                 if (temp)
                     rc->have = rc->minabs1;
