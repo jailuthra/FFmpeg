@@ -797,7 +797,15 @@ static int flif16_decode_frame(AVCodecContext *avctx,
     }
 
     if(s->out_frames) {
-        printf("First Pixel: %d\n", ff_flif16_pixel_get(&s->out_frames[0], 0, 0, 0));
+        for(int k = 0; k < s->channels; ++k) {
+            for(int j = 0; j < s->height; ++j) {
+                for(int i = 0; i < s->width; ++i) {
+                    printf("%u ", ff_flif16_pixel_get(&s->out_frames[0], k, j, i));
+                }
+                printf("\n");
+            }
+            printf("===\n");
+        }
     }
     return ret;
 }

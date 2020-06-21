@@ -474,7 +474,8 @@ FLIF16ChanceContext *ff_flif16_maniac_findleaf(FLIF16MANIACContext *m,
                 return &leaves[new_leaf];
         }
     }
-    printf(">>>>>><> %u %lu \n", m->forest[channel]->data[pos].leaf_id, (unsigned long int) &m->forest[channel]->data[pos]);
+    printf(">>>>>><> %u %lu \n", m->forest[channel]->data[pos].leaf_id,
+           (unsigned long int) &m->forest[channel]->data[pos]);
     return &m->forest[channel]->leaves[m->forest[channel]->data[pos].leaf_id];
 }
 
@@ -497,11 +498,14 @@ int ff_flif16_maniac_read_int(FLIF16RangeCoder *rc,
             ++rc->segment2;
 
         case 1:
-            #ifdef MULTISCALE_CHANCES_ENABLED
+           /* #ifdef MULTISCALE_CHANCES_ENABLED
             RAC_GET(rc, rc->maniac_ctx, min, max, target, FLIF16_RAC_NZ_MULTISCALE_INT);
             #else
             RAC_GET(rc, rc->maniac_ctx, min, max, target, FLIF16_RAC_NZ_INT);
-            #endif
+            #endif*/
+            if (!ff_flif16_rac_process(rc, rc->maniac_ctx, min, max, target, FLIF16_RAC_NZ_INT)) {
+                goto need_more_data;
+            }
             
     }
 
