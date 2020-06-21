@@ -550,17 +550,17 @@ static int flif16_read_ni_plane(FLIF16DecoderContext *s,
 
         case 7:
             s->segment2 = 7;
-            for (uint32_t c = begin; c < end; c++) {
+            for (s->c = begin; s->c < end; s->c++) {
                 printf("At:as [%s] %s, %d\n", __func__, __FILE__, __LINE__);
                 //predict pixel for alphazero and get a previous pixel for FRA
                 if (s->alphazero && p < 3 && ff_flif16_pixel_get(&s->out_frames[fr], 4, r, s->c) == 0) {
-                    ff_flif16_pixel_set(&s->out_frames[fr], p, r, c, flif16_ni_predict(&s->out_frames[fr], p, r, s->c, gray));
+                    ff_flif16_pixel_set(&s->out_frames[fr], p, r, s->c, flif16_ni_predict(&s->out_frames[fr], p, r, s->c, gray));
                     continue;
                 }
 
                 if (lookback && p < 4 && ff_flif16_pixel_get(&s->out_frames[fr], 4, r, s->c) > 0) {
-                    ff_flif16_pixel_set(&s->out_frames[fr], p, r, c,
-                                        ff_flif16_pixel_get(&s->out_frames[fr - ff_flif16_pixel_get(&s->out_frames[fr], 4, r, s->c)], p, r, c));
+                    ff_flif16_pixel_set(&s->out_frames[fr], p, r, s->c,
+                                        ff_flif16_pixel_get(&s->out_frames[fr - ff_flif16_pixel_get(&s->out_frames[fr], 4, r, s->c)], p, r, s->c));
                     continue;
                 }
                 //calculate properties and use them to decode the next pixel
