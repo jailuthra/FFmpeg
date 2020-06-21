@@ -686,7 +686,7 @@ static int flif16_read_ni_image(AVCodecContext *avctx)
                                                    s->grays[s->curr_plane],
                                                    min_p,
                                                    0);
-                        // ff_flif16_transform_reverse(s->range, &s->out_frames[s->i3], 1, 1);
+                        
                         if (ret) {
                             printf("Caught Ret: %u\n", ret);
                             goto error;
@@ -694,6 +694,12 @@ static int flif16_read_ni_image(AVCodecContext *avctx)
                     } // End for
                     s->i3 = 0;
                 } // End for
+                for(int i=0; i<s->frames; i++){
+                    for(int j=0; j<s->transform_top; j++){
+                        printf("j : %d\n", j);
+                        ff_flif16_transform_reverse(s->transforms[j], &s->out_frames[i], 1, 1);
+                    }
+                }
                 if (s->properties)
                     av_freep(&s->properties);
                 s->i2 = 0;
