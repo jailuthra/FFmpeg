@@ -686,6 +686,7 @@ static int flif16_read_ni_image(AVCodecContext *avctx)
                                                    s->grays[s->curr_plane],
                                                    min_p,
                                                    0);
+                        ff_flif16_transform_reverse(s->range, &s->out_frames[s->i3], 1, 1);
                         if (ret) {
                             printf("Caught Ret: %u\n", ret);
                             goto error;
