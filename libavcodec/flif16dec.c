@@ -32,6 +32,8 @@
 #include "avcodec.h"
 #include "libavutil/common.h"
 #include "bytestream.h"
+#include "avcodec.h"
+#include "internal.h"
 
 /*
  * Due to the nature of the format, the decoder has to take the entirety of the
@@ -61,7 +63,9 @@ enum FLIF16States {
     FLIF16_TRANSFORM,
     FLIF16_MANIAC,
     FLIF16_PIXELDATA,
-    FLIF16_CHECKSUM
+    FLIF16_OUTPUT,
+    FLIF16_CHECKSUM,
+    FLIF16_EOS
 };
 
 static int flif16_read_header(AVCodecContext *avctx)
@@ -656,13 +660,11 @@ static int flif16_read_ni_image(AVCodecContext *avctx)
             for (; s->i < 5; ++s->i) {
                 s->curr_plane = plane_ordering[s->i];
                 if (s->curr_plane >= s->channels) {
-                    printf("triggered 1\n");
                     continue;
                 }
                 printf("At: [%s] %s, %d\n", __func__, __FILE__, __LINE__);
                 if (ff_flif16_ranges_min(s->range, s->curr_plane) >=
                     ff_flif16_ranges_max(s->range, s->curr_plane)) {
-                    printf("triggered 2\n");
                     continue;
                 }
                 printf("At: [%s] %s, %d\n", __func__, __FILE__, __LINE__);
@@ -675,9 +677,6 @@ static int flif16_read_ni_image(AVCodecContext *avctx)
                     for (; s->i3 < s->frames; ++s->i3) {
         case 1:
                         printf("At: [%s] %s, %d\n", __func__, __FILE__, __LINE__);
-                        printf("<<<<<>>>>>%u %u %u %u %u\n", s->curr_plane,
-                                                       s->i3,
-                                                       s->i2,  s->height,  s->width);
                         min_p = ff_flif16_ranges_min(s->range, s->curr_plane);
                         ret = flif16_read_ni_plane(s, s->range, s->properties,
                                                    s->curr_plane,
@@ -707,6 +706,7 @@ static int flif16_read_ni_image(AVCodecContext *avctx)
             
         } // End switch
 
+    s->state = FLIF16_OUTPUT;
     return 0;
 
     error:
@@ -715,7 +715,7 @@ static int flif16_read_ni_image(AVCodecContext *avctx)
 }
 
 
-static int flif16_read_pixeldata(AVCodecContext *avctx, AVFrame *p)
+static int flif16_read_pixeldata(AVCodecContext *avctx)
 {
     FLIF16DecoderContext *s = avctx->priv_data;
     int ret;
@@ -728,14 +728,12 @@ static int flif16_read_pixeldata(AVCodecContext *avctx, AVFrame *p)
         ret = flif16_read_ni_image(avctx);
     else
         return AVERROR_EOF;
-    printf("<><> Ret = %d\n", ret);
     if(!ret)
-        s->state = FLIF16_CHECKSUM;
+        s->state = FLIF16_OUTPUT;
     return ret;
 }
 
-static void flif16_write_frame(AVCodecContext *avctx, AVFrame *out_frame,
-                               uint32_t frame_no)
+static int flif16_write_frame(AVCodecContext *avctx, AVFrame *p)
 {
     // Refer to libavcodec/bmp.c for an example.
     // ff_set_dimensions(avctx, width, height );
@@ -745,7 +743,39 @@ static void flif16_write_frame(AVCodecContext *avctx, AVFrame *out_frame,
     // p->pict_type = AV_PICTURE_TYPE_I;
     // p->key_frame = 1;
     // for(...)
-    //     p->data[...] = ...
+    //     p->data[...] = ..
+    printf("<*****> In flif16_write_frame\n");
+
+    int ret;
+    FLIF16DecoderContext *s = avctx->priv_data;
+    ff_set_dimensions(avctx, s->width, s->height);
+    p->pict_type = AV_PICTURE_TYPE_I;
+    p->key_frame = 1;
+    p->linesize[0] = s->width;
+
+    if (s->channels  == 1 && s->bpc <= 255) {
+        printf("gray8\n");
+        avctx->pix_fmt = AV_PIX_FMT_GRAY8;
+    } else {
+        av_log(avctx, AV_LOG_ERROR, "color depths other than grayscale not supported\n");
+        return AVERROR_PATCHWELCOME;
+    }
+
+    if ((ret = ff_get_buffer(avctx, p, 0)) < 0) {
+        printf(">>>>>>Couldn't allocate buffer.\n");
+        return ret;
+    }
+
+    for (uint32_t i = 0; i < s->height; ++i) {
+        for (uint32_t j = 0; j < s->width; ++j) {
+            *(p->data[0] + i * p->linesize[0] + j) = ff_flif16_pixel_get(&s->out_frames[s->out_frames_count], 0, i, j);
+        }
+    }
+
+    if ((++s->out_frames_count) >= s->frames)
+        s->state = FLIF16_EOS;
+        
+    return 0;
 }
 
 static int flif16_read_checksum(AVCodecContext *avctx)
@@ -767,7 +797,6 @@ static int flif16_decode_frame(AVCodecContext *avctx,
     printf("At:as [%s] %s, %d\n", __func__, __FILE__, __LINE__);
     // Looping is done to change states in between functions.
     // Function will either exit on AVERROR(EAGAIN) or AVERROR_EOF
-    printf("[Decode] s->state = %d\n", s->state);
     do {
         switch(s->state) {
             case FLIF16_HEADER:
@@ -787,15 +816,29 @@ static int flif16_decode_frame(AVCodecContext *avctx,
                 break;
 
             case FLIF16_PIXELDATA:
-                ret = flif16_read_pixeldata(avctx, p);
-                printf("[Decode] Ret: %d\n", ret);
+                ret = flif16_read_pixeldata(avctx);
+                printf("[Decode 1] Ret: %d\n", ret);
                 break;
 
             case FLIF16_CHECKSUM:
                 ret = flif16_read_checksum(avctx);
                 break;
+
+            case FLIF16_OUTPUT:
+                ret = flif16_write_frame(avctx, p);
+                printf("[Decode 2] Ret: %d\n", ret);
+                if (!ret) {
+                    *got_frame = 1;
+                    return buf_size;
+                }
+                break;
+
+            case FLIF16_EOS:
+                return AVERROR_EOF;
         }
+        printf(">>>>>>>>>>>>>>>>>s->state = %d\n", s->state);
     } while (!ret);
+
     printf("[Decode Result]\n"                  \
            "Width: %u, Height: %u, Frames: %u\n"\
            "ia: %x bpc: %u channels: %u\n"      \
