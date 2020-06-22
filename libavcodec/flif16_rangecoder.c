@@ -428,7 +428,7 @@ FLIF16ChanceContext *ff_flif16_maniac_findleaf(FLIF16MANIACContext *m,
     #endif
 
     if (!m->forest[channel]->leaves) {
-        printf("At: [%s] %s, %d\n", __func__, __FILE__, __LINE__);
+        // printf("At: [%s] %s, %d\n", __func__, __FILE__, __LINE__);
         m->forest[channel]->leaves = av_mallocz(MANIAC_TREE_BASE_SIZE * sizeof(*m->forest[channel]->leaves));
         m->forest[channel]->leaves_size = MANIAC_TREE_BASE_SIZE;
         if(!m->forest[channel]->leaves)
