@@ -398,6 +398,7 @@ static FLIF16ColorVal flif16_ni_predict_calcprops(FLIF16PixelData *pixel,
               ff_flif16_pixel_get(pixel, p, r-1, c-1) : (r > 0 ? top : left));
     gradientTL = left + top - topleft;
     guess = MEDIAN3(gradientTL, left, top);
+
     ff_flif16_ranges_snap(ranges_ctx, p, properties, min, max, &guess);
     assert(min >= ff_flif16_ranges_min(ranges_ctx, p));
     assert(max <= ff_flif16_ranges_max(ranges_ctx, p));
@@ -432,7 +433,10 @@ static FLIF16ColorVal flif16_ni_predict_calcprops(FLIF16PixelData *pixel,
     else 
         properties[index++] = 0;
 
-    printf("psl guess = %d\n", guess);
+    for(int i = 0; i < 7; ++i)
+        printf("%d ", properties[i]);
+    printf("\n");
+    printf("psl fallback = %d left = %d top = %d topleft = %d gradienttl = %d guess = %d\n", fallback, left, top, topleft, gradientTL, guess);
     return guess;
 }
 

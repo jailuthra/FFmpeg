@@ -434,6 +434,7 @@ FLIF16ChanceContext *ff_flif16_maniac_findleaf(FLIF16MANIACContext *m,
         if(!m->forest[channel]->leaves)
             return NULL;
         ff_flif16_chancecontext_init(&m->forest[channel]->leaves[0]);
+        tree->leaves_top = 1;
     }
     
     leaves = m->forest[channel]->leaves;
@@ -458,12 +459,11 @@ FLIF16ChanceContext *ff_flif16_maniac_findleaf(FLIF16MANIACContext *m,
                     return NULL;
                 m->forest[channel]->leaves_size *= 2;
             }
-
             old_leaf = nodes[pos].leaf_id;
             new_leaf = tree->leaves_top;
             memcpy(&leaves[tree->leaves_top], &leaves[nodes[pos].leaf_id],
                    sizeof(*leaves));
-
+            ++tree->leaves_top;
             nodes[nodes[pos].child_id].leaf_id = old_leaf;
             nodes[nodes[pos].child_id + 1].leaf_id = new_leaf;
 
@@ -473,6 +473,7 @@ FLIF16ChanceContext *ff_flif16_maniac_findleaf(FLIF16MANIACContext *m,
                 return &leaves[new_leaf];
         }
     }
+    printf("leaf: %d\n", m->forest[channel]->data[pos].leaf_id);
     return &m->forest[channel]->leaves[m->forest[channel]->data[pos].leaf_id];
 }
 
