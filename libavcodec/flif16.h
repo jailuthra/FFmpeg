@@ -84,6 +84,8 @@ typedef struct FLIF16Ranges {
 // If required, linesize[], similar to AVFrame can be defined.
 // If Width, height, and number of planes of each frame is Constant, then
 // having numplanes, width, height is redundant. Check.
+
+// TODO replace with AVFrame and av_frame_ref.
 typedef struct FLIF16PixelData {
     uint8_t initialized;            //FLAG : initialized or not. // See initialisation with NULL check instead
     uint8_t num_planes;
