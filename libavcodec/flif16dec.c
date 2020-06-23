@@ -413,10 +413,11 @@ static FLIF16ColorVal flif16_ni_predict_calcprops(FLIF16PixelData *pixel,
     guess = MEDIAN3(gradientTL, left, top);
 
     ff_flif16_ranges_snap(ranges_ctx, p, properties, min, max, &guess);
-    assert(min >= ff_flif16_ranges_min(ranges_ctx, p));
+    printf("min = %d max = %d\n", *min, *max);
+    /*assert(min >= ff_flif16_ranges_min(ranges_ctx, p));
     assert(max <= ff_flif16_ranges_max(ranges_ctx, p));
     assert(guess >= min);
-    assert(guess <= max);
+    assert(guess <= max);*/
 
     if (guess == gradientTL)
         which = 0;
@@ -468,7 +469,7 @@ static FLIF16ColorVal flif16_ni_predict_calcprops(FLIF16PixelData *pixel,
         printf("%d ", properties[i]);
     printf("\n");
     printf("psl fallback = %d left = %d top = %d topleft = %d gradienttl = %d guess = %d\n", fallback, left, top, topleft, gradientTL, guess);
-    printf("p = %u r = %u c = %u min = %u max = %u\n", p, r, c, *min, *max);
+    printf("p = %u r = %u c = %u min = %d max = %d\n", p, r, c, *min, *max);
     return guess;
 }
 
@@ -493,8 +494,8 @@ static int flif16_read_ni_plane(FLIF16DecoderContext *s,
                                 FLIF16ColorVal minP,
                                 uint8_t lookback)
 {
-    // TODO write in a position independent manner
-    FLIF16ColorVal min, max;
+    // TODO write in a packet size independent manner
+    FLIF16ColorVal min = 0, max = 0;
     FLIF16ColorVal curr, guess;
     uint32_t begin = 0, end = s->width;
 
