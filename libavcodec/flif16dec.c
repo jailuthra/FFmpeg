@@ -468,7 +468,7 @@ static FLIF16ColorVal flif16_ni_predict_calcprops(FLIF16PixelData *pixel,
         printf("%d ", properties[i]);
     printf("\n");
     printf("psl fallback = %d left = %d top = %d topleft = %d gradienttl = %d guess = %d\n", fallback, left, top, topleft, gradientTL, guess);
-    printf("r = %u c = %u min = %u max = %u\n", r, c, *min, *max);
+    printf("p = %u r = %u c = %u min = %u max = %u\n", p, r, c, *min, *max);
     return guess;
 }
 
@@ -549,6 +549,7 @@ static int flif16_read_ni_plane(FLIF16DecoderContext *s,
                 printf("<a> 2\n");
                 MANIAC_GET(&s->rc, &s->maniac_ctx, properties, p, min - guess, max - guess, &curr);
                 curr += guess;
+                printf("curr: %d\n", curr);
                 ff_flif16_pixel_set(&s->out_frames[fr], p, r, s->c, curr);
                 __SUBST__
                 --s->segment2;
@@ -572,6 +573,7 @@ static int flif16_read_ni_plane(FLIF16DecoderContext *s,
                 printf("<a> 4\n");
                 MANIAC_GET(&s->rc, &s->maniac_ctx, properties, p, min - guess, max - guess, &curr);
                 curr += guess;
+                printf("curr: %d\n", curr);
                 ff_flif16_pixel_set(&s->out_frames[fr], p, r, s->c, curr);
                 __SUBST__
                  --s->segment2;
@@ -595,6 +597,7 @@ static int flif16_read_ni_plane(FLIF16DecoderContext *s,
                 printf("<a> 6\n");
                 MANIAC_GET(&s->rc, &s->maniac_ctx, properties, p, min - guess, max - guess, &curr);
                 curr += guess;
+                printf("curr: %d\n", curr);
                 ff_flif16_pixel_set(&s->out_frames[fr], p, r, s->c, curr);
                 __SUBST__
                 --s->segment2;
@@ -630,6 +633,7 @@ static int flif16_read_ni_plane(FLIF16DecoderContext *s,
                 printf("<> 2\n");
                 MANIAC_GET(&s->rc, &s->maniac_ctx, properties, p, min - guess, max - guess, &curr);
                 curr += guess;
+                printf("curr: %d\n", curr);
                 ff_flif16_pixel_set(&s->out_frames[fr], p, r, s->c, curr);
                 __SUBST__
                 --s->segment2;

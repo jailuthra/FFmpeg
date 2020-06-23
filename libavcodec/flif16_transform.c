@@ -125,15 +125,20 @@ static void ff_static_minmax(FLIF16RangesContext *src_ctx ,const int p,
     *maxv = ranges->max(src_ctx, p);
 }
 
-static void ff_static_snap(FLIF16RangesContext *src_ctx ,const int p,
-                     FLIF16ColorVal* prev_planes,
-                     FLIF16ColorVal* minv, FLIF16ColorVal* maxv, 
-                     FLIF16ColorVal* v)
+static void ff_static_snap(FLIF16RangesContext *src_ctx , const int p,
+                           FLIF16ColorVal *prev_planes,
+                           FLIF16ColorVal *minv, FLIF16ColorVal *maxv, 
+                           FLIF16ColorVal *v)
 {
+    printf("static_snap\n");
+    printf("s %d %d %d\n", *minv, *maxv, *v);
     ff_static_minmax(src_ctx, p, prev_planes, minv, maxv);
+    printf("s %d %d %d\n",*minv, *maxv, *v);
     if(*minv > *maxv)
         *maxv = *minv;
+    printf("s %d %d %d\n", *minv, *maxv, *v);
     *v = av_clip(*v, *minv, *maxv);
+    printf("s %d %d %d\n===\n", *minv, *maxv, *v);
 }
 
 static void ff_static_close(FLIF16RangesContext *r_ctx){
@@ -403,30 +408,31 @@ static void ff_bounds_snap(FLIF16RangesContext* r_ctx,
                     FLIF16ColorVal* maxv,
                     FLIF16ColorVal* v)
 {
+    printf("bounds_snap\n");
     ranges_priv_bounds *data = r_ctx->priv_data;
     FLIF16Ranges* ranges = flif16_ranges[data->r_ctx->r_no];
-    if(p==0 || p==3){
+    if (p==0 || p==3) {
         *minv = data->bounds[p][0];
         *maxv = data->bounds[p][1];
-        return;
-    }
-    else{
+        printf("b %d %d %d\n", *minv, *maxv, *v);
+    } else {
         ranges->snap(data->r_ctx, p, prev_planes, minv, maxv, v);
         if(*minv < data->bounds[p][0])
             *minv = data->bounds[p][0];
-        if(*maxv > data->bounds[p][1])
+        if (*maxv > data->bounds[p][1])
             *maxv = data->bounds[p][1];
-
-        if(*minv > *maxv){
+        printf("b %d %d %d\n", *minv, *maxv, *v);
+        if (*minv > *maxv) {
             *minv = data->bounds[p][0];
             *maxv = data->bounds[p][1];
         }
-        if(*v > *maxv)
-            *v = *maxv;
-        if(*v < *minv)
-            *v = *minv;
-
+        printf("b %d %d %d\n", *minv, *maxv, *v);
     }
+    if(*v > *maxv)
+        *v = *maxv;
+    if(*v < *minv)
+        *v = *minv;
+    printf("b %d %d %d\n", *minv, *maxv, *v);
 }
 
 static void ff_bounds_close(FLIF16RangesContext *r_ctx){
