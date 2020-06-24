@@ -814,13 +814,17 @@ static int flif16_write_frame(AVCodecContext *avctx, AVFrame *p)
     ff_set_dimensions(avctx, s->width, s->height);
     p->pict_type = AV_PICTURE_TYPE_I;
     p->key_frame = 1;
-    p->linesize[0] = s->width;
+    
 
-    if (s->channels  == 1 && s->bpc <= 255) {
+    if (s->channels  == 1 && s->bpc <= 256) {
         printf("gray8\n");
         avctx->pix_fmt = AV_PIX_FMT_GRAY8;
+    } if(s->channels  == 3 && s->bpc <= 256) {
+        printf("rgb24\n");
+        avctx->pix_fmt = AV_PIX_FMT_RGB24;
     } else {
-        av_log(avctx, AV_LOG_ERROR, "color depths other than grayscale not supported\n");
+        av_log(avctx, AV_LOG_ERROR, "color depth %u and bpc %u not supported\n",
+               s->channels, s->bpc);
         return AVERROR_PATCHWELCOME;
     }
 
@@ -829,10 +833,39 @@ static int flif16_write_frame(AVCodecContext *avctx, AVFrame *p)
         return ret;
     }
 
-    for (uint32_t i = 0; i < s->height; ++i) {
-        for (uint32_t j = 0; j < s->width; ++j) {
-            *(p->data[0] + i * p->linesize[0] + j) = ff_flif16_pixel_get(&s->out_frames[s->out_frames_count], 0, i, j);
-        }
+    switch (avctx->pix_fmt) {
+        case AV_PIX_FMT_GRAY8:
+            p->linesize[0] = s->width;
+            for (uint32_t i = 0; i < s->height; ++i) {
+                for (uint32_t j = 0; j < s->width; ++j) {
+                    *(p->data[0] + i * p->linesize[0] + j) = \
+                    ff_flif16_pixel_get(&s->out_frames[s->out_frames_count], 0, i, j);
+                }
+            }
+            break;
+
+        case AV_PIX_FMT_RGB24:
+            p->linesize[0] = s->width;
+            for (uint32_t i = 0; i < s->height; ++i) {
+                for (uint32_t j = 0; j < s->width; ++j) {
+                    *(p->data[0] + i * p->linesize[0] * 3 + j * 3 + 0 ) = \
+                    ff_flif16_pixel_get(&s->out_frames[s->out_frames_count], 0, i, j);
+                    //printf("%d ", i * p->linesize[0] * 3 + j * 3);
+                    *(p->data[0] + i * p->linesize[0] * 3 + j * 3 + 1) = \
+                    ff_flif16_pixel_get(&s->out_frames[s->out_frames_count], 1, i, j);
+                    //printf("%d ", i * p->linesize[0] * 3+ j * 3 + 1);
+                    *(p->data[0] + i * p->linesize[0] * 3 + j * 3 + 2) = \
+                    ff_flif16_pixel_get(&s->out_frames[s->out_frames_count], 2, i, j);
+                    //printf("%d \n", i * p->linesize[0] * 3 + j * 3 + 2);
+
+                    //for(uint32_t k = 0; k < s->width * s->height * 3; ++k)
+                    //    printf("%d ", *(p->data[0] + k));
+                    //printf("\n");
+                }
+                //printf("\n");
+            }
+            printf("At: [%s] %s, %d\n", __func__, __FILE__, __LINE__);
+            break;
     }
 
     if ((++s->out_frames_count) >= s->frames)
