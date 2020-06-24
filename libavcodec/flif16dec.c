@@ -819,7 +819,7 @@ static int flif16_write_frame(AVCodecContext *avctx, AVFrame *p)
     if (s->channels  == 1 && s->bpc <= 256) {
         printf("gray8\n");
         avctx->pix_fmt = AV_PIX_FMT_GRAY8;
-    } if(s->channels  == 3 && s->bpc <= 256) {
+    } else if(s->channels  == 3 && s->bpc <= 256) {
         printf("rgb24\n");
         avctx->pix_fmt = AV_PIX_FMT_RGB24;
     } else {
