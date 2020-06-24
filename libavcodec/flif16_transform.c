@@ -133,7 +133,7 @@ static void ff_static_snap(FLIF16RangesContext *src_ctx , const int p,
 {
     printf("static_snap\n");
     printf("s1 %d %d %d\n", *minv, *maxv, *v);
-    ff_static_minmax(src_ctx, p, prev_planes, minv, maxv);
+    ff_flif16_ranges_minmax(src_ctx, p, prev_planes, minv, maxv);
     printf("s2 %d %d %d\n",*minv, *maxv, *v);
     if(*minv > *maxv)
         *maxv = *minv;
