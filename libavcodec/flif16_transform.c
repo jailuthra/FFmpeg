@@ -183,47 +183,44 @@ static inline FLIF16ColorVal ff_get_max_y(int origmax4)
 
 static inline int ff_get_min_co(int origmax4, int yval)
 {
-    int newmax = 4 * origmax4 - 1;
     if (yval < origmax4 - 1)
-        return -3 - 4 * yval; 
+        return -3 - 4*yval; 
     else if (yval >= 3 * origmax4)
-        return 4 * (yval - newmax);
+        return 4*(1 + yval - 4*origmax4);
     else
-        return -newmax;
+        return -4*origmax4 + 1;
 }
 
 static inline int ff_get_max_co(int origmax4, int yval)
 {
-    int newmax = 4 * origmax4 - 1;
     if (yval < origmax4-1)
         return 3 + 4 * yval; 
     else if (yval >= 3 * origmax4)
-        return 4 * (newmax - yval);
+        return 4*origmax4 - 4*(1 + yval - 3*origmax4);
     else
-        return newmax;
+        return 4 * origmax4 - 1;
 }
 
 static inline int ff_get_min_cg(int origmax4, int yval, int coval)
 {
-    int newmax = 4 * origmax4 - 1;
     if (yval < origmax4 - 1)
-        return -2 - 2 * yval; 
+        return -(2*yval+1); 
     else if (yval >= 3 * origmax4)
-        return -2 * (newmax - yval) + 2 * ((abs(coval) + 1) / 2);
+        return -(2*(4*origmax4 - 1 - yval) - ((1 + abs(coval))/2)*2);
     else{
-        return FFMIN(2 * yval + 1, 2 * newmax - 2 * yval - 2 * abs(coval) + 1) \
-               / 2;
+        return -FFMIN(2*origmax4 - 1 + (yval -origmax4 + 1)*2, 
+                     2*origmax4 + (3*origmax4 - 1 - yval)*2 - ((1 + abs(coval))/2)*2);
     }
 }
 
 static inline int ff_get_max_cg(int origmax4, int yval, int coval){
-    int newmax = 4 * origmax4 - 1;
     if (yval < origmax4 - 1)
         return 1 + 2 * yval - 2 * (abs(coval) / 2); 
     else if (yval >= 3 * origmax4)
-        return 2 * (newmax - yval);
+        return 2 * (4*origmax4 - 1 - yval);
     else
-        return FFMIN(2 * (yval- newmax), -2 * yval - 1 + 2 * (abs(coval) / 2));
+        return -FFMAX(-4*origmax4 + (1 + yval - 2*origmax4)*2, 
+                      -2*origmax4 - (yval - origmax4)*2 - 1 + (abs(coval)/2)*2);
 }
 
 static FLIF16ColorVal ff_ycocg_min(FLIF16RangesContext* r_ctx, int p)
