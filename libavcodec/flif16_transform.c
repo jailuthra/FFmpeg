@@ -639,11 +639,11 @@ static uint8_t transform_ycocg_reverse(FLIF16TransformContext *ctx,
         for (c=0; c<width; c+=stride_col) {
             Y  = ff_flif16_pixel_get(pixel_data, 0, r, c);
             Co = ff_flif16_pixel_get(pixel_data, 1, r, c);
-            Cg = ff_flif16_pixel_get(pixel_data, 0, r, c);
+            Cg = ff_flif16_pixel_get(pixel_data, 2, r, c);
   
-            R = Co + Y + ((1-Cg)>>1) - (Co>>1);
             G = Y - ((-Cg)>>1);
             B = Y + ((1-Cg)>>1) - (Co>>1);
+            R = Co + B;
 
             R = av_clip(R, 0, ranges->max(data->r_ctx, 0));
             G = av_clip(G, 0, ranges->max(data->r_ctx, 1));
@@ -920,7 +920,7 @@ static uint8_t transform_channelcompact_reverse(FLIF16TransformContext* ctx,
                                                    FLIF16PixelData* pixels,
                                                    uint32_t stride_row,
                                                    uint32_t stride_col)
-{   
+{
     int p, P;
     uint32_t r, c;
     FLIF16ColorVal* palette;
