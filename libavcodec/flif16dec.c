@@ -764,8 +764,9 @@ static int flif16_read_ni_image(AVCodecContext *avctx)
 
     for(int i = 0; i < s->frames; i++){
         for(int j = s->transform_top - 1; j >= 0; --j){
-            printf("j : %d\n", j);
             ff_flif16_transform_reverse(s->transforms[j], &s->out_frames[i], 1, 1);
+            printf("Transform Step\n===========\n");
+            __SUBST__
         }
     }
     s->state = FLIF16_OUTPUT;
