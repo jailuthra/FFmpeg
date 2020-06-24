@@ -488,6 +488,10 @@ int ff_flif16_maniac_read_int(FLIF16RangeCoder *rc,
 
     switch(rc->segment2) {
         case 0:
+            if (min == max) {
+                *target = min;
+                goto end;
+            }
             rc->maniac_ctx = ff_flif16_maniac_findleaf(m, channel, properties);
             if(!rc->maniac_ctx) {
                 printf(">>>>> ! NULL\n");
@@ -507,10 +511,12 @@ int ff_flif16_maniac_read_int(FLIF16RangeCoder *rc,
             
     }
 
+    end:
     rc->maniac_ctx = NULL;
+    rc->segment2 = 0;
     return 1;
 
     need_more_data:
-        printf("need_more_data\n");
-        return 0;
+    printf("need_more_data\n");
+    return 0;
 }
