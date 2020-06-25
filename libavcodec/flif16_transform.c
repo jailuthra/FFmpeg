@@ -62,6 +62,14 @@ typedef struct transform_priv_bounds {
     FLIF16ChanceContext ctx_a;
 } transform_priv_bounds;
 
+typedef struct transform_priv_palette{
+    uint8_t has_alpha;
+    uint8_t ordered_palette;
+    uint32_t max_palette_size;
+    FLIF16ColorVal *Palette;
+    FLIF16ColorVal (*Color)[3];
+}transform_priv_palette;
+
 typedef struct ranges_priv_channelcompact {
     int nb_colors[4];
 } ranges_priv_channelcompact;
@@ -80,6 +88,11 @@ typedef struct ranges_priv_bounds {
     FLIF16ColorVal (*bounds)[2];
     FLIF16RangesContext *r_ctx;
 } ranges_priv_bounds;
+
+typedef struct ranges_priv_palette{
+    int nb_colors;
+    FLIF16RangesContext *r_ctx;
+}ranges_priv_palette;
 
 typedef struct ranges_priv_static {
     FLIF16ColorVal (*bounds)[2];
@@ -448,6 +461,51 @@ static void ff_bounds_close(FLIF16RangesContext *r_ctx){
     av_free(data->r_ctx);
 }
 
+/*
+ * Palette
+ */
+
+static FLIF16ColorVal ff_palette_min(FLIF16RangesContext *r_ctx, int p){
+    ranges_priv_palette *data = r_ctx->priv_data;
+    if(p < 3)
+        return 0;
+    else
+        return ff_flif16_ranges_min(data->r_ctx, p); 
+}
+
+static FLIF16ColorVal ff_palette_max(FLIF16RangesContext *r_ctx, int p){
+    ranges_priv_palette *data = r_ctx->priv_data;
+    if(p==1)
+        return data->nb_colors-1;
+    else if(p < 3)
+        return 0;
+    else
+        return ff_flif16_ranges_max(data->r_ctx, p);
+}
+
+static void ff_palette_minmax(FLIF16RangesContext* r_ctx, 
+                             int p, FLIF16ColorVal* prev_planes,
+                             FLIF16ColorVal* minv, FLIF16ColorVal* maxv)
+{
+    ranges_priv_palette *data = r_ctx->priv_data;
+    if(p == 1){
+        *minv = 0;
+        *maxv = data->nb_colors-1;
+    }
+    else if(p < 3){
+        *minv = 0;
+        *maxv = 0;
+    }
+    else
+        ff_flif16_ranges_minmax(data->r_ctx, p, prev_planes, minv, maxv);
+}
+
+static void ff_palette_close(FLIF16RangesContext *r_ctx){
+    ranges_priv_palette *data = r_ctx->priv_data;
+    flif16_ranges[data->r_ctx->r_no]->close(data->r_ctx);
+    av_free(data->r_ctx);
+}
+
 FLIF16Ranges flif16_ranges_static = {
     .priv_data_size = sizeof(ranges_priv_static),
     .min            = &ff_static_min,
@@ -506,6 +564,16 @@ FLIF16Ranges flif16_ranges_bounds = {
     .snap           = &ff_bounds_snap,
     .is_static      = 0,
     .close          = &ff_bounds_close
+};
+
+FLIF16Ranges flif16_ranges_palette = {
+    .priv_data_size = sizeof(ranges_priv_palette),
+    .min            = &ff_palette_min,
+    .max            = &ff_palette_max,
+    .minmax         = &ff_palette_minmax,
+    .snap           = &ff_static_snap,
+    .is_static      = 0,
+    .close          = &ff_palette_close 
 };
 
 FLIF16Ranges* flif16_ranges[] = {
