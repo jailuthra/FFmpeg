@@ -175,6 +175,7 @@ static int flif16_read_second_header(AVCodecContext *avctx)
                 return AVERROR(EAGAIN);
 
             ff_flif16_rac_init(&s->rc, &s->gb, s->buf, s->buf_count);
+            ++s->segment;
 
         case 1:
             // In original source this is handled in what seems to be a very
@@ -191,11 +192,13 @@ static int flif16_read_second_header(AVCodecContext *avctx)
             s->i = 0;
             s->range = ff_flif16_ranges_static_init(s->channels, s->bpc);
             // MSG("channels : %d & bpc : %d\n", s->channels, s->bpc);
+            ++s->segment;
 
         case 2:
-            if (s->channels > 3)
+            if (s->channels > 3) {
                 RAC_GET(&s->rc, NULL, 0, 1, (uint32_t *) &s->alphazero,
                         FLIF16_RAC_UNI_INT);
+            }
             ++s->segment;
 
         case 3:
@@ -207,10 +210,10 @@ static int flif16_read_second_header(AVCodecContext *avctx)
             ++s->segment;
 
         case 4:
-            // MSG("s->segment = %d\n", s->segment);
+            printf("s->segment = %d\n", s->segment);
             if (s->frames > 1) {
                 for (; (s->i) < (s->frames); ++(s->i)) {
-                    RAC_GET(&s->rc, NULL, 0, 60000, &(s->framedelay[(s->i)]),
+                    RAC_GET(&s->rc, NULL, 0, 60000, &(s->framedelay[s->i]),
                             FLIF16_RAC_UNI_INT);
                 }
                 s->i = 0;
