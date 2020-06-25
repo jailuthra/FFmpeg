@@ -66,8 +66,18 @@ typedef struct transform_priv_palette{
     uint8_t has_alpha;
     uint8_t ordered_palette;
     uint32_t max_palette_size;
-    FLIF16ColorVal *Palette;
-    FLIF16ColorVal (*Color)[3];
+    FLIF16ColorVal (*Palette)[3];
+    FLIF16ColorVal min[3], max[3];
+    FLIF16ColorVal *prev;
+    FLIF16ColorVal pp[2];
+    FLIF16ColorVal Y, I, Q;
+    FLIF16ChanceContext ctx;
+    FLIF16ChanceContext ctxY;
+    FLIF16ChanceContext ctxI;
+    FLIF16ChanceContext ctxQ;
+    long unsigned int size;
+    uint8_t sorted;
+    unsigned int p;       //Iterator
 }transform_priv_palette;
 
 typedef struct ranges_priv_channelcompact {
@@ -1123,6 +1133,119 @@ static void transform_bounds_close(FLIF16TransformContext *ctx){
     transform_priv_bounds *data = ctx->priv_data;
     av_free(data->bounds);
     // av_free(data->ctx_a);
+}
+
+#define MAX_PALETTE_SIZE 30000
+
+static uint8_t transform_palette_read(FLIF16TransformContext* ctx,
+                                        FLIF16DecoderContext* dec_ctx,
+                                        FLIF16RangesContext* src_ctx)
+{
+    transform_priv_palette *data = ctx->priv_data;
+    switch (ctx->i)
+    {
+        case 0:
+            RAC_GET(&dec_ctx->rc, &data->ctx, 1, MAX_PALETTE_SIZE,
+                    &data->size, FLIF16_RAC_GNZ_INT);
+            data->Palette = av_mallocz(data->size * sizeof(*data->Palette));
+            ctx->i++;
+        
+        case 1:
+            RAC_GET(&dec_ctx->rc, &data->ctx, 0, 1,
+                    &data->sorted, FLIF16_RAC_GNZ_INT);
+            if(data->sorted){
+                ctx->i = 2;
+                data->min[0] = ff_flif16_ranges_min(src_ctx, 0);
+                data->min[1] = ff_flif16_ranges_min(src_ctx, 1);
+                data->min[2] = ff_flif16_ranges_min(src_ctx, 2);
+                data->max[0] = ff_flif16_ranges_max(src_ctx, 0);
+                data->max[1] = ff_flif16_ranges_max(src_ctx, 1);
+                data->max[2] = ff_flif16_ranges_max(src_ctx, 2);
+                data->Palette[0][0] = -1;
+                data->Palette[0][1] = -1;
+                data->Palette[0][2] = -1;
+                data->prev = data->Palette[0];
+            }
+            else{
+                ctx->i = 5;
+                goto unsorted;
+            }
+        
+        loop:
+        if(data->p < data->size){
+        case 2:
+            RAC_GET(&dec_ctx->rc, &data->ctxY, data->min[0], data->max[0],
+                    &data->Y, FLIF16_RAC_GNZ_INT);
+            data->pp[0] = data->Y;
+            ff_flif16_ranges_minmax(src_ctx, 1, &data->pp, &data->min[1], &data->max[1]);
+            ctx->i++;
+
+        case 3:
+            RAC_GET(&dec_ctx->rc, &data->ctxI, 
+                    data->prev[0] == data->Y ? data->prev[1] : data->min[1],
+                    data->max[1],
+                    &data->I, FLIF16_RAC_GNZ_INT);
+            data->pp[1] = data->I;
+            ff_flif16_ranges_minmax(src_ctx, 2, &data->pp, &data->min[2], &data->max[2]);
+            ctx->i++;
+
+        case 4:
+            RAC_GET(&dec_ctx->rc, &data->ctxQ, data->min[2], data->max[2],
+                    &data->Q, FLIF16_RAC_GNZ_INT);
+            data->Palette[data->p][0] = data->Y;
+            data->Palette[data->p][1] = data->I;
+            data->Palette[data->p][2] = data->Q;
+            data->min[0] = data->Y;
+            data->prev = data->Palette[data->p];
+            data->p++;
+            ctx->i = 2;
+            goto loop;
+        }
+        else{
+            ctx->i = 0;
+            data->p = 0;
+            goto end;
+        }
+        
+        unsorted:
+        if(data->p < data->size){
+        case 5:
+            ff_flif16_ranges_minmax(src_ctx, 0, data->pp, &data->min[0], &data->max[0]);
+            RAC_GET(&dec_ctx->rc, &data->ctxY, data->min[0], data->max[0],
+                    &data->Y, FLIF16_RAC_GNZ_INT);
+            data->pp[0] = data->Y;
+            ctx->i++;
+
+        case 6:
+            ff_flif16_ranges_minmax(src_ctx, 1, data->pp, &data->min[0], &data->max[0]);
+            RAC_GET(&dec_ctx->rc, &data->ctxI, data->min[0], data->max[0],
+                    &data->I, FLIF16_RAC_GNZ_INT);
+            data->pp[1] = data->I;
+            ctx->i++;
+
+        case 7:
+            ff_flif16_ranges_minmax(src_ctx, 2, data->pp, &data->min[0], &data->max[0]);
+            RAC_GET(&dec_ctx->rc, &data->ctxQ, data->min[0], data->max[0],
+                    &data->Q, FLIF16_RAC_GNZ_INT);
+            data->Palette[data->p][0] = data->Y;
+            data->Palette[data->p][1] = data->I;
+            data->Palette[data->p][2] = data->Q;
+            data->p++;
+            ctx->i = 5;
+            goto unsorted;
+        }
+        else{
+            data->p = 0;
+            ctx->i = 0;
+            goto end;
+        }
+    
+    }
+    end:
+        return 1;
+
+    need_more_data:
+        return AVERROR(EAGAIN);
 }
 
 FLIF16Transform flif16_transform_channelcompact = {
