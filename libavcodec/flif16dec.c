@@ -790,6 +790,7 @@ static int flif16_read_pixeldata(AVCodecContext *avctx)
 {
     FLIF16DecoderContext *s = avctx->priv_data;
     int ret;
+    if (!s->out_frames)
     s->out_frames = ff_flif16_frames_init(s->frames, s->channels, 32,
                                           s->width, s->height);
     if (!s->out_frames)
