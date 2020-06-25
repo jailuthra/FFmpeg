@@ -440,6 +440,7 @@ FLIF16ChanceContext *ff_flif16_maniac_findleaf(FLIF16MANIACContext *m,
     leaves = m->forest[channel]->leaves;
 
     while (nodes[pos].property != -1) {
+        printf("pos = %u, prop = %d\n", pos, nodes[pos].property);
         if (nodes[pos].count < 0) {
             if (properties[nodes[pos].property] > nodes[pos].split_val)
                 pos = nodes[pos].child_id;
@@ -483,6 +484,7 @@ int ff_flif16_maniac_read_int(FLIF16RangeCoder *rc,
                               uint8_t channel,
                               int min, int max, int *target)
 {
+    printf("rac: %d %d %u\n", min, max, channel);
     if (!rc->maniac_ctx)
         rc->segment2 = 0;
 
@@ -505,6 +507,7 @@ int ff_flif16_maniac_read_int(FLIF16RangeCoder *rc,
             #else
             RAC_GET(rc, rc->maniac_ctx, min, max, target, FLIF16_RAC_NZ_INT);
             #endif*/
+            
             if (!ff_flif16_rac_process(rc, rc->maniac_ctx, min, max, target, FLIF16_RAC_NZ_INT)) {
                 goto need_more_data;
             }

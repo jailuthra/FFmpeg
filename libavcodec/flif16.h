@@ -168,6 +168,8 @@ typedef struct FLIF16DecoderContext {
     uint8_t curr_plane;        ///< State variable. Current plane under processing
     FLIF16ColorVal *grays;
     FLIF16ColorVal *properties;
+    FLIF16ColorVal guess;      ///< State variable. Stores guess
+    FLIF16ColorVal min, max;
     uint32_t c;                ///< State variable for current column
     
     // Image Properties
