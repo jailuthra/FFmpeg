@@ -594,7 +594,7 @@ FLIF16Ranges* flif16_ranges[] = {
     &flif16_ranges_bounds,                // FLIF16_RANGES_BOUNDS,
     &flif16_ranges_static,                // FLIF16_RANGES_STATIC,
     NULL,                                 // FLIF16_RANGES_PALETTEALPHA,
-    NULL,                                 // FLIF16_RANGES_PALETTE,
+    &flif16_ranges_palette,               // FLIF16_RANGES_PALETTE,
     NULL,                                 // FLIF16_RANGES_COLORBUCKETS,
     NULL,                                 // FLIF16_RANGES_DUPLICATEFRAME,
     NULL,                                 // FLIF16_RANGES_FRAMESHAPE,
@@ -1367,6 +1367,16 @@ FLIF16Transform flif16_transform_bounds = {
     .close          = &transform_bounds_close
 };
 
+FLIF16Transform flif16_transform_palette = {
+    .priv_data_size = sizeof(transform_priv_palette),
+    .init           = &transform_palette_init,
+    .read           = &transform_palette_read,
+    .meta           = &transform_palette_meta,
+    //.forward
+    .reverse        = &transform_palette_reverse,
+    .close          = &transform_palette_close
+};
+
 FLIF16Transform *flif16_transforms[13] = {
     &flif16_transform_channelcompact,
     &flif16_transform_ycocg,
@@ -1374,7 +1384,7 @@ FLIF16Transform *flif16_transforms[13] = {
     &flif16_transform_permuteplanes,
     &flif16_transform_bounds,
     NULL, // FLIF16_TRANSFORM_PALETTEALPHA,
-    NULL, // FLIF16_TRANSFORM_PALETTE,
+    //&flif16_transform_palette,
     NULL, // FLIF16_TRANSFORM_COLORBUCKETS,
     NULL, // FLIF16_TRANSFORM_RESERVED2,
     NULL, // FLIF16_TRANSFORM_RESERVED3,
