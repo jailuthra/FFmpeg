@@ -91,6 +91,7 @@ typedef struct FLIF16PixelData {
     uint8_t num_planes;
     uint32_t height, width;
     uint8_t constant_alpha;
+    uint8_t palette;
     int8_t seen_before;
     void **data;
 } FLIF16PixelData;
@@ -108,7 +109,9 @@ typedef struct FLIF16Transform {
     //Functions
     uint8_t (*init) (FLIF16TransformContext*, FLIF16RangesContext*);
     uint8_t (*read) (FLIF16TransformContext*, FLIF16DecoderContext*, FLIF16RangesContext*);
-    FLIF16RangesContext* (*meta) (FLIF16TransformContext*, FLIF16RangesContext*);
+    FLIF16RangesContext* (*meta) (FLIF16PixelData*, uint32_t, 
+                                  FLIF16TransformContext*,
+                                  FLIF16RangesContext*);
     uint8_t (*forward) (FLIF16TransformContext*, FLIF16PixelData*);
     uint8_t (*reverse) (FLIF16TransformContext*, FLIF16PixelData*, uint32_t, uint32_t);
     void (*close) (FLIF16TransformContext*);
