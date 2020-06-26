@@ -813,7 +813,7 @@ static FLIF16RangesContext* transform_permuteplanes_meta(FLIF16PixelData *frames
                                                          FLIF16TransformContext* ctx,
                                                          FLIF16RangesContext* src_ctx)
 {
-    FLIF16RangesContext* r_ctx = av_mallocz(sizeof(FLIF16Ranges));
+    FLIF16RangesContext* r_ctx = av_mallocz(sizeof(FLIF16RangesContext));
     transform_priv_permuteplanes* data = ctx->priv_data;
     ranges_priv_permuteplanes* priv_data = av_mallocz(sizeof(ranges_priv_permuteplanes));
     int i;
@@ -988,7 +988,7 @@ static FLIF16RangesContext* transform_channelcompact_meta(FLIF16PixelData *frame
                                                          FLIF16RangesContext* src_ctx)
 {
     int i;
-    FLIF16RangesContext* r_ctx = av_mallocz(sizeof(FLIF16Ranges));
+    FLIF16RangesContext* r_ctx = av_mallocz(sizeof(FLIF16RangesContext));
     ranges_priv_channelcompact* data = av_mallocz(sizeof(ranges_priv_channelcompact));
     transform_priv_channelcompact* trans_data = ctx->priv_data;
     r_ctx->num_planes = src_ctx->num_planes;
@@ -1116,7 +1116,7 @@ static FLIF16RangesContext* transform_bounds_meta(FLIF16PixelData *frames,
     ranges_priv_static* data;
     ranges_priv_bounds* dataB;
 
-    r_ctx = av_mallocz(sizeof(FLIF16Ranges));
+    r_ctx = av_mallocz(sizeof(FLIF16RangesContext));
     if(!r_ctx)
         return NULL;
     r_ctx->num_planes = src_ctx->num_planes;
@@ -1286,9 +1286,17 @@ static FLIF16RangesContext* transform_palette_meta(FLIF16PixelData *frames,
                                                    FLIF16TransformContext* ctx,
                                                    FLIF16RangesContext* src_ctx)
 {
-    FLIF16RangesContext *r_ctx;
+    FLIF16RangesContext *r_ctx = av_mallocz(sizeof(FLIF16RangesContext));
     transform_priv_palette *trans_data = ctx->priv_data;
-    
+    ranges_priv_palette *data = av_mallocz(sizeof(ranges_priv_palette));
+    int i;
+    for(i = 0; i < frame_count; i++)
+        frames[i].palette = 1;
+    data->r_ctx = src_ctx;
+    data->nb_colors = trans_data->size;
+    r_ctx->r_no = FLIF16_RANGES_PALETTE;
+    r_ctx->num_planes = src_ctx->num_planes;
+    r_ctx->priv_data = data;
     return r_ctx;
 }
 
