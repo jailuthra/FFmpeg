@@ -189,6 +189,7 @@ typedef struct FLIF16RangeCoder {
 
     // maniac_int state management
     uint8_t segment2;
+    int oldmin, oldmax;
 
     #ifdef MULTISCALE_CHANCES_ENABLED
     FLIF16MultiscaleChanceContext *maniac_ctx;
@@ -307,11 +308,11 @@ static inline int ff_flif16_rac_renorm(FLIF16RangeCoder *rc)
         if (!left) {
             return 0;
         }
-        // printf("Renorm left = %d %lu %u\n", left, rc->range, FLIF16_RAC_MIN_RANGE);
+        //printf("Renorm left = %d %lu %u\n", left, rc->range, FLIF16_RAC_MIN_RANGE);
         rc->low <<= 8;
         rc->range <<= 8;
         rc->low |= bytestream2_get_byte(rc->gb);
-        // printf("Renorm low = %lu range = %lu\n", rc->low, rc->range);
+        //printf("Renorm low = %lu range = %lu\n", rc->low, rc->range);
         if(!left)
             return 0;
         else
@@ -422,7 +423,7 @@ static inline void ff_flif16_chancetable_put(FLIF16RangeCoder *rc,
                                              FLIF16ChanceContext *ctx,
                                              uint16_t type, uint8_t bit)
 {
-    printf("put: type = %d chance = %d\n", type, ctx->data[type]);
+    //printf("put: type = %d chance = %d\n", type, ctx->data[type]);
     if(ctx->data[type] >= 4096)
         printf("type: %u data: %u\n", type, ctx->data[type]);
     ctx->data[type] = (!bit) ? rc->ct.zero_state[ctx->data[type]]
@@ -487,9 +488,8 @@ static inline int ff_flif16_rac_read_nz_int(FLIF16RangeCoder *rc,
                                             int min, int max, int *target)
 {
     uint8_t temp = 0;
-    // printf("rc: %lu ctx: %lu min: %d max: %d target: %lu\n",
-    //        (long unsigned int) rc, (long unsigned int) ctx, min, max,
-    //        (long unsigned int) target);
+   // printf("min: %d max: %d target: %lu\n", min, max,
+   //        (long unsigned int) target);
     if (min == max) {
         // printf("At: [%s] %s, %d\n", __func__, __FILE__, __LINE__);
         *target = min;
@@ -563,13 +563,12 @@ static inline int ff_flif16_rac_read_nz_int(FLIF16RangeCoder *rc,
             if ((rc->minabs1) > (rc->amax)) {
                 goto loop; /* continue; */
             } else if ((rc->maxabs0) >= (rc->amin)) {
-                // printf("At: [%s] %s, %d\n", __func__, __FILE__, __LINE__);
+                //printf("At: [%s] %s, %d\n", __func__, __FILE__, __LINE__);
                 RAC_NZ_GET(rc, ctx, NZ_INT_MANT(rc->pos), &temp);
                 if (temp)
                     rc->have = rc->minabs1;
                 temp = 0;
-            }
-            else
+            } else
                 rc->have = rc->minabs1;
             --rc->segment;
             goto loop; /* end for */
