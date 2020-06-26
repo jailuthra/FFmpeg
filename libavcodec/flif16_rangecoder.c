@@ -325,7 +325,6 @@ int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
             m->forest[channel]->data[m->stack[m->stack_top - 1].id].count,
             m->forest[channel]->data[m->stack[m->stack_top - 1].id].split_val,
             m->forest[channel]->data[m->stack[m->stack_top - 1].id].child_id, rc->oldmin, rc->oldmax);
-            temp = m->forest[channel]->data[m->stack[m->stack_top - 1].id].property;
             if ((m->tree_top + 2) >= m->forest[channel]->size) {
                 m->forest[channel]->data = av_realloc(m->forest[channel]->data,
                 (m->forest[channel]->size) * 2 * sizeof(*(m->forest[channel]->data)));
@@ -340,10 +339,11 @@ int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
                     return AVERROR(ENOMEM);
                 m->stack_size *= 2;
             }
-            
+
+            temp = m->forest[channel]->data[m->stack[m->stack_top - 1].id].property;
             
             // WHEN GOING BACK UP THE TREE
-            m->stack[m->stack_top - 1].p    = p;
+            m->stack[m->stack_top - 1].p    = temp;
             m->stack[m->stack_top - 1].max2 = rc->oldmax;
 
             // PUSH 1
@@ -359,8 +359,8 @@ int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
             m->stack[m->stack_top].mode    = 1;
             m->stack[m->stack_top].visited = 0;
             ++m->stack_top;
-            //printf(____PAD "Next right: %d %d %d %d %d %d\n", m->tree_top + 1,
-            //p, rc->oldmin, split_val, 1, 0);
+            printf(____PAD "Next right: %d %d %d %d %d %d\n", m->tree_top + 1,
+            temp, rc->oldmin, split_val, 1, 0);
 
             // PUSH 2
             // > splitval
@@ -373,7 +373,7 @@ int ff_flif16_read_maniac_tree(FLIF16RangeCoder *rc,
             m->stack[m->stack_top].mode    = 2;
             m->stack[m->stack_top].visited = 0;
             ++m->stack_top;
-            //printf(____PAD "Next left: %d %d %d %d %d\n", m->tree_top, p, rc->oldmin, 2, 0);
+            printf(____PAD "Next left: %d %d %d %d %d\n", m->tree_top, temp, rc->oldmin, 2, 0);
 
             m->tree_top += 2;
             rc->segment2 = 1;

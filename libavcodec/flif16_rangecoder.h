@@ -564,13 +564,10 @@ static inline int ff_flif16_rac_read_nz_int(FLIF16RangeCoder *rc,
             ++rc->segment;
 
         case 4:
-            printf("At: [%s] %s, %d\n", __func__, __FILE__, __LINE__);
             if ((rc->minabs1) > (rc->amax)) {
-                printf("At: [%s] %s, %d\n", __func__, __FILE__, __LINE__);
                 --rc->segment;
                 goto loop; /* continue; */
             } else if ((rc->maxabs0) >= (rc->amin)) {
-                printf("At: [%s] %s, %d\n", __func__, __FILE__, __LINE__);
                 RAC_NZ_GET(rc, ctx, NZ_INT_MANT(rc->pos), &temp);
                 if (temp)
                     rc->have = rc->minabs1;
@@ -584,7 +581,6 @@ static inline int ff_flif16_rac_read_nz_int(FLIF16RangeCoder *rc,
     end:
     *target = ((rc->sign) ? (rc->have) : -(rc->have));
     rc->active = 0;
-    rc->segment = 0;
     return 1;
 
     need_more_data:
@@ -752,6 +748,7 @@ static inline int ff_flif16_rac_read_nz_multiscale_int(FLIF16RangeCoder *rc,
 
         case 4:
             if ((rc->minabs1) > (rc->amax)) {
+                --rc->segment;
                 goto loop; /* continue; */
             } else if ((rc->maxabs0) >= (rc->amin)) {
                 RAC_NZ_MULTISCALE_GET(rc, ctx, NZ_INT_MANT(rc->pos), &temp);
