@@ -862,7 +862,7 @@ static uint8_t transform_permuteplanes_forward(FLIF16TransformContext* ctx,
 }
 
 static uint8_t transform_permuteplanes_reverse(FLIF16TransformContext *ctx,
-                                                  FLIF16PixelData * pixels,
+                                                  FLIF16PixelData * frames,
                                                   uint32_t stride_row,
                                                   uint32_t stride_col)
 {   
@@ -870,27 +870,27 @@ static uint8_t transform_permuteplanes_reverse(FLIF16TransformContext *ctx,
     FLIF16ColorVal pixel[5];
     transform_priv_permuteplanes *data = ctx->priv_data;
     FLIF16Ranges* ranges = flif16_ranges[data->r_ctx->r_no];
-    int height = pixels->height;
-    int width  = pixels->width;
+    int height = frames->height;
+    int width  = frames->width;
     for (r=0; r<height; r+=stride_row) {
         for (c=0; c<width; c+=stride_col) {
             for (p=0; p<data->r_ctx->num_planes; p++)
-                pixel[p] =  ff_flif16_pixel_get(pixels, p, r, c);
+                pixel[p] =  ff_flif16_pixel_get(frames, p, r, c);
             for (p=0; p<data->r_ctx->num_planes; p++)
-                ff_flif16_pixel_set(pixels, data->permutation[p], r, c, pixel[p]);
+                ff_flif16_pixel_set(frames, data->permutation[p], r, c, pixel[p]);
             
-            ff_flif16_pixel_set(pixels, data->permutation[0], r, c, pixel[0]);
+            ff_flif16_pixel_set(frames, data->permutation[0], r, c, pixel[0]);
             if (!data->subtract) {
                 for (p=1; p<data->r_ctx->num_planes; p++)
-                    ff_flif16_pixel_set(pixels, data->permutation[p], r, c, pixel[p]);
+                    ff_flif16_pixel_set(frames, data->permutation[p], r, c, pixel[p]);
             } else {
                 for (p=1; p<3 && p<data->r_ctx->num_planes; p++)
-                    ff_flif16_pixel_set(pixels, data->permutation[p], r, c,
+                    ff_flif16_pixel_set(frames, data->permutation[p], r, c,
                     av_clip(pixel[p] + pixel[0],
                          ranges->min(data->r_ctx, data->permutation[p]),
                          ranges->max(data->r_ctx, data->permutation[p])));
                 for (p=3; p<data->r_ctx->num_planes; p++)
-                    ff_flif16_pixel_set(pixels, data->permutation[p], r, c, pixel[p]);
+                    ff_flif16_pixel_set(frames, data->permutation[p], r, c, pixel[p]);
             }
         }
     }
@@ -1001,7 +1001,7 @@ static FLIF16RangesContext* transform_channelcompact_meta(FLIF16PixelData *frame
 }
 
 static uint8_t transform_channelcompact_reverse(FLIF16TransformContext* ctx,
-                                                   FLIF16PixelData* pixels,
+                                                   FLIF16PixelData* frames,
                                                    uint32_t stride_row,
                                                    uint32_t stride_col)
 {
@@ -1011,17 +1011,17 @@ static uint8_t transform_channelcompact_reverse(FLIF16TransformContext* ctx,
     unsigned int palette_size;
     transform_priv_channelcompact *data = ctx->priv_data;
     
-    for(p=0; p<pixels->num_planes; p++){
+    for(p=0; p<frames->num_planes; p++){
         palette      = data->CPalette[p];
         palette_size = data->CPalette_size[p];
 
-        for(r=0; r < pixels->height; r++){
-            for(c=0; c < pixels->width; c++){
-                P = ff_flif16_pixel_get(pixels, p, r, c);
+        for(r=0; r < frames->height; r++){
+            for(c=0; c < frames->width; c++){
+                P = ff_flif16_pixel_get(frames, p, r, c);
                 if (P < 0 || P >= (int) palette_size)
                     P = 0;
                 assert(P < (int) palette_size);
-                ff_flif16_pixel_set(pixels, p, r, c, palette[P]);
+                ff_flif16_pixel_set(frames, p, r, c, palette[P]);
             }
         }
     }
@@ -1300,6 +1300,33 @@ static FLIF16RangesContext* transform_palette_meta(FLIF16PixelData *frames,
     return r_ctx;
 }
 
+static uint8_t transform_palette_reverse(FLIF16TransformContext* ctx,
+                                         FLIF16PixelData* frames,
+                                         uint32_t frame_count,
+                                         uint32_t stride_row,
+                                         uint32_t stride_col)
+{
+    int k, r, c;
+    int P;
+    transform_priv_palette *data = ctx->priv_data;
+    for(k = 0; k < frame_count; k++){
+        for(r = 0; r < frames->height; r++){
+            for(c = 0; c < frames->width; r++){
+                P = ff_flif16_pixel_get(&frames[k], 1, r, c);
+                if(P < 0 || P >= data->size)
+                    P = 0;
+                assert(P < data->size);
+                assert(P > 0);
+                ff_flif16_pixel_set(&frames[k], 0, r, c, data->Palette[P][0]);
+                ff_flif16_pixel_set(&frames[k], 1, r, c, data->Palette[P][1]);
+                ff_flif16_pixel_set(&frames[k], 2, r, c, data->Palette[P][2]);
+            }
+            frames[k].palette = 0;
+        }
+    }
+    return 1;
+}
+
 FLIF16Transform flif16_transform_channelcompact = {
     .priv_data_size = sizeof(transform_priv_channelcompact),
     .init           = &transform_channelcompact_init,
@@ -1393,7 +1420,7 @@ uint8_t ff_flif16_transform_read(FLIF16TransformContext *ctx,
         return 1;
 }
 
-FLIF16RangesContext *ff_flif16_transform_meta(FLIF16PixelData *pixels,
+FLIF16RangesContext *ff_flif16_transform_meta(FLIF16PixelData *frames,
                                               uint32_t frames_count,
                                               FLIF16TransformContext *ctx,
                                               FLIF16RangesContext *r_ctx)
@@ -1401,7 +1428,7 @@ FLIF16RangesContext *ff_flif16_transform_meta(FLIF16PixelData *pixels,
     FLIF16Transform *trans;
     trans = flif16_transforms[ctx->t_no];
     if(trans->meta)
-        return trans->meta(pixels, frames_count, ctx, r_ctx);
+        return trans->meta(frames, frames_count, ctx, r_ctx);
     else
         return r_ctx;
 }
