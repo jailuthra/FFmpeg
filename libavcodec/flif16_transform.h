@@ -101,7 +101,9 @@ FLIF16TransformContext *ff_flif16_transform_init(int, FLIF16RangesContext *);
 uint8_t ff_flif16_transform_read(FLIF16TransformContext *, FLIF16DecoderContext *,
                                  FLIF16RangesContext *);
 
-FLIF16RangesContext* ff_flif16_transform_meta(FLIF16TransformContext *, 
+FLIF16RangesContext* ff_flif16_transform_meta(FLIF16PixelData *,
+                                             uint32_t,
+                                             FLIF16TransformContext *, 
                                              FLIF16RangesContext *);
 
 uint8_t ff_flif16_transform_reverse(FLIF16TransformContext*, FLIF16PixelData*,

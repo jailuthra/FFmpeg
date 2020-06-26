@@ -655,8 +655,10 @@ static uint8_t transform_ycocg_init(FLIF16TransformContext *ctx,
     return 1;
 }
 
-static FLIF16RangesContext* transform_ycocg_meta(FLIF16TransformContext* ctx,
-                                                    FLIF16RangesContext* src_ctx)
+static FLIF16RangesContext* transform_ycocg_meta(FLIF16PixelData *frames,
+                                                uint32_t frame_count,
+                                                 FLIF16TransformContext* ctx,
+                                                 FLIF16RangesContext* src_ctx)
 {   
     FLIF16RangesContext *r_ctx;
     ranges_priv_ycocg* data;
@@ -806,7 +808,9 @@ static uint8_t transform_permuteplanes_read(FLIF16TransformContext* ctx,
         return AVERROR(EAGAIN);
 }
 
-static FLIF16RangesContext* transform_permuteplanes_meta(FLIF16TransformContext* ctx,
+static FLIF16RangesContext* transform_permuteplanes_meta(FLIF16PixelData *frames,
+                                                         uint32_t frame_count,
+                                                         FLIF16TransformContext* ctx,
                                                          FLIF16RangesContext* src_ctx)
 {
     FLIF16RangesContext* r_ctx = av_mallocz(sizeof(FLIF16Ranges));
@@ -978,8 +982,10 @@ static uint8_t transform_channelcompact_read(FLIF16TransformContext * ctx,
         return AVERROR(EAGAIN);
 }
 
-static FLIF16RangesContext* transform_channelcompact_meta(FLIF16TransformContext* ctx,
-                                                             FLIF16RangesContext* src_ctx)
+static FLIF16RangesContext* transform_channelcompact_meta(FLIF16PixelData *frames,
+                                                         uint32_t frame_count,
+                                                         FLIF16TransformContext* ctx,
+                                                         FLIF16RangesContext* src_ctx)
 {
     int i;
     FLIF16RangesContext* r_ctx = av_mallocz(sizeof(FLIF16Ranges));
@@ -1100,7 +1106,9 @@ static uint8_t transform_bounds_read(FLIF16TransformContext* ctx,
         return AVERROR(EAGAIN);
 }
 
-static FLIF16RangesContext* transform_bounds_meta(FLIF16TransformContext* ctx,
+static FLIF16RangesContext* transform_bounds_meta(FLIF16PixelData *frames,
+                                                  uint32_t frame_count,
+                                                  FLIF16TransformContext* ctx,
                                                   FLIF16RangesContext* src_ctx)
 {
     FLIF16RangesContext* r_ctx;
@@ -1273,6 +1281,17 @@ static uint8_t transform_palette_read(FLIF16TransformContext* ctx,
         return AVERROR(EAGAIN);
 }
 
+static FLIF16RangesContext* transform_palette_meta(FLIF16PixelData *frames,
+                                                   uint32_t frame_count,
+                                                   FLIF16TransformContext* ctx,
+                                                   FLIF16RangesContext* src_ctx)
+{
+    FLIF16RangesContext *r_ctx;
+    transform_priv_palette *trans_data = ctx->priv_data;
+    
+    return r_ctx;
+}
+
 FLIF16Transform flif16_transform_channelcompact = {
     .priv_data_size = sizeof(transform_priv_channelcompact),
     .init           = &transform_channelcompact_init,
@@ -1366,13 +1385,15 @@ uint8_t ff_flif16_transform_read(FLIF16TransformContext *ctx,
         return 1;
 }
 
-FLIF16RangesContext *ff_flif16_transform_meta(FLIF16TransformContext *ctx,
+FLIF16RangesContext *ff_flif16_transform_meta(FLIF16PixelData *pixels,
+                                              uint32_t frames_count,
+                                              FLIF16TransformContext *ctx,
                                               FLIF16RangesContext *r_ctx)
 {
     FLIF16Transform *trans;
     trans = flif16_transforms[ctx->t_no];
     if(trans->meta)
-        return trans->meta(ctx, r_ctx);
+        return trans->meta(pixels, frames_count, ctx, r_ctx);
     else
         return r_ctx;
 }

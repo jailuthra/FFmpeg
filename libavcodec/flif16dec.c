@@ -135,7 +135,13 @@ static int flif16_read_header(AVCodecContext *avctx)
     s->width++;
     s->height++;
     (s->ia > 4) ? (s->frames += 2) : (s->frames = 1);
-
+    
+    if (!s->out_frames)
+    s->out_frames = ff_flif16_frames_init(s->frames, s->channels, 32,
+                                          s->width, s->height);
+    if (!s->out_frames)
+        return AVERROR(ENOMEM);
+    
     // Handle Metadata Chunk. Currently it discards all data.
 
     while ((temp = bytestream2_get_byte(&s->gb)) != 0) {
@@ -299,7 +305,9 @@ static int flif16_read_transforms(AVCodecContext *avctx)
             if(!ff_flif16_transform_read(s->transforms[s->transform_top], s, s->range))
                 return AVERROR_EXIT;
             prev_range = s->range;
-            s->range = ff_flif16_transform_meta(s->transforms[s->transform_top], prev_range);
+            s->range = ff_flif16_transform_meta(s->out_frames, s->out_frames_count,
+                                                s->transforms[s->transform_top],
+                                                prev_range);
             if(!s->range)
                 return AVERROR_EXIT;
             printf("Ranges : %d\n", s->range->r_no);
@@ -793,11 +801,6 @@ static int flif16_read_pixeldata(AVCodecContext *avctx)
 {
     FLIF16DecoderContext *s = avctx->priv_data;
     int ret;
-    if (!s->out_frames)
-    s->out_frames = ff_flif16_frames_init(s->frames, s->channels, 32,
-                                          s->width, s->height);
-    if (!s->out_frames)
-        return AVERROR(ENOMEM);
     printf("At:as [%s] %s, %d\n", __func__, __FILE__, __LINE__);
     if((s->ia % 2))
         ret = flif16_read_ni_image(avctx);
