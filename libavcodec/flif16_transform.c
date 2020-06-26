@@ -1137,6 +1137,31 @@ static void transform_bounds_close(FLIF16TransformContext *ctx){
 
 #define MAX_PALETTE_SIZE 30000
 
+static uint8_t transform_palette_init(FLIF16TransformContext *ctx,
+                                      FLIF16RangesContext *src_ctx)
+{
+    transform_priv_palette *data = ctx->priv_data;
+    if(src_ctx->num_planes < 3)
+        return 0;
+    if(   ff_flif16_ranges_max(src_ctx, 0) == 0
+       && ff_flif16_ranges_max(src_ctx, 2) == 0 
+       && src_ctx->num_planes > 3
+       && ff_flif16_ranges_min(src_ctx, 3) == 1
+       && ff_flif16_ranges_max(src_ctx, 3) == 1)
+        return 0;
+    
+    if(   ff_flif16_ranges_min(src_ctx, 1) == ff_flif16_ranges_max(src_ctx, 1)
+       && ff_flif16_ranges_min(src_ctx, 2) == ff_flif16_ranges_max(src_ctx, 2))
+        return 0;
+
+    if(src_ctx->num_planes > 3)
+        data->has_alpha = 1;
+    else
+        data->has_alpha = 0;
+
+    return 1;
+}
+
 static uint8_t transform_palette_read(FLIF16TransformContext* ctx,
                                         FLIF16DecoderContext* dec_ctx,
                                         FLIF16RangesContext* src_ctx)
