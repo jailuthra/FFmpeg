@@ -548,7 +548,7 @@ static int flif16_read_ni_plane(FLIF16DecoderContext *s,
             }
             ++s->segment2;
 
-            printf("r = %u lookback = %d begin = %u end = %u\n", r, lookback, begin, end);
+            //printf("r = %u lookback = %d begin = %u end = %u\n", r, lookback, begin, end);
             if (r > 1 && !lookback && begin == 0 && end > 3) {
         case 1:
             // printf("At:as [%s] %s, %d\n", __func__, __FILE__, __LINE__);
