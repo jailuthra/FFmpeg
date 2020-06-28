@@ -36,9 +36,7 @@
 typedef enum FLIF16ParseStates {
     FLIF16_HEADER = 1,
     FLIF16_METADATA,
-    FLIF16_BITSTREAM,
-    FLIF16_CHECKSUM,
-    FLIF16_VARINT
+    FLIF16_BITSTREAM
 } FLIF16ParseStates;
 
 typedef struct FLIF16ParseContext {
@@ -47,13 +45,15 @@ typedef struct FLIF16ParseContext {
     unsigned int index; ///< An index based on the current state. 
     uint8_t animated;   ///< Is image animated or not
     uint8_t varint;     ///< Number of varints to process in sequence
-    uint64_t width;
-    uint64_t height;
-    uint64_t frames;
-    uint64_t meta;      ///< Size of a meta chunk
-    uint64_t count;
+    uint32_t width;
+    uint32_t height;
+    uint32_t frames;
+    uint32_t meta;      ///< Size of a meta chunk
+    uint32_t count;
 } FLIF16ParseContext;
 
+
+// TODO revamp this function
 static int flif16_find_frame(FLIF16ParseContext *f, const uint8_t *buf,
                              int buf_size)
 {
@@ -74,7 +74,7 @@ static int flif16_find_frame(FLIF16ParseContext *f, const uint8_t *buf,
                 f->varint = 1;
             } else if (f->varint) {
                 // Count varint
-                if (f->count == 9)
+                if (f->count == 5)
                         return AVERROR(ENOMEM);
 
                 switch (f->varint) {
@@ -119,9 +119,10 @@ static int flif16_find_frame(FLIF16ParseContext *f, const uint8_t *buf,
         } else if (f->state == FLIF16_METADATA) {
             if (f->index == 0) {
                 // Identifier for the bitstream chunk is a null byte.
-                if (buf[index] == 0)
+                if (buf[index] == 0) {
                     f->state = FLIF16_BITSTREAM;
-                return buf_size;
+                    return buf_size;
+                }
             } else if (f->index < 3) {
                 // nop
             } else if (f->index == 3) {
@@ -172,7 +173,7 @@ static int flif16_parse(AVCodecParserContext *s, AVCodecContext *avctx,
         *poutbuf_size = 0;
         return buf_size;
     }
-    printf("Width:%lu\nHeight:%lu\nFrames:%lu\nEnd:%d\n", 
+    printf("Width:%u\nHeight:%u\nFrames:%u\nEnd:%d\n", 
            fpc->width, fpc->height, fpc->frames, buf_size);
 
     *poutbuf      = buf;

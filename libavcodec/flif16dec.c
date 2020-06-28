@@ -67,7 +67,7 @@ static const int properties_ni_rgba_size[] = {8, 9, 10, 7, 7};
 // perceptually most important
 // Co and Cg are in that order because Co is perceptually slightly more
 // important than Cg [citation needed]
-const int plane_ordering[] = {4,3,0,1,2}; // FRA (lookback), A, Y, Co, Cg
+static const int plane_ordering[] = {4,3,0,1,2}; // FRA (lookback), A, Y, Co, Cg
 
 enum FLIF16States {
     FLIF16_HEADER = 0,
@@ -86,12 +86,13 @@ static int flif16_read_header(AVCodecContext *avctx)
     FLIF16DecoderContext *s = avctx->priv_data;
     // TODO Make do without this array
     uint32_t *vlist[] = { &s->width, &s->height, &s->frames };
-    // Minimum size has empirically found to be 8 bytes.
+    
     printf("At: [%s] %s, %d\n", __func__, __FILE__, __LINE__);
     s->cut   = CHANCETABLE_DEFAULT_CUT;
     s->alpha = CHANCETABLE_DEFAULT_ALPHA;
     printf(">>> %u %u\n", s->cut, s->alpha);
-
+    
+    // Minimum size has been empirically found to be 8 bytes.
     if (bytestream2_size(&s->gb) < 8) {
         av_log(avctx, AV_LOG_ERROR, "buf size too small (%d)\n",
                bytestream2_size(&s->gb));
@@ -123,13 +124,13 @@ static int flif16_read_header(AVCodecContext *avctx)
     for(int i = 0; i < 2 + ((s->ia > 4) ? 1 : 0); ++i) {
         while ((temp = bytestream2_get_byte(&s->gb)) > 127) {
             FF_FLIF16_VARINT_APPEND(*vlist[i], temp);
-            if (!count) {
+            if (!(count--)) {
                 av_log(avctx, AV_LOG_ERROR, "image dimensions too big\n");
                 return AVERROR(ENOMEM);
             }
         }
         FF_FLIF16_VARINT_APPEND(*vlist[i], temp);
-        count = 3;
+        count = 4;
     }
     printf("At: [%s] %s, %d\n", __func__, __FILE__, __LINE__);
     s->width++;
@@ -149,13 +150,14 @@ static int flif16_read_header(AVCodecContext *avctx)
         // Read varint
         while ((temp = bytestream2_get_byte(&s->gb)) > 127) {
             FF_FLIF16_VARINT_APPEND(s->meta, temp);
-            if (!count) {
+            if (!(count--)) {
                 av_log(avctx, AV_LOG_ERROR, "metadata chunk too big \n");
                 return AVERROR(ENOMEM);
             }
         }
         FF_FLIF16_VARINT_APPEND(s->meta, temp);
         bytestream2_seek(&s->gb, s->meta, SEEK_CUR);
+        count = 4;
     }
 
     printf("[%s] left = %d\n", __func__, bytestream2_get_bytes_left(&s->gb));
@@ -265,7 +267,6 @@ static int flif16_read_second_header(AVCodecContext *avctx)
     ff_flif16_build_log4k_table(&s->rc->log4k);
     #endif
 
-    s->segment = 0;
     ff_flif16_chancetable_init(&s->rc.ct, s->alpha, s->cut);
     return 0;
 
@@ -300,24 +301,28 @@ static int flif16_read_transforms(AVCodecContext *avctx)
             }
             s->transforms[s->transform_top] = ff_flif16_transform_init(temp, s->range);
             if(!s->transforms[s->transform_top])
-                return AVERROR_EXIT;
+                return AVERROR(ENOMEM);
+            ++s->segment;
+
+        case 2:
             //printf("%d\n", s->transforms[s->transform_top]->t_no);
             if(!ff_flif16_transform_read(s->transforms[s->transform_top], s, s->range))
-                return AVERROR_EXIT;
+                goto need_more_data;
+
             prev_range = s->range;
             s->range = ff_flif16_transform_meta(s->out_frames, s->out_frames_count,
                                                 s->transforms[s->transform_top],
                                                 prev_range);
             if(!s->range)
-                return AVERROR_EXIT;
+                return AVERROR(ENOMEM);
             printf("Ranges : %d\n", s->range->r_no);
             s->segment = 0;
             ++s->transform_top;
             goto loop;
 
-        case 2:
+        case 3:
             end:
-            s->segment = 2;
+            s->segment = 3;
             printf("[Resultant Ranges]\n");
             for(int i = 0; i < 5; ++i)
                 printf("%d: %d, %d\n", i, ff_flif16_ranges_min(s->range, i),
@@ -335,6 +340,7 @@ static int flif16_read_transforms(AVCodecContext *avctx)
     return 0;
 
     need_more_data:
+    printf("need more data<>\n");
     return AVERROR(EAGAIN);
 }
 
@@ -380,7 +386,6 @@ static int flif16_read_maniac_forest(AVCodecContext *avctx)
                                              s->prop_ranges_size, s->i);
             printf("Ret: %d\n", ret);
             if (ret) {
-                printf("need more data\n");
                 goto need_more_data;
             }
             av_freep(&s->prop_ranges);
@@ -914,6 +919,7 @@ static int flif16_decode_frame(AVCodecContext *avctx,
     // Looping is done to change states in between functions.
     // Function will either exit on AVERROR(EAGAIN) or AVERROR_EOF
     do {
+        printf("In: %d\n", s->state);
         switch(s->state) {
             case FLIF16_HEADER:
                 ret = flif16_read_header(avctx);
@@ -933,7 +939,6 @@ static int flif16_decode_frame(AVCodecContext *avctx,
 
             case FLIF16_PIXELDATA:
                 ret = flif16_read_pixeldata(avctx);
-                printf("[Decode 1] Ret: %d\n", ret);
                 break;
 
             case FLIF16_CHECKSUM:
@@ -942,7 +947,6 @@ static int flif16_decode_frame(AVCodecContext *avctx,
 
             case FLIF16_OUTPUT:
                 ret = flif16_write_frame(avctx, p);
-                printf("[Decode 2] Ret: %d\n", ret);
                 if (!ret) {
                     *got_frame = 1;
                     return buf_size;
@@ -952,6 +956,8 @@ static int flif16_decode_frame(AVCodecContext *avctx,
             case FLIF16_EOS:
                 return AVERROR_EOF;
         }
+
+        printf("[Decode %d] Ret: %d\n", s->state - 1, ret);
     } while (!ret);
 
     printf("[Decode Result]\n"                  \
