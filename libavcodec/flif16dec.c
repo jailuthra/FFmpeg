@@ -892,7 +892,7 @@ static int flif16_write_frame(AVCodecContext *avctx, AVFrame *p)
             printf("At: [%s] %s, %d\n", __func__, __FILE__, __LINE__);
             break;
     }
-
+    p->key_frame = 1;
     if ((++s->out_frames_count) >= s->frames)
         s->state = FLIF16_EOS;
         
@@ -949,6 +949,7 @@ static int flif16_decode_frame(AVCodecContext *avctx,
                 ret = flif16_write_frame(avctx, p);
                 if (!ret) {
                     *got_frame = 1;
+                    printf("[%s] ret = %d\n", __FILE__, buf_size);
                     return buf_size;
                 }
                 break;
