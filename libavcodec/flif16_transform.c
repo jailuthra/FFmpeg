@@ -1101,6 +1101,7 @@ static uint8_t transform_bounds_read(FLIF16TransformContext* ctx,
         return 1;
 
     need_more_data:
+        printf("need more data<bounds>\n");
         return AVERROR(EAGAIN);
 }
 
