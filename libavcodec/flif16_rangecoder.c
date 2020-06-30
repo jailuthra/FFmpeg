@@ -423,12 +423,6 @@ FLIF16ChanceContext *ff_flif16_maniac_findleaf(FLIF16MANIACContext *m,
     FLIF16MANIACTree *tree = m->forest[channel];
     FLIF16MANIACNode *nodes = tree->data;
 
-    #ifdef MULTISCALE_CHANCES_ENABLED
-    FLIF16MultiscaleChanceContext *leaves;
-    #else
-    FLIF16ChanceContext *leaves;
-    #endif
-
     if (!m->forest[channel]->leaves) {
         // printf("At: [%s] %s, %d\n", __func__, __FILE__, __LINE__);
         m->forest[channel]->leaves = av_mallocz(MANIAC_TREE_BASE_SIZE * sizeof(*m->forest[channel]->leaves));
@@ -438,8 +432,6 @@ FLIF16ChanceContext *ff_flif16_maniac_findleaf(FLIF16MANIACContext *m,
         ff_flif16_chancecontext_init(&m->forest[channel]->leaves[0]);
         tree->leaves_top = 1;
     }
-    
-    leaves = m->forest[channel]->leaves;
 
     while (nodes[pos].property != -1) {
         //printf("pos = %u, prop = %d\n", pos, nodes[pos].property);
@@ -457,23 +449,24 @@ FLIF16ChanceContext *ff_flif16_maniac_findleaf(FLIF16MANIACContext *m,
             --nodes[pos].count;
             if ((tree->leaves_top) >= tree->leaves_size) {
                 m->forest[channel]->leaves = av_realloc(m->forest[channel]->leaves,
-                                                        sizeof(*leaves) * m->forest[channel]->leaves_size * 2);
+                                                        sizeof(*m->forest[channel]->leaves) * m->forest[channel]->leaves_size * 2);
                 if (!m->forest[channel]->leaves)
                     return NULL;
                 m->forest[channel]->leaves_size *= 2;
             }
             old_leaf = nodes[pos].leaf_id;
             new_leaf = tree->leaves_top;
-            memcpy(&leaves[tree->leaves_top], &leaves[nodes[pos].leaf_id],
-                   sizeof(*leaves));
+            printf("findleaf: %u %u %u\n", tree->leaves_top, tree->leaves_size, nodes[pos].leaf_id);
+            memcpy(&m->forest[channel]->leaves[tree->leaves_top], &m->forest[channel]->leaves[nodes[pos].leaf_id],
+                   sizeof(*m->forest[channel]->leaves));
             ++tree->leaves_top;
             nodes[nodes[pos].child_id].leaf_id = old_leaf;
             nodes[nodes[pos].child_id + 1].leaf_id = new_leaf;
 
             if (properties[nodes[pos].property] > nodes[pos].split_val)
-                return &leaves[old_leaf];
+                return &m->forest[channel]->leaves[old_leaf];
             else
-                return &leaves[new_leaf];
+                return &m->forest[channel]->leaves[new_leaf];
         }
     }
     printf("leaf: %d\n", m->forest[channel]->data[pos].leaf_id);
