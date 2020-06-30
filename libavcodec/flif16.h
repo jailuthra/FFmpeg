@@ -107,13 +107,13 @@ typedef struct FLIF16TransformContext{
 typedef struct FLIF16Transform {
     uint8_t priv_data_size;
     //Functions
-    uint8_t (*init) (FLIF16TransformContext*, FLIF16RangesContext*);
-    uint8_t (*read) (FLIF16TransformContext*, FLIF16DecoderContext*, FLIF16RangesContext*);
+    int8_t (*init) (FLIF16TransformContext*, FLIF16RangesContext*);
+    int8_t (*read) (FLIF16TransformContext*, FLIF16DecoderContext*, FLIF16RangesContext*);
     FLIF16RangesContext* (*meta) (FLIF16PixelData*, uint32_t, 
                                   FLIF16TransformContext*,
                                   FLIF16RangesContext*);
-    uint8_t (*forward) (FLIF16TransformContext*, FLIF16PixelData*);
-    uint8_t (*reverse) (FLIF16TransformContext*, FLIF16PixelData*, uint32_t, uint32_t);
+    int8_t (*forward) (FLIF16TransformContext*, FLIF16PixelData*);
+    int8_t (*reverse) (FLIF16TransformContext*, FLIF16PixelData*, uint32_t, uint32_t);
     void (*close) (FLIF16TransformContext*);
 } FLIF16Transform;
 

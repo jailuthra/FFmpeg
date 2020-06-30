@@ -306,7 +306,7 @@ static int flif16_read_transforms(AVCodecContext *avctx)
 
         case 2:
             //printf("%d\n", s->transforms[s->transform_top]->t_no);
-            if(!ff_flif16_transform_read(s->transforms[s->transform_top], s, s->range))
+            if(ff_flif16_transform_read(s->transforms[s->transform_top], s, s->range) <= 0)
                 goto need_more_data;
             printf("At:as [%s] %s, %d\n", __func__, __FILE__, __LINE__);
             prev_range = s->range;

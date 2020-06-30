@@ -629,7 +629,7 @@ FLIF16RangesContext *ff_flif16_ranges_static_init(unsigned int channels,
 /*
  * YCoCg
  */
-static uint8_t transform_ycocg_init(FLIF16TransformContext *ctx, 
+static int8_t transform_ycocg_init(FLIF16TransformContext *ctx, 
                                        FLIF16RangesContext* r_ctx)
 {   
     transform_priv_ycocg *data = ctx->priv_data;
@@ -676,7 +676,7 @@ static FLIF16RangesContext* transform_ycocg_meta(FLIF16PixelData *frame,
     return r_ctx;
 }
 
-static uint8_t transform_ycocg_forward(FLIF16TransformContext* ctx,
+static int8_t transform_ycocg_forward(FLIF16TransformContext* ctx,
                                           FLIF16PixelData* pixel_data)
 {
     int r, c;
@@ -703,7 +703,7 @@ static uint8_t transform_ycocg_forward(FLIF16TransformContext* ctx,
     return 1;
 }
 
-static uint8_t transform_ycocg_reverse(FLIF16TransformContext *ctx,
+static int8_t transform_ycocg_reverse(FLIF16TransformContext *ctx,
                                           FLIF16PixelData * pixel_data,
                                           uint32_t stride_row,
                                           uint32_t stride_col)
@@ -746,7 +746,7 @@ static void transform_ycocg_close(FLIF16TransformContext *ctx){
  * PermutePlanes
  */
 
-static uint8_t transform_permuteplanes_init(FLIF16TransformContext* ctx, 
+static int8_t transform_permuteplanes_init(FLIF16TransformContext* ctx, 
                                             FLIF16RangesContext* r_ctx)
 {
     transform_priv_permuteplanes *data = ctx->priv_data;
@@ -764,7 +764,7 @@ static uint8_t transform_permuteplanes_init(FLIF16TransformContext* ctx,
     return 1;
 }
 
-static uint8_t transform_permuteplanes_read(FLIF16TransformContext* ctx,
+static int8_t transform_permuteplanes_read(FLIF16TransformContext* ctx,
                                             FLIF16DecoderContext* dec_ctx,
                                             FLIF16RangesContext* r_ctx)
 {
@@ -830,7 +830,7 @@ static FLIF16RangesContext* transform_permuteplanes_meta(FLIF16PixelData *frame,
     return r_ctx;
 }
 
-static uint8_t transform_permuteplanes_forward(FLIF16TransformContext* ctx,
+static int8_t transform_permuteplanes_forward(FLIF16TransformContext* ctx,
                                                FLIF16PixelData* pixel_data)
 {
     FLIF16ColorVal pixel[5];
@@ -861,7 +861,7 @@ static uint8_t transform_permuteplanes_forward(FLIF16TransformContext* ctx,
     return 1;
 }
 
-static uint8_t transform_permuteplanes_reverse(FLIF16TransformContext *ctx,
+static int8_t transform_permuteplanes_reverse(FLIF16TransformContext *ctx,
                                                   FLIF16PixelData * frame,
                                                   uint32_t stride_row,
                                                   uint32_t stride_col)
@@ -905,7 +905,7 @@ static void transform_permuteplanes_close(FLIF16TransformContext *ctx){
  * ChannelCompact
  */
 
-static uint8_t transform_channelcompact_init(FLIF16TransformContext *ctx, 
+static int8_t transform_channelcompact_init(FLIF16TransformContext *ctx, 
                                                 FLIF16RangesContext* src_ctx)
 {
     int p;
@@ -921,7 +921,7 @@ static uint8_t transform_channelcompact_init(FLIF16TransformContext *ctx,
     return 1;
 }
 
-static uint8_t transform_channelcompact_read(FLIF16TransformContext * ctx,
+static int8_t transform_channelcompact_read(FLIF16TransformContext * ctx,
                                              FLIF16DecoderContext *dec_ctx,
                                              FLIF16RangesContext* src_ctx)
 {
@@ -999,7 +999,7 @@ static FLIF16RangesContext* transform_channelcompact_meta(FLIF16PixelData *frame
     return r_ctx;
 }
 
-static uint8_t transform_channelcompact_reverse(FLIF16TransformContext* ctx,
+static int8_t transform_channelcompact_reverse(FLIF16TransformContext* ctx,
                                                    FLIF16PixelData* frame,
                                                    uint32_t stride_row,
                                                    uint32_t stride_col)
@@ -1037,7 +1037,7 @@ static void transform_channelcompact_close(FLIF16TransformContext *ctx){
  * Bounds
  */
 
-static uint8_t transform_bounds_init(FLIF16TransformContext *ctx, 
+static int8_t transform_bounds_init(FLIF16TransformContext *ctx, 
                                         FLIF16RangesContext* src_ctx)
 {
     transform_priv_bounds *data = ctx->priv_data;
@@ -1052,7 +1052,7 @@ static uint8_t transform_bounds_init(FLIF16TransformContext *ctx,
     return 1;
 }
 
-static uint8_t transform_bounds_read(FLIF16TransformContext* ctx,
+static int8_t transform_bounds_read(FLIF16TransformContext* ctx,
                                         FLIF16DecoderContext* dec_ctx,
                                         FLIF16RangesContext* src_ctx)
 {
@@ -1143,7 +1143,7 @@ static void transform_bounds_close(FLIF16TransformContext *ctx){
 
 #define MAX_PALETTE_SIZE 30000
 
-static uint8_t transform_palette_init(FLIF16TransformContext *ctx,
+static int8_t transform_palette_init(FLIF16TransformContext *ctx,
                                       FLIF16RangesContext *src_ctx)
 {
     transform_priv_palette *data = ctx->priv_data;
@@ -1168,7 +1168,7 @@ static uint8_t transform_palette_init(FLIF16TransformContext *ctx,
     return 1;
 }
 
-static uint8_t transform_palette_read(FLIF16TransformContext* ctx,
+static int8_t transform_palette_read(FLIF16TransformContext* ctx,
                                         FLIF16DecoderContext* dec_ctx,
                                         FLIF16RangesContext* src_ctx)
 {
@@ -1298,7 +1298,7 @@ static FLIF16RangesContext* transform_palette_meta(FLIF16PixelData *frame,
     return r_ctx;
 }
 
-static uint8_t transform_palette_reverse(FLIF16TransformContext* ctx,
+static int8_t transform_palette_reverse(FLIF16TransformContext* ctx,
                                          FLIF16PixelData* frame,
                                          uint32_t stride_row,
                                          uint32_t stride_col)
@@ -1420,7 +1420,7 @@ FLIF16TransformContext *ff_flif16_transform_init(int t_no, FLIF16RangesContext* 
     return ctx;
 }
 
-uint8_t ff_flif16_transform_read(FLIF16TransformContext *ctx,
+int8_t ff_flif16_transform_read(FLIF16TransformContext *ctx,
                                  FLIF16DecoderContext *dec_ctx,
                                  FLIF16RangesContext* r_ctx)
 {
@@ -1444,7 +1444,7 @@ FLIF16RangesContext *ff_flif16_transform_meta(FLIF16PixelData *frames,
         return r_ctx;
 }
 
-uint8_t ff_flif16_transform_reverse(FLIF16TransformContext* ctx,
+int8_t ff_flif16_transform_reverse(FLIF16TransformContext* ctx,
                                     FLIF16PixelData* pixelData,
                                     uint8_t strideRow,
                                     uint8_t strideCol)
