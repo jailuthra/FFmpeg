@@ -21,6 +21,8 @@ version <next>:
 - MOFLEX demuxer
 - MODS demuxer
 - PhotoCD decoder
+- FLIF16 decoder
+- FLIF demuxer
 
 
 version 4.3:
