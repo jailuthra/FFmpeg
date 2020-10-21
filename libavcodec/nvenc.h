@@ -166,6 +166,7 @@ typedef struct NvencContext
     int first_packet_output;
 
     int support_dyn_bitrate;
+    int support_dyn_res;
 
     void *nvencoder;
 
@@ -201,6 +202,8 @@ typedef struct NvencContext
     int b_ref_mode;
     int a53_cc;
     int dpb_size;
+    int max_width;
+    int max_height;
 } NvencContext;
 
 int ff_nvenc_encode_init(AVCodecContext *avctx);

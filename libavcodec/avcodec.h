@@ -1735,6 +1735,16 @@ typedef struct AVCodecContext {
      * AVFrame output by avcodec_decode_video2 due frame
      * reordering.
      *
+     * @note These fields are generally expected to remain unchanged during
+     * encoding. However, in some specialist scenarios such as when using NVENC
+     * they may be changed by the user during encoding and such changes will be
+     * detected by the encoder, causing it to reconfigure itself to the new
+     * picture sIze. Extreme care should be taken when doing this with a format
+     * that uses global headers as the global headers will no longer correspond
+     * to the adjusted picture size. However, For a format such as mpegts this
+     * feature allows us to change the resolution dynamically without having to
+     * re-create either the encoder or the output format.
+     *
      * - encoding: MUST be set by user.
      * - decoding: May be set by the user before opening the decoder if known e.g.
      *             from the container. Some decoders will require the dimensions

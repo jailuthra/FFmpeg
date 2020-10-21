@@ -129,6 +129,10 @@ static const AVOption options[] = {
 #endif
     { "dpb_size",     "Specifies the DPB size used for encoding (0 means automatic)",
                                                             OFFSET(dpb_size),     AV_OPT_TYPE_INT,   { .i64 = 0 }, 0, INT_MAX, VE },
+    { "max_width",    "Maximum encode width for dynamic resolution encoding",
+                                                            OFFSET(max_width),    AV_OPT_TYPE_INT,   {.i64 = 0 }, 0, INT_MAX, VE },
+    { "max_height",   "Maximum encode height for dynamic resolution encoding",
+                                                            OFFSET(max_height),   AV_OPT_TYPE_INT,   {.i64 = 0 }, 0, INT_MAX, VE },
     { NULL }
 };
 

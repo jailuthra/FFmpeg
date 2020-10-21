@@ -427,6 +427,7 @@ static int nvenc_check_capabilities(AVCodecContext *avctx)
 #endif
 
     ctx->support_dyn_bitrate = nvenc_check_cap(avctx, NV_ENC_CAPS_SUPPORT_DYN_BITRATE_CHANGE);
+    ctx->support_dyn_res = nvenc_check_cap(avctx, NV_ENC_CAPS_SUPPORT_DYN_RES_CHANGE);
 
     return 0;
 }
@@ -1176,6 +1177,8 @@ static av_cold int nvenc_setup_encoder(AVCodecContext *avctx)
 
     ctx->init_encode_params.encodeHeight = avctx->height;
     ctx->init_encode_params.encodeWidth = avctx->width;
+    ctx->init_encode_params.maxEncodeHeight = ctx->max_height;
+    ctx->init_encode_params.maxEncodeWidth = ctx->max_width;
 
     ctx->init_encode_params.encodeConfig = &ctx->encode_config;
 
@@ -1341,8 +1344,8 @@ static av_cold int nvenc_alloc_surface(AVCodecContext *avctx, int idx)
         }
 
         allocSurf.version = NV_ENC_CREATE_INPUT_BUFFER_VER;
-        allocSurf.width = avctx->width;
-        allocSurf.height = avctx->height;
+        allocSurf.width = FFMAX(ctx->max_width, avctx->width);
+        allocSurf.height = FFMAX(ctx->max_height, avctx->height);
         allocSurf.bufferFmt = ctx->surfaces[idx].format;
 
         nv_status = p_nvenc->nvEncCreateInputBuffer(ctx->nvencoder, &allocSurf);
@@ -1992,7 +1995,7 @@ static void reconfig_encoder(AVCodecContext *avctx, const AVFrame *frame)
     NV_ENC_RECONFIGURE_PARAMS params = { 0 };
     int needs_reconfig = 0;
     int needs_encode_config = 0;
-    int reconfig_bitrate = 0, reconfig_dar = 0;
+    int reconfig_bitrate = 0, reconfig_dar = 0, reconfig_res = 0;
     int dw, dh;
 
     params.version = NV_ENC_RECONFIGURE_PARAMS_VER;
@@ -2052,6 +2055,24 @@ static void reconfig_encoder(AVCodecContext *avctx, const AVFrame *frame)
         }
     }
 
+    if (ctx->support_dyn_res && ctx->init_encode_params.maxEncodeWidth && ctx->init_encode_params.maxEncodeHeight) {
+        if (params.reInitEncodeParams.encodeWidth != avctx->width || params.reInitEncodeParams.encodeHeight != avctx->height) {
+            av_log(avctx, AV_LOG_VERBOSE,
+                "resolution change: %d x %d -> %d x %d\n",
+                params.reInitEncodeParams.encodeWidth,
+                params.reInitEncodeParams.encodeHeight,
+                avctx->width,
+                avctx->height);
+
+            params.reInitEncodeParams.encodeWidth = avctx->width;
+            params.reInitEncodeParams.encodeHeight = avctx->height;
+            params.forceIDR = 1;
+
+            needs_reconfig = 1;
+            reconfig_res = 1;
+        }
+    }
+
     if (!needs_encode_config)
         params.reInitEncodeParams.encodeConfig = NULL;
 
@@ -2069,6 +2090,11 @@ static void reconfig_encoder(AVCodecContext *avctx, const AVFrame *frame)
                 ctx->encode_config.rcParams.averageBitRate = params.reInitEncodeParams.encodeConfig->rcParams.averageBitRate;
                 ctx->encode_config.rcParams.maxBitRate = params.reInitEncodeParams.encodeConfig->rcParams.maxBitRate;
                 ctx->encode_config.rcParams.vbvBufferSize = params.reInitEncodeParams.encodeConfig->rcParams.vbvBufferSize;
+            }
+
+            if (reconfig_res) {
+                ctx->init_encode_params.encodeWidth = params.reInitEncodeParams.encodeWidth;
+                ctx->init_encode_params.encodeHeight = params.reInitEncodeParams.encodeHeight;
             }
 
         }
